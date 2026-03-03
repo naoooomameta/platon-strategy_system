@@ -4892,6 +4892,7 @@ let bimFileMime = null;
 let bimImportedData = null;
 let bimSource = 'local'; // 'local' | 'drive'
 let bimDriveFileId = null;
+let bimExtractedText = null; // テキスト抽出モード用（大きいPDF）
 
 // GASスニペットをdetailsに埋め込む
 (function injectGasSnippet() {
@@ -5033,14 +5034,18 @@ async function fetchDriveViaGas(fileId) {
     throw new Error('GASのレスポンスが不正です。GASのデプロイ設定（アクセス：全員）を確認してください');
   }
 
-  if (!json.ok) throw new Error(`ドライブエラー: ${json.error || 'ファイルを取得できませんでした。共有設定・ファイルIDを確認してください'}`);
+  if (!json.ok) throw new Error(json.error || 'ファイルを取得できませんでした。共有設定を確認してください');
+
+  // テキスト抽出モード（5MB超のPDF）
+  if (json.mode === 'text') {
+    const note = json.truncated ? `\n※ 大きいファイルのため先頭部分（50,000文字）を使用` : '';
+    return { mode: 'text', text: json.text, name: json.name || 'file.pdf', note };
+  }
+
+  // バイナリモード（5MB以下）
   if (!json.data) throw new Error('GASからデータが返されませんでした');
-
-  // サイズチェック（Claude API上限 ~32MB）
   const sizeKB = Math.round(json.data.length * 0.75 / 1024);
-  if (sizeKB > 30000) throw new Error(`ファイルが大きすぎます（${sizeKB} KB）。30MB以下のPDFを使用してください`);
-
-  return { data: json.data, mime: json.mime || 'application/pdf', name: json.name || 'file.pdf', sizeKB };
+  return { mode: 'binary', data: json.data, mime: json.mime || 'application/pdf', name: json.name || 'file.pdf', sizeKB };
 }
 
 function openBookImportModal() {
@@ -5113,9 +5118,14 @@ async function runBookImport() {
       progDesc.textContent = 'Google ドライブからファイルを取得中...';
       logEl.textContent = '⏳ GASに接続中...';
       const result = await fetchDriveViaGas(bimDriveFileId);
-      fileData = result.data;
-      fileMime = result.mime;
-      logEl.textContent = `✓ ファイル取得完了\n📄 ${result.name}（${result.sizeKB || '?'} KB）\n\nClaudeで解析開始...`;
+      logEl.textContent = `✓ ファイル取得完了\n📄 ${result.name}${result.note||''}\n\nClaudeで解析開始...`;
+      if (result.mode === 'text') {
+        fileData = null; fileMime = 'text';
+        bimExtractedText = result.text;
+      } else {
+        fileData = result.data; fileMime = result.mime;
+        bimExtractedText = null;
+      }
     } catch(err) {
       showToast(`ドライブ取得エラー: ${err.message}`);
       resetBimModal(); return;
@@ -5125,16 +5135,23 @@ async function runBookImport() {
   const extractPrompt = buildExtractPrompt(subject, type, range);
   let raw = '';
   try {
-    const isImage = fileMime.startsWith('image/');
-    const docContent = isImage
-      ? { type:'image', source:{ type:'base64', media_type:fileMime, data:fileData } }
-      : { type:'document', source:{ type:'base64', media_type:'application/pdf', data:fileData } };
+    let msgContent;
+    if (bimExtractedText) {
+      // テキストモード（大きいPDFをGASでOCR変換済み）
+      msgContent = [{ type:'text', text:`以下は参考書から抽出したテキストです：\n\n${bimExtractedText}\n\n${extractPrompt}` }];
+    } else {
+      const isImage = fileMime.startsWith('image/');
+      const docContent = isImage
+        ? { type:'image', source:{ type:'base64', media_type:fileMime, data:fileData } }
+        : { type:'document', source:{ type:'base64', media_type:'application/pdf', data:fileData } };
+      msgContent = [docContent, { type:'text', text:extractPrompt }];
+    }
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001', max_tokens:4000, stream:true,
-        messages:[{ role:'user', content:[docContent, { type:'text', text:extractPrompt }] }]
+        messages:[{ role:'user', content: msgContent }]
       })
     });
 
