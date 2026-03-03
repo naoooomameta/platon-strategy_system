@@ -4959,7 +4959,7 @@ async function testGasConnection() {
   statusEl.textContent = '接続中...';
 
   try {
-    const res  = await fetch(`${gasUrl}`, { redirect: 'follow' });
+    const res  = await fetch(`${gasUrl}`, { redirect: 'follow', credentials: 'omit' });
     const text = await res.text();
     const json = JSON.parse(text);
     if (json.ok) {
@@ -5019,7 +5019,7 @@ async function fetchDriveViaGas(fileId) {
 
   let res;
   try {
-    res = await fetch(url, { redirect: 'follow' });
+    res = await fetch(url, { redirect: 'follow', credentials: 'omit' });
   } catch(e) {
     throw new Error(`GASへの接続に失敗しました。URLを確認してください（${e.message}）`);
   }
