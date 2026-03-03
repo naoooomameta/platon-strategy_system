@@ -5060,18 +5060,23 @@ function closeBookImportModal() {
   document.getElementById('book-import-modal').style.display = 'none';
   document.body.style.overflow = '';
 }
-function resetBimModal() {
-  bimFileData = null; bimFileMime = null; bimImportedData = null; bimDriveFileId = null;
+function resetBimModal(keepTab) {
+  bimFileData = null; bimFileMime = null; bimImportedData = null;
+  bimExtractedText = null;
   document.getElementById('bim-step1').style.display = 'block';
   document.getElementById('bim-step2').style.display = 'none';
   document.getElementById('bim-step3').style.display = 'none';
   document.getElementById('bim-filename').style.display = 'none';
   document.getElementById('bim-file-input').value = '';
-  const driveUrl = document.getElementById('bim-drive-url');
-  if (driveUrl) driveUrl.value = '';
-  const status = document.getElementById('bim-drive-url-status');
-  if (status) status.textContent = '';
-  switchBimTab('local');
+  // keepTab=true の場合はタブをリセットしない（エラー後の復帰用）
+  if (!keepTab) {
+    bimDriveFileId = null;
+    const driveUrl = document.getElementById('bim-drive-url');
+    if (driveUrl) driveUrl.value = '';
+    const status = document.getElementById('bim-drive-url-status');
+    if (status) status.textContent = '';
+    switchBimTab('local');
+  }
 }
 function handleBimDrop(e) {
   e.preventDefault();
@@ -5128,7 +5133,7 @@ async function runBookImport() {
       }
     } catch(err) {
       showToast(`ドライブ取得エラー: ${err.message}`);
-      resetBimModal(); return;
+      resetBimModal(true); return;
     }
   }
 
@@ -5183,7 +5188,7 @@ async function runBookImport() {
 
   } catch(err) {
     showToast('解析に失敗しました。ファイル形式・GAS設定を確認してください。');
-    resetBimModal();
+    resetBimModal(true);
   }
 }
 
