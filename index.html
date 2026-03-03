@@ -801,8 +801,20 @@
     <button class="nav-btn" onclick="showPage('weekly-plan')">3ヶ月プラン</button>
     <button class="nav-btn" onclick="showPage('tests')">確認テスト</button>
     <button class="nav-btn" onclick="showPage('monthly')">実力診断</button>
-  </nav>
+    <div style="display:flex;align-items:center;gap:6px;padding-right:12px;">
+    <span style="font-size:11px;color:#999;">🔑 API Key</span>
+    <input type="password" id="platon-api-key-input" placeholder="sk-ant-..."
+      style="width:160px;padding:4px 8px;font-size:11px;border:1px solid #ddd;border-radius:6px;"
+      oninput="localStorage.setItem('platon_api_key', this.value)" />
+  </div>
 </header>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var el = document.getElementById('platon-api-key-input');
+  var k = localStorage.getItem('platon_api_key');
+  if (el && k) el.value = k;
+});
+</script>
 
 <!-- LOADING -->
 <div class="loading-overlay" id="loading">
@@ -4188,7 +4200,7 @@ ${subjectStr}
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
@@ -4315,7 +4327,7 @@ async function processExamFile(file) {
       try {
         const base64 = ev.target.result.split(',')[1];
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method:'POST', headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
           body: JSON.stringify({
             model:'claude-sonnet-4-20250514', max_tokens:800,
             messages:[{role:'user', content:[
@@ -5010,6 +5022,11 @@ function extractDriveFileId(url) {
   return null;
 }
 
+
+function getApiKey() {
+  return localStorage.getItem('platon_api_key') || '';
+}
+
 async function fetchDriveViaGas(fileId) {
   const gasUrl = (document.getElementById('bim-gas-url')?.value || '').trim().replace(/\/+$/, '');
   if (!gasUrl) throw new Error('GAS URLが未設定です。「GAS エンドポイントURL」欄にURLを貼り付けてください');
@@ -5153,7 +5170,7 @@ async function runBookImport() {
     }
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001', max_tokens:4000, stream:true,
         messages:[{ role:'user', content: msgContent }]
