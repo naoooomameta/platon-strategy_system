@@ -3238,50 +3238,47 @@ function printRoadmapPDF() {
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:10mm 12mm;}}'
     + '</style></head><body>'
 
-    // ヘッダー
-    + '<div class="print-header">'
+    // ヘッダー（完全inline style）
+    + '<div style="background:#1a1a2e;color:white;padding:16px 32px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
-    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:18px;font-weight:700;margin-top:3px;">合格ロードマップ</div></div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:18px;font-weight:700;margin-top:3px;color:white;">合格ロードマップ</div></div>'
     + '<div style="text-align:right;font-size:11px;color:rgba(255,255,255,.6);">'
     + '<div style="font-size:13px;font-weight:700;color:white;">' + s.name + ' さん</div>'
     + '<div>第一志望：' + s.univName + '　偏差値目標：' + s.univInfo.dev + '</div>'
     + '<div>発行日：' + today + '</div></div></div>'
 
-    // 生徒情報バンド
-    + '<div class="student-band">'
-    + '<div><div class="s-label">生徒氏名</div><div class="s-val">' + s.name + '</div><div class="s-sub">' + gradeLabel + '｜' + streamLabel + '</div></div>'
-    + '<div><div class="s-label">第一志望</div><div class="s-val" style="font-size:13px;">' + s.univName + '</div><div class="s-sub">' + (s.dept1 || '') + '</div></div>'
-    + '<div><div class="s-label">目標偏差値</div><div class="s-val">' + s.univInfo.dev + '</div><div class="s-sub">現状 ' + s.devVal + '（模試）</div></div>'
-    + '<div><div class="s-label">残り期間</div><div class="s-val">' + s.months + 'ヶ月</div><div class="s-sub">受験まで</div></div>'
+    // 生徒情報バンド（完全inline style）
+    + '<div style="background:#1a1a2e;color:white;padding:14px 32px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.08em;text-transform:uppercase;">生徒氏名</div><div style="font-size:15px;font-weight:700;font-family:\'Noto Serif JP\',serif;margin-top:4px;color:white;">' + s.name + '</div><div style="font-size:10px;color:#c9a84c;margin-top:2px;">' + gradeLabel + '｜' + streamLabel + '</div></div>'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.08em;text-transform:uppercase;">第一志望</div><div style="font-size:13px;font-weight:700;font-family:\'Noto Serif JP\',serif;margin-top:4px;color:white;">' + s.univName + '</div><div style="font-size:10px;color:#c9a84c;margin-top:2px;">' + (s.dept1 || '') + '</div></div>'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.08em;text-transform:uppercase;">目標偏差値</div><div style="font-size:22px;font-weight:700;font-family:\'Noto Serif JP\',serif;margin-top:4px;color:white;">' + s.univInfo.dev + '</div><div style="font-size:10px;color:#c9a84c;margin-top:2px;">現状 ' + s.devVal + '（模試）</div></div>'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.08em;text-transform:uppercase;">残り期間</div><div style="font-size:22px;font-weight:700;font-family:\'Noto Serif JP\',serif;margin-top:4px;color:white;">' + s.months + 'ヶ月</div><div style="font-size:10px;color:#c9a84c;margin-top:2px;">受験まで</div></div>'
     + '</div>'
 
-    + '<div class="container">'
+    + '<div style="max-width:960px;margin:0 auto;padding:20px 28px;">'
 
     // タイムライン
-    + '<div class="section-hd">📅 タイムライン</div>'
-    + '<div class="card">'
-    + '<div style="overflow-x:auto;"><div class="timeline" style="display:grid;grid-auto-flow:column;gap:3px;">'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📅 タイムライン</div>'
+    + '<div style="background:white;border-radius:8px;padding:14px;border:1px solid #d8d0c0;margin-bottom:14px;">'
     + timelineHTML
-    + '</div></div>'
-    + legendHTML
     + '</div>'
 
     // 参考書ルート
-    + '<div class="section-hd">📚 参考書ルート</div>'
-    + '<div class="card"><table>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📚 参考書ルート</div>'
+    + '<div style="background:white;border-radius:8px;padding:14px;border:1px solid #d8d0c0;margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;">'
     + '<thead><tr><th>科目</th><th>参考書名</th><th>カテゴリ</th><th>レベル</th><th>着手時期</th><th>完了期限</th></tr></thead>'
     + '<tbody>' + booksHTML + '</tbody></table>'
     + '<div style="margin-top:8px;font-size:9px;color:#999;">※ 試験月までに完了できる参考書のみ表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。</div>'
     + '</div>'
 
     // 偏差値ギャップ
-    + '<div class="section-hd">📊 偏差値ギャップ分析</div>'
-    + '<div class="card"><div class="gap-panel">'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📊 偏差値ギャップ分析</div>'
+    + '<div style="background:white;border-radius:8px;padding:14px;border:1px solid #d8d0c0;margin-bottom:14px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'
     + '<div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:10px;">科目別：現状 vs 目標偏差値</div>' + gapHTML + '</div>'
     + '<div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:10px;">偏差値推移予測</div>' + chartImgHTML + '</div>'
     + '</div></div>'
 
-    + '<div class="footer">'
+    + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:9px;color:#bbb;">'
     + '<div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
     + '<div>' + s.name + ' 様専用</div>'
     + '</div>'
