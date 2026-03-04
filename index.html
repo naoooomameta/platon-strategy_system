@@ -5673,9 +5673,22 @@ const SUBJECT_COLOR = {
 
 // 科目キーまたはラベルから表示名を返す（旧・新キー両対応）
 function resolveSubjectLabel(keyOrLabel) {
+  // 週間グリッド等の狭い表示用：short名を返す
   if (SUBJECT_DISPLAY[keyOrLabel]) return SUBJECT_DISPLAY[keyOrLabel];
   const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === keyOrLabel || o.key === keyOrLabel);
   return opt ? opt.short : keyOrLabel;
+}
+
+function resolveSubjectFullLabel(keyOrLabel) {
+  // タブ等の広い表示用：登録時のラベル（正式名）をそのまま返す
+  const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === keyOrLabel || o.key === keyOrLabel);
+  if (opt) return opt.label;
+  // 旧キー → 正式名マッピング
+  const legacy = {
+    'eng':'英語リーディング', 'jpn':'現代文', 'soc':'日本史',
+    'math':'数学1A・2BC', 'sci':'理科基礎', 'etc':'情報'
+  };
+  return legacy[keyOrLabel] || keyOrLabel;
 }
 
 // 科目キーまたはラベルから色を返す（旧・新キー両対応）
@@ -5867,9 +5880,9 @@ function buildWpSubjectTabs() {
       </div>`;
 
   el.innerHTML = subs.map((sub, i) => {
-    const tabLabel = resolveSubjectLabel(sub); // 旧・新キー両対応
+    const tabLabel = resolveSubjectFullLabel(sub); // 登録時の正式科目名をそのまま表示
     return `<button class="tab ${i===0?'active':''}" onclick="selectWpSub('${sub}',this)"
-      style="font-size:12px;" title="${sub}">${tabLabel}</button>`;
+      style="font-size:12px;">${tabLabel}</button>`;
   }).join('');
   renderWpSubjectPlan(subs[0]);
 }
