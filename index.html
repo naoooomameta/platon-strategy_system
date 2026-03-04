@@ -716,10 +716,93 @@
   }
 
   /* ===== RESPONSIVE ===== */
+
+  /* ── タブレット ── */
+  @media (max-width: 1024px) {
+    .container { padding: 1.5rem; }
+    .info-box { grid-template-columns: repeat(2, 1fr); }
+    .steps .step-label { font-size: 11px; }
+  }
+
+  /* ── スマートフォン ── */
   @media (max-width: 768px) {
+    /* ヘッダー */
+    .header-top { padding: 0 1rem; height: 48px; }
+    .logo-text { font-size: 12px; }
+    .logo-sub { display: none; }
+    .header-nav { padding: 0 0.5rem; height: 36px; gap: 0; }
+    .nav-btn { padding: 4px 9px; font-size: 11.5px; }
+
+    /* コンテナ */
+    .container { padding: 1rem; }
+
+    /* セクションタイトル */
+    .section-title { font-size: 18px; }
+    .section-desc { margin-bottom: 1.2rem; font-size: 12px; }
+
+    /* カード */
+    .card { padding: 1rem; border-radius: 10px; }
+
+    /* フォーム */
     .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+
+    /* 情報ボックス */
+    .info-box { grid-template-columns: 1fr 1fr; gap: 0.75rem; padding: 1rem; margin-bottom: 1.2rem; }
+    .info-item .val { font-size: 15px; }
+
+    /* ステップ */
+    .steps { gap: 0; overflow-x: auto; padding-bottom: 4px; flex-wrap: nowrap; }
+    .step-label { display: none; }
+    .step-num { width: 30px; height: 30px; font-size: 12px; }
+    .step:not(:last-child)::after { left: 28px; top: 15px; }
+
+    /* タブ */
+    .tabs { width: 100%; overflow-x: auto; }
+    .tab { padding: 7px 14px; font-size: 12px; white-space: nowrap; }
+
+    /* ロードマップ timeline — 横スクロール許可 */
+    .timeline-wrapper { -webkit-overflow-scrolling: touch; }
+    .timeline { min-width: 700px; }
+
+    /* ギャップ分析パネル */
     .gap-panel { grid-template-columns: 1fr; }
-    .info-box { grid-template-columns: 1fr 1fr; }
+
+    /* 月ラベル */
+    .month-labels { margin-left: 70px; }
+
+    /* アクションボタン */
+    .actions { flex-wrap: wrap; justify-content: stretch; }
+    .actions .btn { flex: 1; justify-content: center; font-size: 13px; padding: 10px 14px; }
+
+    /* 生徒一覧 */
+    .student-row { padding: 10px 12px; }
+    .student-name { font-size: 13px; }
+    .student-meta { font-size: 11px; }
+    .student-avatar { width: 34px; height: 34px; font-size: 12px; }
+
+    /* 参考書グリッド */
+    .textbook-grid { grid-template-columns: 1fr; }
+
+    /* トースト */
+    .toast { bottom: 1rem; right: 1rem; left: 1rem; font-size: 12px; }
+
+    /* deviation big number */
+    .deviation-big { font-size: 22px; }
+  }
+
+  /* ── 小型スマートフォン ── */
+  @media (max-width: 480px) {
+    .header-top { height: 44px; }
+    .logo-mark { width: 30px; height: 30px; }
+    .logo-text { font-size: 11px; }
+    .nav-btn { padding: 4px 7px; font-size: 11px; }
+    .container { padding: 0.75rem; }
+    .info-box { grid-template-columns: 1fr 1fr; padding: 0.75rem; gap: 0.5rem; }
+    .info-item .val { font-size: 13px; }
+    .section-title { font-size: 16px; }
+    .card { padding: 0.85rem; }
+    .btn { font-size: 12px; padding: 9px 12px; }
   }
 
   /* ===== FADE IN ===== */
@@ -1218,12 +1301,12 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- ===== PAGE: ROADMAP ===== -->
 <div class="page" id="page-roadmap">
   <div class="container">
-    <div style="margin-bottom:1.5rem;padding-top:0.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <div style="margin-bottom:1.5rem;padding-top:0.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
         <div class="section-title" id="roadmap-title">合格ロードマップ</div>
         <div class="section-desc" id="roadmap-desc">生成されたロードマップを確認・編集できます</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
         <button class="btn btn-teal" onclick="showToast('ロードマップを保存しました')">💾 保存する</button>
@@ -1656,7 +1739,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="section-title">確認テスト管理</div>
         <div class="section-desc">3ヶ月分（12週）の週次確認テスト作成・採点・解答管理</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <select id="test-student-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
           <option>田中 悠斗（高3・理系）</option>
           <option>佐藤 美咲（高2・文系）</option>
@@ -1701,7 +1784,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="section-title">月次実力診断テスト</div>
         <div class="section-desc">月末実力診断・採点・推定偏差値の算出と受験期までの推移予測</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <select id="monthly-student-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
           <option>田中 悠斗（高3・理系）</option>
           <option>佐藤 美咲（高2・文系）</option>
@@ -1766,7 +1849,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="card" id="monthly-test-content" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
         <div class="card-title" style="margin-bottom:0;">今月の実力診断テスト</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
           <button class="btn btn-secondary" onclick="toggleMonthlyAns()" id="btn-monthly-ans" style="font-size:12px;">🔑 解答・解説を表示</button>
           <button class="btn btn-secondary" onclick="exportPDFModal(monthlyTestData,false)" style="font-size:12px;">📄 生徒用を出力</button>
           <button class="btn btn-teal" onclick="exportPDFModal(monthlyTestData,true)" style="font-size:12px;">🔑 解答版を出力</button>
@@ -3275,15 +3358,15 @@ function printRoadmapPDF() {
 
     // 上段：総合サマリー（3列）
     const gapColor = gap > 10 ? '#c84b31' : gap > 5 ? '#c9a84c' : '#2a7f6f';
-    let h = '<div style="display:table;width:100%;border-collapse:separate;border-spacing:0;margin-bottom:12px;">';
+    let h = '<div style="display:flex;width:100%;gap:0;margin-bottom:12px;border-radius:10px;overflow:hidden;">';
     // 総合ギャップ
-    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#fdf8f0,#f0e8d8);border-radius:10px 0 0 10px;border:1px solid #e0d4c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#fdf8f0,#f0e8d8);border-radius:10px 0 0 10px;border:1px solid #e0d4c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">総合ギャップ</div>'
       + '<div style="font-size:42px;font-weight:700;color:'+gapColor+';line-height:1;font-family:\'DM Mono\',monospace;">+'+ gap +'</div>'
       + '<div style="font-size:12px;color:#666;margin-top:4px;">偏差値</div>'
       + '</div>';
     // 現状→目標
-    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border:1px solid #1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border:1px solid #1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">現状 → 目標</div>'
       + '<div style="display:flex;align-items:baseline;gap:8px;">'
       + '<span style="font-size:36px;font-weight:700;color:white;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.devVal +'</span>'
@@ -3293,7 +3376,7 @@ function printRoadmapPDF() {
       + '<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;">（'+ s.univName +'）</div>'
       + '</div>';
     // 残り期間
-    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#eef5f3,#d8eee8);border-radius:0 10px 10px 0;border:1px solid #b0d8d0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#eef5f3,#d8eee8);border-radius:0 10px 10px 0;border:1px solid #b0d8d0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">残り期間</div>'
       + '<div style="font-size:42px;font-weight:700;color:#2a7f6f;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.months +'</div>'
       + '<div style="font-size:12px;color:#666;margin-top:4px;">ヶ月</div>'
@@ -6231,7 +6314,7 @@ function renderTestDetail(week) {
         <div style="font-size:16px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;">${test.title}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">所要時間：約${test.duration}分 ／ 合計${totalMax}点満点</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <button class="btn btn-secondary" style="font-size:12px;" onclick="toggleTestAns(${week})">🔑 解答・解説</button>
         <button class="btn btn-secondary" style="font-size:12px;" onclick="exportPDFModal(testData[${week}],false)">📄 生徒用を出力</button>
         <button class="btn btn-teal" style="font-size:12px;" onclick="exportPDFModal(testData[${week}],true)">🔑 解答版を出力</button>
