@@ -3968,61 +3968,63 @@ function buildReportHTML(s) {
   const totalPrice = booksData.reduce((sum, b) => sum + (b.price||1320), 0);
   const totalCount = booksData.length;
 
-  let booksHtml='';
+  // ── 参考書：完全フラットテーブル（flex/grid一切なし）──
+  // 構造: 年ヘッダー行 → 月ラベル行 → カード行（1行=1冊、full-width）
+  booksHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;" cellpadding="0" cellspacing="0">';
   let prevYear=null;
   byMonth.forEach(({year,month,books:mBooks})=>{
     const absM=year*12+month;
     const isCurrent=absM===nowM;
     const isPast=absM<nowM;
+    // 年ヘッダー
     if(year!==prevYear){
       prevYear=year;
-      booksHtml+='<div style="font-size:12px;font-weight:700;color:'+C.ink+';font-family:\'Noto Serif JP\',serif;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid '+C.border+';">── '+year+'年 ──</div>';
+      booksHtml+='<tr><td colspan="2" style="padding:10px 0 4px;font-size:11px;font-weight:700;color:'+C.ink+';border-bottom:2px solid '+C.border+';letter-spacing:.04em;">── '+year+'年 ──</td></tr>';
     }
-    // 月行
-    booksHtml+='<div class="month-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">';
-    // 月ラベル＋縦線
-    booksHtml+='<div style="width:36px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding-top:8px;">';
-    booksHtml+='<div style="font-size:'+(isCurrent?'12':'10')+'px;font-weight:'+(isCurrent?'700':'500')+';color:'+(isCurrent?C.gold:isPast?C.muted:C.ink)+';white-space:nowrap;text-align:center;">'+JAm[month]+'</div>';
-    if(isCurrent) booksHtml+='<div style="font-size:8px;color:'+C.gold+';font-weight:700;">今月</div>';
-    booksHtml+='<div style="width:'+(isCurrent?'10':'7')+'px;height:'+(isCurrent?'10':'7')+'px;border-radius:50%;background:'+(isCurrent?C.gold:isPast?'#ccc':C.ink)+';margin-top:4px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
-    booksHtml+='<div style="width:2px;flex:1;min-height:16px;background:'+C.border+';margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
-    booksHtml+='</div>';
-    // カードテーブル（2列 - グリッドはPDF改ページで崩れるためtable使用）
-    const makeCard = b => {
-      const col=subCol[b.sub]||'#555';
-      const bg=subBg[b.sub]||'#f5f5f5';
-      const eAbs=b.endY*12+b.endM;
-      const isUrgent=(eAbs-nowM)<=2&&!isPast;
-      const isDone=eAbs<nowM;
-      const lv=lvlLabel[b.level]||'';
-      const cardBg=isDone?'#f4f4f4':isUrgent?'#fff5f4':bg;
-      const borderCol=isDone?'#bbb':isUrgent?C.accent:col;
-      const deadline=b.endY+'年'+JAm[b.endM]+'まで';
-      return '<div style="background:'+cardBg+';border:1px solid '+borderCol+'55;border-left:4px solid '+borderCol+';border-radius:8px;padding:8px 10px;opacity:'+(isDone?'.6':'1')+';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:4px;">'
-        +'<div style="font-size:11px;font-weight:700;color:'+(isDone?'#888':C.ink)+';line-height:1.4;flex:1;">'+(isUrgent?'🔴 ':isDone?'✓ ':'')+b.name+'</div>'
-        +'<span style="font-size:8px;font-weight:700;background:'+col+'18;color:'+col+';padding:2px 5px;border-radius:7px;white-space:nowrap;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+subName[b.sub]+'</span>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
-        +'<span style="font-size:9px;color:'+col+';background:'+col+'12;padding:1px 5px;border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.category+'</span>'
-        +(lv?'<span style="font-size:9px;color:'+C.muted+';">'+lv+'</span>':'')
-        +'<span style="font-size:9px;color:'+(isUrgent&&!isDone?C.accent:C.muted)+';margin-left:auto;white-space:nowrap;">'+(isUrgent&&!isDone?'⚠️ ':'')+deadline+'</span>'
-        +'</div></div>';
-    };
-    // 2個ずつtable行にまとめる（改ページ崩れ防止）
-    booksHtml+='<table style="flex:1;width:100%;border-collapse:collapse;padding-top:4px;" cellspacing="0" cellpadding="0">';
-    for(let bi=0; bi<mBooks.length; bi+=2){
-      booksHtml+='<tr class="no-break" style="page-break-inside:avoid;break-inside:avoid;">';
-      booksHtml+='<td style="width:50%;padding:3px 3px 3px 0;vertical-align:top;">'+makeCard(mBooks[bi])+'</td>';
-      if(mBooks[bi+1]){
-        booksHtml+='<td style="width:50%;padding:3px 0 3px 3px;vertical-align:top;">'+makeCard(mBooks[bi+1])+'</td>';
-      } else {
-        booksHtml+='<td style="width:50%;padding:3px 0 3px 3px;vertical-align:top;"></td>';
-      }
+    // 月ラベル行
+    const dotSz=isCurrent?10:7;
+    const dotBg=isCurrent?C.gold:isPast?'#ccc':C.ink;
+    const moColor=isCurrent?C.gold:isPast?C.muted:C.ink;
+    booksHtml+='<tr><td colspan="2" style="padding:6px 0 2px;">'
+      +'<span style="display:inline-block;width:'+dotSz+'px;height:'+dotSz+'px;border-radius:50%;background:'+dotBg+';vertical-align:middle;margin-right:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></span>'
+      +'<span style="font-size:'+(isCurrent?12:10)+'px;font-weight:'+(isCurrent?700:500)+';color:'+moColor+';">'+JAm[month]+(isCurrent?' 今月':'')+'</span>'
+      +'</td></tr>';
+    // カード：2冊ずつ1行
+    for(let bi=0;bi<mBooks.length;bi+=2){
+      const makeCard=(b)=>{
+        const col=subCol[b.sub]||'#555';
+        const bg=subBg[b.sub]||'#f5f5f5';
+        const eAbs=b.endY*12+b.endM;
+        const isUrgent=(eAbs-nowM)<=2&&!isPast;
+        const isDone=eAbs<nowM;
+        const lv=lvlLabel[b.level]||'';
+        const cardBg=isDone?'#f4f4f4':isUrgent?'#fff5f4':bg;
+        const bc=isDone?'#bbb':isUrgent?C.accent:col;
+        const dl=b.endY+'年'+JAm[b.endM]+'まで';
+        return ''
+          +'<div style="background:'+cardBg+';border:1px solid '+bc+'44;border-left:4px solid '+bc+';border-radius:6px;padding:7px 9px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+          +'<table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0"><tr>'
+          +'<td style="vertical-align:top;padding-right:4px;">'
+          +'<div style="font-size:10.5px;font-weight:700;color:'+(isDone?'#888':C.ink)+';line-height:1.4;">'+(isUrgent?'🔴 ':isDone?'✓ ':'')+b.name+'</div>'
+          +'<div style="margin-top:3px;">'
+          +'<span style="font-size:8.5px;color:'+col+';background:'+col+'15;padding:1px 5px;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.category+'</span>'
+          +(lv?'<span style="font-size:8.5px;color:'+C.muted+';margin-left:4px;">'+lv+'</span>':'')
+          +'</div>'
+          +'</td>'
+          +'<td style="vertical-align:top;text-align:right;white-space:nowrap;width:1%;">'
+          +'<span style="font-size:8px;font-weight:700;background:'+col+'18;color:'+col+';padding:2px 5px;border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+subName[b.sub]+'</span>'
+          +'<div style="font-size:8.5px;color:'+(isUrgent&&!isDone?C.accent:C.muted)+';margin-top:3px;white-space:nowrap;">'+(isUrgent&&!isDone?'⚠️ ':'')+dl+'</div>'
+          +'</td>'
+          +'</tr></table>'
+          +'</div>';
+      };
+      booksHtml+='<tr style="page-break-inside:avoid;break-inside:avoid;">';
+      booksHtml+='<td style="width:50%;padding:2px 3px 2px 0;vertical-align:top;">'+makeCard(mBooks[bi])+'</td>';
+      booksHtml+='<td style="width:50%;padding:2px 0 2px 3px;vertical-align:top;">'+(mBooks[bi+1]?makeCard(mBooks[bi+1]):'')+'</td>';
       booksHtml+='</tr>';
     }
-    booksHtml+='</table></div>';
   });
+  booksHtml+='</table>';
 
   /* ── ADVICE HTML ──────────────────────────────── */
   const summaryEl  = document.getElementById('advice-summary');
@@ -4282,20 +4284,26 @@ function downloadRoadmapPDF() {
 
     const name = s.name || '生徒';
     html2pdf().set({
-      margin: [10, 12, 10, 12],
+      margin: [8, 10, 8, 10],
       filename: name + '_合格ロードマップ.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
+      image: { type: 'jpeg', quality: 0.96 },
       html2canvas: {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 794,
+        width: 794,
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        onclone: (doc) => {
+          doc.body.style.width = '794px';
+          doc.body.style.maxWidth = '794px';
+          doc.body.style.overflow = 'hidden';
+        }
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'css', before: '.page-break' }
+      pagebreak: { mode: 'css', before: '.page-break', avoid: 'tr' }
     }).from(body).save()
       .then(() => {
         if (btn) {
@@ -6985,4 +6993,4 @@ function toggleMonthlyAns() {
 // ===== 月次実力診断 =====================================
 </script>
 </body>
-</html>  
+</html>
