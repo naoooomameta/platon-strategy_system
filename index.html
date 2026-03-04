@@ -1538,7 +1538,6 @@ document.addEventListener('keydown', function(e) {
           <!-- 保存ボタン -->
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--border);">
             <div style="display:flex;gap:8px;">
-              <button class="btn btn-secondary" style="font-size:12px;padding:7px 14px;" onclick="exportAdvicePDF()">📄 PDF出力</button>
               <button class="btn btn-secondary" style="font-size:12px;padding:7px 14px;" onclick="generateAdvice()">🔄 再分析</button>
               <button class="btn btn-teal" style="font-size:12px;padding:7px 14px;" onclick="saveAdvice()">💾 保存する</button>
             </div>
@@ -3241,57 +3240,92 @@ function renderTimeline() {
     monthLabels.push((d.getMonth() + 1) + '月');
   }
 
-  const subjects = s.stream === 'rikei'
+  const p1end = Math.round(months * 0.38);
+  const p2end = Math.round(months * 0.72);
+
+  const tlSubjects = s.stream === 'rikei'
     ? [
-        { label: '英語', cls: 'eng', blocks: makeBlocks(0, months, 0, 0.7, '英単語→文法→長読') },
-        { label: '数学', cls: 'math', blocks: makeBlocks(0, months, 0.05, 0.9, '基礎→標準→演習') },
-        { label: '国語', cls: 'jpn', blocks: makeBlocks(0, months, 0.3, 0.7, '現代文強化') },
-        { label: '理科', cls: 'hist', blocks: makeBlocks(0, months, 0.1, 0.85, '物理→化学') },
+        { label: '英語',  color: '#2a7f6f', bg: '#e0f2ef', phases: ['英単語・文法 基礎固め', '長文読解 強化期', '実戦演習 仕上げ'] },
+        { label: '数学',  color: '#c84b31', bg: '#fce8e5', phases: ['基礎問題 全範囲',      '標準問題 演習期', '応用・記述 仕上げ'] },
+        { label: '国語',  color: '#9a7a20', bg: '#fdf8f0', phases: ['現代文 読解基礎',      '演習量 積み上げ', '記述・過去問'] },
+        { label: '理科',  color: '#4a6fa5', bg: '#eef2f9', phases: ['概念・公式 理解期',    '標準問題 演習期', '実戦・難問 演習'] },
       ]
     : [
-        { label: '英語', cls: 'eng', blocks: makeBlocks(0, months, 0, 0.8, '英単語→文法→長読') },
-        { label: '数学', cls: 'math', blocks: makeBlocks(0, months, 0, 0.5, '基礎問題精講') },
-        { label: '国語', cls: 'jpn', blocks: makeBlocks(0, months, 0.1, 0.8, '現代文＋古文') },
-        { label: '社会', cls: 'hist', blocks: makeBlocks(0, months, 0.15, 0.9, '日本史通史→演習') },
+        { label: '英語',  color: '#2a7f6f', bg: '#e0f2ef', phases: ['英単語・文法 基礎固め', '長文読解 強化期', '実戦演習 仕上げ'] },
+        { label: '数学',  color: '#c84b31', bg: '#fce8e5', phases: ['基礎問題 全範囲',      '標準問題 演習期', '応用・記述 仕上げ'] },
+        { label: '国語',  color: '#9a7a20', bg: '#fdf8f0', phases: ['現代文＋古文 基礎',    '演習量 積み上げ', '記述・過去問'] },
+        { label: '社会',  color: '#4a6fa5', bg: '#eef2f9', phases: ['通史・流れ 把握期',    '知識 体系化期',   '論述・実戦 演習'] },
       ];
 
-  let html = '';
+  const phDef = [
+    { label: '基礎期', border: '#2a7f6f', hbg: '#c8eae4' },
+    { label: '標準期', border: '#c9a84c', hbg: '#f9edcc' },
+    { label: '演習期', border: '#c84b31', hbg: '#f8d4cd' },
+  ];
 
-  // Month labels
-  html += '<div class="month-labels">';
+  let html = '<div style="overflow-x:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:560px;">';
+
+  // フェーズヘッダー行
+  html += '<thead>';
+  html += '<tr>';
+  html += '<th style="width:52px;padding:5px;background:var(--paper-dark);border:1px solid var(--border);"></th>';
+  const spans = [p1end, p2end - p1end, months - p2end];
+  spans.forEach((sp, pi) => {
+    html += `<th colspan="${sp}" style="padding:6px 4px;background:${phDef[pi].hbg};border:2px solid ${phDef[pi].border};font-size:11px;font-weight:700;color:${phDef[pi].border};text-align:center;letter-spacing:.04em;">${phDef[pi].label}</th>`;
+  });
+  html += '</tr>';
+
+  // 月ラベル行
+  html += '<tr>';
+  html += '<th style="padding:6px 4px;background:var(--paper-dark);font-size:10px;font-weight:700;color:var(--text-muted);text-align:center;border:1px solid var(--border);">科目</th>';
   monthLabels.forEach((m, i) => {
     const isLast = i === months - 1;
-    html += `<div class="month-label${isLast ? ' highlight' : ''}">${m}</div>`;
+    html += `<th style="padding:5px 3px;background:${isLast ? '#f8d4cd' : 'var(--paper)'};font-size:10px;font-weight:700;color:${isLast ? '#c84b31' : '#444'};text-align:center;border:1px solid var(--border);">${m}</th>`;
   });
-  html += '</div>';
+  html += '</tr>';
+  html += '</thead>';
 
-  // Subject rows
-  subjects.forEach(sub => {
-    html += `<div class="timeline-row">
-      <div class="timeline-subject">${sub.label}</div>
-      <div class="timeline-track">`;
-    sub.blocks.forEach(b => {
-      const left = (b.start / months * 100).toFixed(1);
-      const width = ((b.end - b.start) / months * 100).toFixed(1);
-      html += `<div class="timeline-block ${sub.cls}" style="left:${left}%;width:${width}%;"
-        title="${b.label}">${b.label}</div>`;
+  // 科目行
+  html += '<tbody>';
+  tlSubjects.forEach(sub => {
+    html += '<tr>';
+    html += `<td style="padding:7px 6px;background:var(--paper);font-size:11px;font-weight:700;color:${sub.color};text-align:center;border:1px solid var(--border);white-space:nowrap;">${sub.label}</td>`;
+    monthLabels.forEach((m, i) => {
+      const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
+      const isStart = (i === 0 || i === p1end || i === p2end);
+      const lbl = isStart ? sub.phases[ph] : '';
+      html += `<td style="padding:8px 5px;background:${sub.bg};border-top:2px solid ${phDef[ph].border};border-bottom:1px solid var(--border);border-left:${isStart ? '2px solid ' + sub.color : '1px solid ' + sub.bg};border-right:1px solid ${sub.bg};font-size:10px;font-weight:${isStart ? '700' : '400'};color:${sub.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl}</td>`;
     });
-    html += '</div></div>';
+    html += '</tr>';
   });
 
-  // Test row
-  html += '<div class="test-row"><div class="timeline-subject" style="font-size:10px;">テスト</div><div class="test-markers">';
-  for (let i = 0; i < months; i++) {
-    // weekly test (approx every 2 weeks shown as one marker per month)
-    const wx = ((i + 0.3) / months * 100).toFixed(1);
-    const wx2 = ((i + 0.65) / months * 100).toFixed(1);
-    html += `<div class="test-dot weekly" style="left:${wx}%;" title="週次確認テスト">週</div>`;
-    html += `<div class="test-dot weekly" style="left:${wx2}%;" title="週次確認テスト">週</div>`;
-    // monthly test
-    const mx = ((i + 0.95) / months * 100).toFixed(1);
-    html += `<div class="test-dot monthly" style="left:${mx}%;" title="実力診断テスト（月次）">月</div>`;
-  }
-  html += '</div></div>';
+  // テスト行
+  html += '<tr>';
+  html += '<td style="padding:5px 4px;background:var(--paper-dark);font-size:9px;font-weight:700;color:var(--text-muted);text-align:center;border:1px solid var(--border);line-height:1.4;">確認<br>テスト</td>';
+  monthLabels.forEach(() => {
+    html += '<td style="padding:3px 2px;background:white;border:1px solid var(--border);text-align:center;vertical-align:middle;">';
+    html += '<div style="display:flex;gap:2px;justify-content:center;align-items:center;flex-wrap:wrap;">';
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#c84b31;font-size:7px;font-weight:700;color:white;">月</span>`;
+    html += '</div></td>';
+  });
+  html += '</tr>';
+  html += '</tbody></table>';
+
+  // 凡例
+  html += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--paper);border-radius:6px;">';
+  phDef.forEach(p => {
+    html += `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);">
+      <span style="display:inline-block;width:24px;height:11px;border-radius:3px;background:${p.hbg};border:2px solid ${p.border};"></span>${p.label}</span>`;
+  });
+  html += `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a1a2e;font-size:7px;color:white;font-weight:700;">週</span>週次テスト</span>`;
+  html += `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#c84b31;font-size:7px;color:white;font-weight:700;">月</span>月次テスト</span>`;
+  html += '</div>';
+  html += '</div>'; // overflow-x:auto wrapper
 
   document.getElementById('timeline-content').innerHTML = html;
 }
