@@ -4222,13 +4222,13 @@ function _showReportModal(html, studentName) {
       <span style="color:#c9a84c;font-size:18px;">📄</span>
       <div>
         <div style="color:white;font-size:14px;font-weight:700;font-family:'Noto Serif JP',serif;">合格ロードマップ｜${studentName} さん</div>
-        <div style="color:#8888aa;font-size:11px;margin-top:1px;">プレビュー確認後、PDFダウンロードしてください</div>
+        <div style="color:#8888aa;font-size:11px;margin-top:1px;">「📥 PDF保存」→ ダイアログで送信先<b style="color:#c9a84c;">「PDFに保存」</b>→「保存」の順にクリック</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button id="pdf-dl-btn" onclick="downloadRoadmapPDF()"
         style="padding:9px 22px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
-        🖨️ PDF保存（印刷）
+        📥 PDF保存
       </button>
       <button onclick="document.getElementById('pdf-preview-modal').remove()"
         style="padding:9px 14px;background:rgba(255,255,255,.12);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
@@ -4259,72 +4259,33 @@ function exportPDF() {
 }
 
 function downloadRoadmapPDF() {
-  const s = currentStudent;
-  if (!s) return;
-  const btn = document.getElementById('pdf-dl-btn');
-  if (btn) { btn.innerHTML = '⏳ 生成中...'; btn.disabled = true; }
-
   const html = window._reportHTML;
-  if (!html) { if (btn) { btn.innerHTML = '❌ エラー'; btn.disabled = false; } return; }
+  if (!html) return;
+  const s = currentStudent;
+  const name = s ? s.name : '生徒';
 
-  // 隠しiframeにHTMLを書き込み、フォント読み込み後にhtml2pdfで処理
-  let iframe = document.getElementById('_pdf_temp_iframe');
-  if (iframe) iframe.remove();
-  iframe = document.createElement('iframe');
-  iframe.id = '_pdf_temp_iframe';
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;visibility:hidden;';
-  document.body.appendChild(iframe);
+  // ブラウザのPDFエンジンを使用（html2pdfより確実にレイアウト保持）
+  // @page CSS で用紙サイズ・余白を制御済み
+  const printHtml = html.replace('</style>', `
+    @media print {
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { width: 186mm !important; }
+    }
+  </style>`);
 
-  const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('ポップアップがブロックされています。許可してください。'); return; }
+  win.document.open();
+  win.document.write(printHtml);
+  win.document.close();
 
-  setTimeout(() => {
-    const body = iframe.contentDocument.body;
-    if (!body) { if (btn) { btn.innerHTML = '❌ エラー'; btn.disabled = false; } return; }
+  // タイトルをファイル名に（Chromeは印刷ダイアログのデフォルトファイル名に使用）
+  win.document.title = name + '_合格ロードマップ';
 
-    const name = s.name || '生徒';
-    html2pdf().set({
-      margin: [8, 10, 8, 10],
-      filename: name + '_合格ロードマップ.pdf',
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 794,
-        width: 794,
-        scrollX: 0,
-        scrollY: 0,
-        onclone: (doc) => {
-          doc.body.style.width = '794px';
-          doc.body.style.maxWidth = '794px';
-          doc.body.style.overflow = 'hidden';
-        }
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'css', before: '.page-break', avoid: 'tr' }
-    }).from(body).save()
-      .then(() => {
-        if (btn) {
-          btn.innerHTML = '✅ 保存しました';
-          btn.style.background = '#2a7f6f';
-          btn.style.color = 'white';
-          setTimeout(() => {
-            btn.innerHTML = '📥 PDFダウンロード';
-            btn.style.background = '#c9a84c';
-            btn.style.color = '#1a1a2e';
-            btn.disabled = false;
-          }, 2500);
-        }
-        iframe.remove();
-      })
-      .catch(err => {
-        console.error('PDF生成エラー:', err);
-        if (btn) { btn.innerHTML = '❌ 失敗'; btn.disabled = false; }
-        iframe.remove();
-      });
-  }, 1000);
+  // フォント・画像の読み込み完了後に印刷ダイアログを起動
+  win.onload = () => setTimeout(() => { win.focus(); win.print(); }, 500);
+  setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 1500);
 }
 
 function printReport() {
