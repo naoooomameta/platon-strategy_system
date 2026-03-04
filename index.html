@@ -4266,69 +4266,120 @@ function buildReportHTML(s) {
   return html;
 }
 
-function _showReportModal(html, studentName) {
-  const old = document.getElementById('pdf-preview-modal');
-  if (old) old.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'pdf-preview-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;font-family:"Noto Sans JP",sans-serif;';
-
-  const bar = document.createElement('div');
-  bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:2px solid #c9a84c;';
-  bar.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span style="color:#c9a84c;font-size:18px;">📄</span>
-      <div>
-        <div style="color:white;font-size:14px;font-weight:700;font-family:'Noto Serif JP',serif;">合格ロードマップ｜${studentName} さん</div>
-        <div style="color:#8888aa;font-size:11px;margin-top:1px;">送信先を <b style="color:#c9a84c;">「PDFに保存」</b> に変更して保存してください</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button id="pdf-dl-btn" onclick="downloadRoadmapPDF()"
-        style="padding:9px 22px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
-        📥 PDF保存
-      </button>
-      <button onclick="document.getElementById('pdf-preview-modal').remove()"
-        style="padding:9px 14px;background:rgba(255,255,255,.12);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
-        ✕ 閉じる
-      </button>
-    </div>`;
-
-  const iframe = document.createElement('iframe');
-  iframe.id = 'pdf-preview-iframe';
-  iframe.style.cssText = 'flex:1;border:none;background:white;';
-
-  modal.appendChild(bar);
-  modal.appendChild(iframe);
-  document.body.appendChild(modal);
-
-  const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
-}
-
-
-// ===== PDF プレビュー & ダウンロード =====
+// ===== 生徒レポート：新タブでプレビュー → そのページ内でPDF保存 =====
 function exportPDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
-  const html = buildReportHTML(s);
-  window._reportHTML = html;
-  _showReportModal(html, s.name);
-}
 
-function downloadRoadmapPDF() {
-  // プレビューiframe内のウィンドウで直接print() → Chromeがそのままレイアウト保持でPDF化
-  const iframe = document.getElementById('pdf-preview-iframe');
-  if (!iframe || !iframe.contentWindow) {
-    showToast('先にプレビューを開いてください'); return;
+  const reportBody = buildReportHTML(s);
+  const name = s.name || '生徒';
+
+  // html2pdf CDN + ダウンロードボタン付きのラッパーHTMLを生成
+  const wrapperHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name}_合格ロードマップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&family=DM+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #f0ede8; }
+  #_pbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #1a1a2e; border-bottom: 3px solid #c9a84c;
+    padding: 10px 24px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px;
+    font-family: 'Noto Sans JP', sans-serif;
+    box-shadow: 0 2px 12px rgba(0,0,0,.3);
   }
-  const s = currentStudent;
-  const name = s ? s.name : '生徒';
-  // ファイル名をタイトルに設定
-  try { iframe.contentDocument.title = name + '_合格ロードマップ'; } catch(e) {}
-  iframe.contentWindow.focus();
-  iframe.contentWindow.print();
+  #_pbar-title { color: white; font-size: 14px; font-weight: 700; }
+  #_pbar-sub { color: #8888aa; font-size: 11px; margin-top: 2px; }
+  #_pdf-save-btn {
+    padding: 10px 28px; background: #c9a84c; color: #1a1a2e;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: opacity .2s;
+  }
+  #_pdf-save-btn:hover { opacity: .85; }
+  #_pdf-save-btn:disabled { opacity: .5; cursor: not-allowed; }
+  #_close-btn {
+    padding: 10px 16px; background: rgba(255,255,255,.12); color: white;
+    border: none; border-radius: 8px; font-size: 13px; cursor: pointer;
+    font-family: inherit;
+  }
+  #_report-wrap {
+    margin-top: 60px; /* バー分のオフセット */
+    max-width: 900px; margin-left: auto; margin-right: auto;
+    padding: 20px 16px;
+  }
+  @media print {
+    #_pbar { display: none !important; }
+    body { background: white; margin: 0; }
+    #_report-wrap { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="_pbar">
+  <div>
+    <div id="_pbar-title">📄 合格ロードマップ ｜ ${name} さん</div>
+    <div id="_pbar-sub">プレビューを確認して「📥 PDFダウンロード」を押してください</div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="_pdf-save-btn" onclick="_doSavePDF()">📥 PDFダウンロード</button>
+    <button id="_close-btn" onclick="window.close()">✕ 閉じる</button>
+  </div>
+</div>
+<div id="_report-wrap">
+  ${reportBody.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'')}
+</div>
+<script>
+function _doSavePDF() {
+  const btn = document.getElementById('_pdf-save-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 生成中...';
+  const el = document.getElementById('_report-wrap');
+  html2pdf().set({
+    margin: [8, 10, 8, 10],
+    filename: '${name}_合格ロードマップ.pdf',
+    image: { type: 'jpeg', quality: 0.97 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: document.documentElement.scrollWidth,
+      onclone: function(doc) {
+        const w = doc.getElementById('_report-wrap');
+        if (w) { w.style.marginTop = '0'; w.style.padding = '0'; }
+        const bar = doc.getElementById('_pbar');
+        if (bar) bar.style.display = 'none';
+      }
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: 'css', avoid: 'tr' }
+  }).from(el).save().then(function() {
+    btn.disabled = false;
+    btn.textContent = '✅ 保存完了！';
+    setTimeout(function(){ btn.textContent = '📥 PDFダウンロード'; }, 3000);
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = '❌ 失敗';
+    setTimeout(function(){ btn.textContent = '📥 PDFダウンロード'; }, 3000);
+    console.error(e);
+  });
+}
+<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([wrapperHtml], { type: 'text/html; charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function printReport() {
