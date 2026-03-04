@@ -4236,9 +4236,6 @@ function buildReportHTML(s) {
 <!-- BODY -->
 <div style="padding:12px 20px;">
 
-  ${sh('🎯','3ヶ月集中ロードマップ')}
-  ${card(phaseHtml)}
-
   ${sh('📅','月別ロードマップ（タイムライン）')}
   ${card(tlHtml)}
 
@@ -6118,6 +6115,27 @@ function printWeeklyPlanPDF() {
   const now = new Date();
   const day = now.getDay();
 
+  // 3ヶ月集中ロードマップHTML
+  var _gap2  = s ? (s.univInfo && s.univInfo.dev ? s.univInfo.dev : 65) - (s.devVal || 55) : 10;
+  var _subs2 = subs.slice(0, 3);
+  var _p1    = buildPhase1Text(s, _gap2, _subs2);
+  var _p2    = buildPhase2Text(s, _gap2, _subs2);
+  var _p3    = buildPhase3Text(s, univName || '志望校', _subs2);
+  var _phData = [_p1, _p2, _p3];
+  var _phColors = ['#c84b31','#c9a84c','#2a7f6f'];
+  var _phBgs    = ['#fdf0ee','#fef9e8','#eef5f3'];
+  var _phWeeks  = ['Week 1〜4','Week 5〜8','Week 9〜12'];
+
+  var phaseCardsHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px;">'
+    + _phData.map(function(ph, i) {
+        return '<div style="border-top:3px solid '+_phColors[i]+';border-radius:8px;padding:12px 14px;background:'+_phBgs[i]+';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+          + '<div style="font-size:9px;font-weight:700;color:'+_phColors[i]+';letter-spacing:.06em;margin-bottom:5px;">'+(i+1)+'ヶ月目 / '+_phWeeks[i]+'</div>'
+          + '<div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:7px;line-height:1.4;">'+ph.title+'</div>'
+          + '<div style="font-size:10px;color:#2c2c3e;line-height:1.7;">'+ph.desc+'</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+
   // 全科目プランHTML：2カラムグリッドで科目を並べる
   const allSubjectsHTML = subs.map(function(sub) {
     var plans = WP_PLANS[sub] || WP_PLANS['英語'];
@@ -6219,9 +6237,7 @@ function printWeeklyPlanPDF() {
     + (studentName ? '<div style="font-size:12px;font-weight:700;color:white;">' + studentName + ' さん</div>' : '')
     + (univName ? '<div>第一志望：' + univName + (targetDev ? '　偏差値目標：' + targetDev : '') + '</div>' : '')
     + '<div>発行日：' + today + '</div></div></div>'
-    + '<div class="wrap">'
-    + '<div class="sec">科目別 学習プラン（参考書×週次課題）</div>'
-    + allSubjectsHTML
+    + '<div class="wrap">'    + '<div class="sec">3ヶ月集中ロードマップ</div>'    + phaseCardsHTML    + '<div class="sec" style="margin-top:20px;">科目別 学習プラン（参考書×週次課題）</div>'    + allSubjectsHTML
     + '<div class="sec" style="margin-top:20px;">週間スケジュール詳細（全12週）</div>'
     + allWeeksHTML
     + '<div class="ft"><div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
