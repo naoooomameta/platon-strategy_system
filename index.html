@@ -2299,7 +2299,11 @@ function saveStudentToList(s) {
 }
 
 function loadStudentFromList(name) {
-  const s = _allStudents.find(x => x.name === name);
+  const _defaults = [
+    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12, enrolled:'2024-04' },
+    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23, enrolled:'2024-09' },
+  ];
+  const s = _allStudents.find(x => x.name === name) || _defaults.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
   currentStudent = s;
   renderRoadmap();
