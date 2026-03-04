@@ -3200,71 +3200,104 @@ function printRoadmapPDF() {
   const booksTableEl = document.getElementById('roadmap-books-tbody');
   const booksHTML = booksTableEl ? booksTableEl.innerHTML : '';
 
-  // 偏差値ギャップ：PDF用に固定色でHTMLを再構築（CSS変数を使わない）
+  // 偏差値ギャップ：縦1列テーブル形式（PDF崩れ対策）
   const gapHTML = (function() {
     if (!s) return '';
     const gap = s.univInfo.dev - s.devVal;
-    const subjects = s.stream === 'rikei'
-      ? [
-          { name: '英語', current: s.devVal - 3, target: s.univInfo.dev - 2 },
-          { name: '数学', current: s.devVal + 2, target: s.univInfo.dev + 1 },
-          { name: '国語', current: s.devVal - 5, target: s.univInfo.dev - 5 },
-          { name: '物理', current: s.devVal - 1, target: s.univInfo.dev - 2 },
-        ]
-      : [
-          { name: '英語', current: s.devVal - 2, target: s.univInfo.dev - 1 },
-          { name: '国語', current: s.devVal - 3, target: s.univInfo.dev - 3 },
-          { name: '数学', current: s.devVal + 1, target: s.univInfo.dev + 0 },
-          { name: '社会', current: s.devVal - 4, target: s.univInfo.dev - 4 },
-        ];
-    const SCALE_MIN = 35, SCALE_MAX = 80;
-    const toP = v => Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100));
-    let html = '';
-    subjects.forEach(function(sub) {
-      const diff      = sub.target - sub.current;
-      const barColor  = diff > 8 ? '#c84b31' : diff > 3 ? '#c9a84c' : '#2a7f6f';
-      const diffColor = diff > 8 ? '#c84b31' : diff > 3 ? '#b8922a' : '#2a7f6f';
-      const curP  = toP(sub.current);
-      const tarP  = toP(sub.target);
-      const gapLeft  = Math.min(curP, tarP);
-      const gapWidth = Math.abs(tarP - curP);
-      const ticks = [40,50,60,70].map(function(v) {
-        return '<div style="position:absolute;bottom:-14px;left:' + toP(v) + '%;transform:translateX(-50%);font-size:8px;color:#999;">' + v + '</div>';
-      }).join('');
-      html += '<div style="margin-bottom:22px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
-        + '<span style="font-size:13px;font-weight:700;color:#1a1a2e;width:40px;">' + sub.name + '</span>'
-        + '<div style="display:flex;align-items:baseline;gap:6px;">'
-        + '<span style="font-size:20px;font-weight:700;color:#1a1a2e;line-height:1;">' + sub.current + '</span>'
-        + '<span style="font-size:12px;color:#888;">→</span>'
-        + '<span style="font-size:16px;font-weight:700;color:' + barColor + ';">' + sub.target + '</span>'
-        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:' + barColor + '22;color:' + diffColor + ';border:1px solid ' + barColor + '44;">'
-        + (diff > 0 ? '+' : '') + diff + '</span>'
-        + '</div></div>'
-        + '<div style="position:relative;height:10px;background:#f0ebe0;border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="position:absolute;top:0;left:' + gapLeft + '%;width:' + gapWidth + '%;height:100%;background:' + barColor + '33;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:0;left:0;width:' + curP + '%;height:100%;background:' + barColor + ';border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:-3px;left:' + tarP + '%;width:2px;height:16px;background:' + barColor + ';border-radius:1px;transform:translateX(-50%);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + ticks
+    // 登録科目から生成（最大4科目）
+    const _keys = (s.targetSubjectKeys || []).slice(0, 4);
+    const offsets = {
+      'eng-r':-2,'eng-l':-3,'math':+2,'jpn-r':-3,'jpn-k':-4,'jpn-h':-4,
+      'hist-j':-4,'hist-w':-4,'geo':-3,'civ':-3,'info':0,'sci-b':-2,
+      'eng':-2,'jpn':-3,'soc':-4,'sci':-2,'etc':0
+    };
+    let subjects;
+    if (_keys.length > 0) {
+      subjects = _keys.map(k => {
+        const opt = ALL_SUBJECT_OPTIONS.find(o => o.key === k);
+        const name = opt ? opt.label : k;
+        const off  = offsets[k] !== undefined ? offsets[k] : -3;
+        return { name, current: s.devVal + off, target: s.univInfo.dev + (off > 0 ? 1 : -2) };
+      });
+    } else {
+      subjects = s.stream === 'rikei'
+        ? [
+            { name: '英語', current: s.devVal - 3, target: s.univInfo.dev - 2 },
+            { name: '数学', current: s.devVal + 2, target: s.univInfo.dev + 1 },
+            { name: '国語', current: s.devVal - 5, target: s.univInfo.dev - 5 },
+            { name: '理科', current: s.devVal - 1, target: s.univInfo.dev - 2 },
+          ]
+        : [
+            { name: '英語', current: s.devVal - 2, target: s.univInfo.dev - 1 },
+            { name: '国語', current: s.devVal - 3, target: s.univInfo.dev - 3 },
+            { name: '数学', current: s.devVal + 1, target: s.univInfo.dev + 0 },
+            { name: '社会', current: s.devVal - 4, target: s.univInfo.dev - 4 },
+          ];
+    }
+
+    // 縦1列テーブル：科目ごとに1行
+    let html = '<table style="width:100%;border-collapse:collapse;table-layout:fixed;" cellpadding="0" cellspacing="0">';
+
+    // ヘッダー行
+    html += '<tr style="background:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<th style="padding:8px 12px;color:rgba(255,255,255,.6);font-size:9px;font-weight:700;text-align:left;letter-spacing:.06em;width:28%;">科目</th>'
+      + '<th style="padding:8px 12px;color:rgba(255,255,255,.6);font-size:9px;font-weight:700;text-align:center;width:16%;">現在の偏差値</th>'
+      + '<th style="padding:8px 12px;color:rgba(255,255,255,.6);font-size:9px;font-weight:700;text-align:center;width:16%;">目標偏差値</th>'
+      + '<th style="padding:8px 12px;color:rgba(255,255,255,.6);font-size:9px;font-weight:700;text-align:center;width:16%;">ギャップ</th>'
+      + '<th style="padding:8px 12px;color:rgba(255,255,255,.6);font-size:9px;font-weight:700;text-align:center;width:24%;">状態</th>'
+      + '</tr>';
+
+    subjects.forEach(function(sub, idx) {
+      const diff   = sub.target - sub.current;
+      const bc     = diff > 10 ? '#c84b31' : diff > 5 ? '#c9a84c' : '#2a7f6f';
+      const status = diff > 10 ? '要強化' : diff > 5 ? '要注意' : '順調';
+      const rowBg  = idx % 2 === 0 ? '#ffffff' : '#f9f7f4';
+
+      // 科目行（テキスト情報）
+      html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #e8e2d8;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1a1a2e;border-right:3px solid ' + bc + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + sub.name + '</td>'
+        + '<td style="padding:10px 12px;text-align:center;font-size:18px;font-weight:700;color:#1a1a2e;font-family:monospace;">' + sub.current + '</td>'
+        + '<td style="padding:10px 12px;text-align:center;font-size:18px;font-weight:700;color:' + bc + ';font-family:monospace;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + sub.target + '</td>'
+        + '<td style="padding:10px 12px;text-align:center;font-size:16px;font-weight:700;color:' + bc + ';font-family:monospace;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + (diff > 0 ? '+' : '') + diff + '</td>'
+        + '<td style="padding:10px 12px;text-align:center;background:' + bc + '18;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        +   '<span style="font-size:10px;font-weight:700;color:' + bc + ';padding:3px 10px;border-radius:10px;border:1.5px solid ' + bc + '55;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + status + '</span>'
+        + '</td>'
+        + '</tr>';
+
+      // プログレスバー行
+      const SMIN = 35, SMAX = 80;
+      const toP2 = function(v) { return Math.max(0, Math.min(100, (v - SMIN) / (SMAX - SMIN) * 100)); };
+      const curP = toP2(sub.current), tarP = toP2(sub.target);
+
+      html += '<tr style="background:' + rowBg + ';border-bottom:2px solid #d8d0c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<td colspan="5" style="padding:0 12px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="position:relative;height:10px;background:#ece8de;border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="position:absolute;top:0;left:0;width:' + curP + '%;height:100%;background:' + bc + ';border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + '<div style="position:absolute;top:-3px;left:' + tarP + '%;width:3px;height:16px;background:#1a1a2e;border-radius:2px;transform:translateX(-50%);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
         + '</div>'
-        + '<div style="height:18px;"></div>'
-        + '</div>';
+        + '<div style="display:flex;justify-content:space-between;margin-top:3px;">'
+        + '<span style="font-size:8px;color:#999;">35</span>'
+        + '<span style="font-size:8px;color:#999;">50</span>'
+        + '<span style="font-size:8px;color:#999;">65</span>'
+        + '<span style="font-size:8px;color:#999;">80</span>'
+        + '</div>'
+        + '</td></tr>';
     });
-    html += '<div style="margin-top:8px;padding:12px 14px;background:#f9f7f4;border-radius:8px;border:1px solid #e0d8c8;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">'
-      + '<div>'
-      + '<div style="font-size:11px;color:#888;margin-bottom:2px;">総合ギャップ</div>'
-      + '<div style="font-size:26px;font-weight:700;color:' + (gap > 10 ? '#c84b31' : '#2a7f6f') + ';line-height:1;">'
+
+    // サマリー行
+    html += '<tr style="background:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<td style="padding:12px;color:rgba(255,255,255,.6);font-size:10px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">総合ギャップ</td>'
+      + '<td colspan="2" style="padding:12px;font-size:22px;font-weight:700;font-family:monospace;color:#c9a84c;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + (gap > 0 ? '+' : '') + gap
-      + '<span style="font-size:13px;font-weight:400;color:#666;"> 偏差値</span></div>'
-      + '</div>'
-      + '<div style="border-left:2px solid #e0d8c8;padding-left:12px;">'
-      + '<div style="font-size:11px;color:#888;margin-bottom:2px;">現状 → 目標</div>'
-      + '<div style="font-size:16px;font-weight:700;color:#1a1a2e;">' + s.devVal + ' → ' + s.univInfo.dev + '</div>'
-      + '<div style="font-size:10px;color:#888;">（' + s.univName + '）</div>'
-      + '</div>'
-      + '</div>'
-      + '</div>';
+      + '<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.5);margin-left:4px;">偏差値</span>'
+      + '</td>'
+      + '<td colspan="2" style="padding:12px;color:rgba(255,255,255,.7);font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '現状 ' + s.devVal + ' → 目標 ' + s.univInfo.dev + '<br>'
+      + '<span style="font-size:10px;color:rgba(255,255,255,.5);">（' + s.univName + '）</span>'
+      + '</td>'
+      + '</tr>';
+
+    html += '</table>';
     return html;
   })();
 
@@ -3369,13 +3402,13 @@ function printRoadmapPDF() {
 
     // 偏差値ギャップ
     + '<div style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📊 偏差値ギャップ分析</div>'
-    + '<div style="background:white;border-radius:8px;padding:18px 20px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;">'
-    + '<div style="font-size:11px;font-weight:700;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #eee;">科目別：現状 vs 目標偏差値</div>'
+    + '<div style="background:white;border-radius:8px;padding:14px 16px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;">'
     + gapHTML
-    + '<div style="font-size:11px;font-weight:700;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;margin-top:20px;padding-bottom:8px;border-bottom:1px solid #eee;">偏差値推移予測</div>'
+    + '</div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c9a84c;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📈 偏差値推移予測</div>'
+    + '<div style="background:white;border-radius:8px;padding:14px 16px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;">'
     + '<div style="border-radius:8px;overflow:hidden;">' + chartImgHTML + '</div>'
     + '</div>'
-
     + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:9px;color:#bbb;">'
     + '<div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
     + '<div>' + s.name + ' 様専用</div>'
@@ -5040,7 +5073,7 @@ function printWeeklyPlanPDF() {
     var plans = WP_PLANS[sub] || WP_PLANS['英語'];
     var subColor = DAY_COLORS[sub] || '#1a1a2e';
     var monthCards = plans.map(function(m, i) {
-      return '<div style="background:' + phaseBg[i] + ';border-radius:8px;padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      return '<div style="display:table-cell;width:33.33%;vertical-align:top;background:' + phaseBg[i] + ';padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';border-left:' + (i>0?'1px solid #e0d8c8':'none') + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
         + '<div style="font-size:8px;font-weight:700;color:' + phaseColors[i] + ';letter-spacing:.07em;margin-bottom:3px;">' + (i+1) + 'ヶ月目</div>'
         + '<div style="font-size:11px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">' + m.phase + '</div>'
         + '<div style="font-size:9px;color:#6b6b80;margin-bottom:5px;">🎯 ' + m.goal + '</div>'
@@ -5051,9 +5084,9 @@ function printWeeklyPlanPDF() {
         + '<div style="background:' + phaseColors[i] + '22;border-radius:4px;padding:2px 6px;font-size:8px;color:' + phaseColors[i] + ';font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📝 ' + m.test + '</div>'
         + '</div>';
     }).join('');
-    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px;">'
-      + '<div style="display:inline-block;font-size:11px;font-weight:700;color:white;background:' + subColor + ';padding:3px 12px;border-radius:12px;margin-bottom:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + sub + '</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' + monthCards + '</div>'
+    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:14px;border:1px solid #e0d8c8;border-radius:8px;overflow:hidden;">'
+      + '<div style="background:' + subColor + ';padding:6px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><span style="font-size:12px;font-weight:700;color:white;">' + sub + '</span></div>'
+      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;">' + monthCards + '</div>'
       + '</div>';
   }).join('');
 
@@ -5092,7 +5125,7 @@ function printWeeklyPlanPDF() {
         var task = plan ? plan.weekly.split('＋')[0].trim() : t;
         return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:' + clr + '18;color:' + clr + ';font-weight:600;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>' + t + '</b><br>' + task + '</div>';
       }).join('');
-      return '<div style="background:' + (isWknd ? '#fdf8f0' : 'white') + ';border:1px solid #d8d0c0;border-radius:6px;padding:5px 6px;min-height:70px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      return '<div style="display:table-cell;width:14.28%;vertical-align:top;background:' + (isWknd ? '#fdf8f0' : 'white') + ';border:1px solid #d8d0c0;border-radius:4px;padding:4px 5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
         + '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'
         + '<span style="font-size:9px;font-weight:700;color:' + (isWknd?'#c84b31':'#6b6b80') + ';">' + dayName + '</span>'
         + '<span style="font-size:8px;color:#6b6b80;">' + (d.getMonth()+1) + '/' + d.getDate() + '</span>'
@@ -5105,28 +5138,28 @@ function printWeeklyPlanPDF() {
       + '<span style="font-size:8px;background:' + phaseColor + ';color:white;border-radius:8px;padding:1px 7px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + phaseLabel + '期</span>'
       + '<span style="font-size:9px;color:#6b6b80;">' + (monday.getMonth()+1) + '月' + monday.getDate() + '日〜</span>'
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">' + daysCells + '</div>'
+      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;">' + daysCells + '</div>'
       + '</div>';
   }).join('');
 
   var headerBg = 'background:#1a1a2e';
   var studentBandHTML = studentName
-    ? '<div style="' + headerBg + ';color:white;padding:10px 28px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">生徒氏名</div><div style="font-size:14px;font-weight:700;color:white;margin-top:2px;">' + studentName + ' さん</div></div>'
-      + (univName ? '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">第一志望</div><div style="font-size:12px;font-weight:700;color:white;margin-top:2px;">' + univName + '</div></div>' : '<div></div>')
-      + (targetDev ? '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">偏差値目標</div><div style="font-size:14px;font-weight:700;color:#c9a84c;margin-top:2px;">' + targetDev + '</div></div>' : '<div></div>')
+    ? '<div style="' + headerBg + ';color:white;padding:10px 20px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="display:table-cell;width:33%;padding-right:12px;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">生徒氏名</div><div style="font-size:14px;font-weight:700;color:white;margin-top:2px;">' + studentName + ' さん</div></div>'
+      + (univName ? '<div style="display:table-cell;width:33%;padding-right:12px;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">第一志望</div><div style="font-size:12px;font-weight:700;color:white;margin-top:2px;">' + univName + '</div></div>' : '<div style="display:table-cell;"></div>')
+      + (targetDev ? '<div style="display:table-cell;width:33%;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">偏差値目標</div><div style="font-size:14px;font-weight:700;color:#c9a84c;margin-top:2px;">' + targetDev + '</div></div>' : '<div style="display:table-cell;"></div>')
       + '</div>'
     : '';
 
   var html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
     + '<title>3ヶ月学習プラン｜' + studentName + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Noto Sans JP",sans-serif;color:#2c2c3e;background:white;font-size:12px;}'
-    + '.top-hd{background:#1a1a2e;color:white;padding:14px 28px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.wrap{max-width:960px;margin:0 auto;padding:16px 24px;}'
-    + '.sec{font-size:13px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:16px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.ft{margin-top:16px;padding-top:8px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:8px;color:#bbb;}'
-    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 10mm;size:A4;}}</style></head><body>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Noto Sans JP",sans-serif;color:#2c2c3e;background:white;font-size:11px;width:100%;overflow-x:hidden;}'
+    + '.top-hd{background:#1a1a2e;color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.wrap{width:100%;max-width:100%;padding:12px 16px;}'
+    + '.sec{font-size:12px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:14px 0 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.ft{margin-top:14px;padding-top:8px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:8px;color:#bbb;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 8mm;size:A4;}}</style></head><body>'
     + '<div class="top-hd">'
     + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
     + '<div style="font-family:\'Noto Serif JP\',serif;font-size:16px;font-weight:700;color:white;margin-top:2px;">3ヶ月学習プラン</div></div>'
