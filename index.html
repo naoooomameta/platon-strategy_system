@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="exportPDF()" style="font-size:13px;">📄 生徒レポート</button>
-        <button class="btn btn-secondary" onclick="printPage('roadmap','合格ロードマップ')" style="font-size:13px;">🖨️ PDF保存</button>
+        <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
         <button class="btn btn-teal" onclick="showToast('ロードマップを保存しました')">💾 保存する</button>
       </div>
     </div>
@@ -3041,6 +3041,155 @@ function saveAdvice() {
   });
   showToast('戦略アドバイスを保存しました');
 }
+
+
+function printRoadmapPDF() {
+  const s = currentStudent;
+  if (!s) { showToast('先にロードマップを生成してください'); return; }
+
+  const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+  const gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || '';
+  const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
+
+  // タイムライン内容取得
+  const timelineEl = document.getElementById('timeline-content');
+  const timelineHTML = timelineEl ? timelineEl.innerHTML : '<p style="color:#999;">データなし</p>';
+
+  // 参考書テーブル取得
+  const booksTableEl = document.getElementById('roadmap-books-tbody');
+  const booksHTML = booksTableEl ? booksTableEl.innerHTML : '';
+
+  // 偏差値ギャップ取得
+  const gapEl = document.getElementById('gap-stats');
+  const gapHTML = gapEl ? gapEl.innerHTML : '';
+
+  // グラフをcanvasから画像化
+  const chartCanvas = document.getElementById('deviation-chart');
+  let chartImgHTML = '<div style="height:180px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">（グラフはロードマップ生成後に表示）</div>';
+  if (chartCanvas) {
+    try {
+      const imgSrc = chartCanvas.toDataURL('image/png');
+      chartImgHTML = '<img src="' + imgSrc + '" style="width:100%;height:auto;border-radius:8px;">';
+    } catch(e) {}
+  }
+
+  // 凡例
+  const legendHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;">'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:8px;border-radius:2px;background:linear-gradient(135deg,#2a7f6f,#3aa88f);"></div>英語</div>'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:8px;border-radius:2px;background:linear-gradient(135deg,#c84b31,#e8735a);"></div>数学</div>'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:8px;border-radius:2px;background:linear-gradient(135deg,#c9a84c,#d4b96a);"></div>国語</div>'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:8px;border-radius:2px;background:linear-gradient(135deg,#4a6fa5,#6b8fc4);"></div>社会/理科</div>'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:8px;border-radius:50%;background:#1a1a2e;"></div>週次テスト</div>'
+    + '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6b6b80;"><div style="width:12px;height:12px;border-radius:50%;background:#c84b31;"></div>月次テスト</div>'
+    + '</div>';
+
+  const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
+    + '<title>合格ロードマップ｜' + s.name + '</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + 'body{font-family:"Noto Sans JP",sans-serif;color:#2c2c3e;background:white;font-size:12px;}'
+    + '.print-header{background:#1a1a2e;color:white;padding:16px 32px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.student-band{background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:14px 32px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.s-label{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;}'
+    + '.s-val{font-size:15px;font-weight:700;font-family:"Noto Serif JP",serif;margin-top:3px;color:white;}'
+    + '.s-sub{font-size:10px;color:#c9a84c;margin-top:2px;}'
+    + '.container{max-width:960px;margin:0 auto;padding:20px 28px;}'
+    + '.section-hd{font-family:"Noto Serif JP",serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 12px;}'
+    + '.card{background:white;border-radius:10px;padding:14px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;}'
+    + '.card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b6b80;margin-bottom:10px;}'
+    // タイムライン系
+    + '.timeline{display:grid;grid-auto-flow:column;gap:3px;overflow:visible;}'
+    + '.tl-month{min-width:60px;}'
+    + '.tl-month-label{font-size:9px;font-weight:700;color:#6b6b80;padding:3px 6px;background:#f5f0e8;border-radius:4px;margin-bottom:3px;text-align:center;}'
+    + '.tl-book{border-radius:5px;padding:4px 6px;margin-bottom:2px;font-size:9px;font-weight:600;color:white;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.tl-week-test{background:#1a1a2e;border-radius:5px;padding:2px 6px;font-size:8px;color:rgba(255,255,255,.7);margin-bottom:2px;}'
+    + '.tl-month-test{background:#c84b31;border-radius:5px;padding:2px 6px;font-size:8px;color:white;font-weight:700;margin-bottom:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    // ギャップ系
+    + '.gap-panel{display:grid;grid-template-columns:1fr 1fr;gap:16px;}'
+    + '.gap-bar-wrap{margin-bottom:10px;}'
+    + '.gap-bar-label{font-size:11px;font-weight:700;color:#1a1a2e;margin-bottom:3px;display:flex;justify-content:space-between;}'
+    + '.gap-bar-bg{height:8px;background:#f0ebe0;border-radius:4px;overflow:hidden;margin-bottom:2px;}'
+    + '.gap-bar-fill{height:100%;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    // 参考書テーブル
+    + 'table{width:100%;border-collapse:collapse;}'
+    + 'th{background:#f5f0e8;padding:5px 7px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.05em;color:#6b6b80;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + 'td{padding:5px 7px;border-bottom:1px solid #eee;font-size:11px;}'
+    + '.footer{margin-top:20px;padding-top:10px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:9px;color:#bbb;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:10mm 12mm;}}'
+    + '</style></head><body>'
+
+    // ヘッダー
+    + '<div class="print-header">'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:18px;font-weight:700;margin-top:3px;">合格ロードマップ</div></div>'
+    + '<div style="text-align:right;font-size:11px;color:rgba(255,255,255,.6);">'
+    + '<div style="font-size:13px;font-weight:700;color:white;">' + s.name + ' さん</div>'
+    + '<div>第一志望：' + s.univName + '　偏差値目標：' + s.univInfo.dev + '</div>'
+    + '<div>発行日：' + today + '</div></div></div>'
+
+    // 生徒情報バンド
+    + '<div class="student-band">'
+    + '<div><div class="s-label">生徒氏名</div><div class="s-val">' + s.name + '</div><div class="s-sub">' + gradeLabel + '｜' + streamLabel + '</div></div>'
+    + '<div><div class="s-label">第一志望</div><div class="s-val" style="font-size:13px;">' + s.univName + '</div><div class="s-sub">' + (s.dept1 || '') + '</div></div>'
+    + '<div><div class="s-label">目標偏差値</div><div class="s-val">' + s.univInfo.dev + '</div><div class="s-sub">現状 ' + s.devVal + '（模試）</div></div>'
+    + '<div><div class="s-label">残り期間</div><div class="s-val">' + s.months + 'ヶ月</div><div class="s-sub">受験まで</div></div>'
+    + '</div>'
+
+    + '<div class="container">'
+
+    // タイムライン
+    + '<div class="section-hd">📅 タイムライン</div>'
+    + '<div class="card">'
+    + '<div style="overflow-x:auto;"><div class="timeline" style="display:grid;grid-auto-flow:column;gap:3px;">'
+    + timelineHTML
+    + '</div></div>'
+    + legendHTML
+    + '</div>'
+
+    // 参考書ルート
+    + '<div class="section-hd">📚 参考書ルート</div>'
+    + '<div class="card"><table>'
+    + '<thead><tr><th>科目</th><th>参考書名</th><th>カテゴリ</th><th>レベル</th><th>着手時期</th><th>完了期限</th></tr></thead>'
+    + '<tbody>' + booksHTML + '</tbody></table>'
+    + '<div style="margin-top:8px;font-size:9px;color:#999;">※ 試験月までに完了できる参考書のみ表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。</div>'
+    + '</div>'
+
+    // 偏差値ギャップ
+    + '<div class="section-hd">📊 偏差値ギャップ分析</div>'
+    + '<div class="card"><div class="gap-panel">'
+    + '<div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:10px;">科目別：現状 vs 目標偏差値</div>' + gapHTML + '</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:10px;">偏差値推移予測</div>' + chartImgHTML + '</div>'
+    + '</div></div>'
+
+    + '<div class="footer">'
+    + '<div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
+    + '<div>' + s.name + ' 様専用</div>'
+    + '</div>'
+    + '</div></body></html>';
+
+  const existing = document.getElementById('pdf-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pdf-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;flex-direction:column;';
+  const bar = document.createElement('div');
+  bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+  bar.innerHTML = '<span style="color:white;font-size:13px;font-weight:700;">📄 合格ロードマップ｜' + s.name + ' さん</span>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="downloadAsPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>'
+    + '<button onclick="document.getElementById(\'pdf-modal\').remove()" style="padding:7px 14px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>'
+    + '</div>';
+  const iframe = document.createElement('iframe');
+  iframe.id = 'pdf-print-frame';
+  iframe.style.cssText = 'flex:1;border:none;background:white;';
+  modal.appendChild(bar);
+  modal.appendChild(iframe);
+  document.body.appendChild(modal);
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+}
+
 
 // ===== PDF レポート出力 =====
 function exportPDF() {
