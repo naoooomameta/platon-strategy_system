@@ -4129,7 +4129,8 @@ function buildReportHTML(s) {
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Noto Sans JP',sans-serif;color:${C.text};background:white;font-size:12px;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    width:794px;max-width:794px;margin:0 auto;overflow-x:hidden;}
   /* 印刷・PDF専用スタイル */
   @page{
     size:A4 portrait;
@@ -4154,7 +4155,7 @@ function buildReportHTML(s) {
 </style>
 </head><body>
 <!-- HEADER -->
-<div style="background:${C.ink};padding:14px 28px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+<div style="background:${C.ink};padding:14px 20px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
   <div>
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.12em;">PLATON EXAM STRATEGY MANAGEMENT</div>
     <div style="font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;color:white;margin-top:3px;">合格ロードマップ</div>
@@ -4169,7 +4170,7 @@ function buildReportHTML(s) {
 <!-- STUDENT BAND -->
 <table style="width:100%;border-collapse:collapse;background:${C.inkL};-webkit-print-color-adjust:exact;print-color-adjust:exact;" cellpadding="0" cellspacing="0">
 <tr>
-  <td style="width:25%;padding:12px 20px 12px 28px;vertical-align:top;">
+  <td style="width:25%;padding:10px 14px 10px 20px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">生徒氏名</div>
     <div style="font-size:16px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.name}</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">${gradeLabel}｜${streamLabel}</div>
@@ -4184,7 +4185,7 @@ function buildReportHTML(s) {
     <div style="font-size:24px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.univInfo.dev}</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">現状 ${s.devVal}（偏差値ギャップ ${gap>0?'+':''}${gap}）</div>
   </td>
-  <td style="width:25%;padding:12px 28px 12px 20px;vertical-align:top;">
+  <td style="width:25%;padding:10px 20px 10px 14px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">残り期間</div>
     <div style="font-size:24px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.months}ヶ月</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">${s.goalYear}年${(s.goalMonth!=null?s.goalMonth+1:2)}月 受験</div>
@@ -4193,7 +4194,7 @@ function buildReportHTML(s) {
 </table>
 
 <!-- BODY -->
-<div style="padding:16px 28px;">
+<div style="padding:12px 20px;">
 
   ${sh('📅','月別ロードマップ（タイムライン）')}
   ${card(tlHtml)}
@@ -4353,31 +4354,50 @@ function exportPDF_download() {
     btn.textContent = '❌ エラー'; btn.disabled = false; return;
   }
 
-  // html2pdfでiframeではなくBlob URLから生成（iframe跨ぎは制限が多いため）
+  // 非表示iframeを794px固定で生成
   const tmpIframe = document.createElement('iframe');
-  tmpIframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;';
+  tmpIframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;';
   document.body.appendChild(tmpIframe);
 
   const tdoc = tmpIframe.contentDocument || tmpIframe.contentWindow.document;
   tdoc.open(); tdoc.write(fullHtml); tdoc.close();
 
+  // フォント・画像の読み込みを待つ
   setTimeout(() => {
-    const body = tmpIframe.contentDocument.body;
+    const reportBody = tdoc.body;
+    // body幅を明示的にロック
+    reportBody.style.width      = '794px';
+    reportBody.style.maxWidth   = '794px';
+    reportBody.style.margin     = '0';
+    reportBody.style.padding    = '0';
+    reportBody.style.overflowX  = 'hidden';
+
     html2pdf().set({
-      margin:      [10, 12, 10, 12],
-      filename:    name + '_合格ロードマップ.pdf',
-      image:       { type: 'jpeg', quality: 0.97 },
+      margin:    [8, 0, 8, 0],
+      filename:  name + '_合格ロードマップ.pdf',
+      image:     { type: 'jpeg', quality: 0.98 },
       html2canvas: {
         scale:           2,
         useCORS:         true,
         logging:         false,
         backgroundColor: '#ffffff',
         windowWidth:     794,
-        scrollX: 0, scrollY: 0
+        windowHeight:    1122,
+        scrollX:         0,
+        scrollY:         0,
+        x:               0,
+        y:               0,
+        onclone: function(clonedDoc) {
+          const b = clonedDoc.body;
+          b.style.width     = '794px';
+          b.style.maxWidth  = '794px';
+          b.style.margin    = '0';
+          b.style.overflowX = 'hidden';
+        }
       },
-      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:   { mode: 'css', avoid: 'tr' }
-    }).from(body).save()
+      jsPDF:     { unit: 'px', format: [794, 1122], orientation: 'portrait', hotfixes: ['px_scaling'] },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.no-break'] }
+    }).from(reportBody).save()
       .then(() => {
         btn.disabled = false;
         btn.textContent = '✅ 完了！';
@@ -4392,12 +4412,12 @@ function exportPDF_download() {
       })
       .catch(e => {
         btn.disabled = false;
-        btn.textContent = '❌ 失敗';
+        btn.textContent = '❌ 失敗 (' + e.message + ')';
         setTimeout(() => { btn.textContent = '📥 PDFダウンロード'; }, 3000);
         tmpIframe.remove();
-        console.error(e);
+        console.error('PDF error:', e);
       });
-  }, 800);
+  }, 1200);
 }
 
 function printReport() {
