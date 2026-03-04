@@ -5634,23 +5634,51 @@ const DAY_COLORS = {
 };
 // ALL_SUBJECT_OPTIONS のcolorも DAY_COLORS にマージ（動的）
 // （初回アクセス時に解決できるようにgetter風に関数化）
+// 旧キー・新ラベル・shortを全て日本語表示名に解決するユーティリティ
+const SUBJECT_DISPLAY = {
+  // 旧形式キー → 表示名
+  'eng':'英語', 'jpn':'国語', 'soc':'社会', 'math':'数学',
+  'sci':'理科', 'etc':'情報',
+  // 新形式キー → 表示名（short）
+  'eng-r':'英語R', 'eng-l':'英語L', 'math':'数学',
+  'jpn-r':'現代文', 'jpn-k':'古文', 'jpn-h':'漢文',
+  'hist-j':'日本史', 'hist-w':'世界史', 'geo':'地理', 'civ':'公民',
+  'info':'情報', 'sci-b':'理科基礎',
+};
+const SUBJECT_COLOR = {
+  'eng':'#2a7f6f','jpn':'#9a7a20','soc':'#2e7d32','math':'#c84b31',
+  'sci':'#7b4fa6','etc':'#6a1b9a',
+};
+
+// 科目キーまたはラベルから表示名を返す（旧・新キー両対応）
+function resolveSubjectLabel(keyOrLabel) {
+  if (SUBJECT_DISPLAY[keyOrLabel]) return SUBJECT_DISPLAY[keyOrLabel];
+  const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === keyOrLabel || o.key === keyOrLabel);
+  return opt ? opt.short : keyOrLabel;
+}
+
+// 科目キーまたはラベルから色を返す（旧・新キー両対応）
 function getDayColor(label) {
   if (DAY_COLORS[label]) return DAY_COLORS[label];
-  const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === label);
+  if (SUBJECT_COLOR[label]) return SUBJECT_COLOR[label];
+  const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === label || o.key === label);
   return opt ? opt.color : '#1a1a2e';
 }
 
 function getWpSubs() {
   const s = currentStudent;
   if (!s) return ['英語リーディング','英語リスニング','現代文','日本史'];
-  // targetSubjectKeys（ロードマップで選択された12科目キー）をlabelに変換して返す
   if (s.targetSubjectKeys && s.targetSubjectKeys.length > 0) {
     return s.targetSubjectKeys.map(k => {
+      // 新12科目キーで検索
       const opt = ALL_SUBJECT_OPTIONS.find(o => o.key === k);
-      return opt ? opt.label : k; // 必ず日本語ラベルを返す
+      if (opt) return opt.label;
+      // 旧キー（eng/jpn/soc）→ 日本語ラベルに変換
+      const legacy = {'eng':'英語リーディング','jpn':'現代文','soc':'日本史',
+                      'math':'数学1A・2BC','sci':'理科基礎','etc':'情報'};
+      return legacy[k] || k;
     });
   }
-  // フォールバック：stream別
   return s.stream === 'rikei'
     ? ['英語リーディング','英語リスニング','数学1A・2BC','理科基礎']
     : ['英語リーディング','英語リスニング','現代文','古文','漢文','日本史'];
@@ -5818,8 +5846,7 @@ function buildWpSubjectTabs() {
       </div>`;
 
   el.innerHTML = subs.map((sub, i) => {
-    const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === sub);
-    const tabLabel = opt ? opt.short : sub; // shortがあれば使う（英R/現文など）
+    const tabLabel = resolveSubjectLabel(sub); // 旧・新キー両対応
     return `<button class="tab ${i===0?'active':''}" onclick="selectWpSub('${sub}',this)"
       style="font-size:12px;" title="${sub}">${tabLabel}</button>`;
   }).join('');
@@ -5990,11 +6017,12 @@ function renderWpWeekGrid() {
         if (t === '復習・弱点補強') return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:#1a1a2e18;color:var(--ink);font-weight:600;margin-bottom:3px;">📚 復習・弱点補強</div>`;
         if (t.startsWith('📝')) return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:var(--ink);color:white;font-weight:700;margin-bottom:3px;">${t}</div>`;
         const c = getDayColor(t) || 'var(--ink)';
+        const displayName = resolveSubjectLabel(t); // 旧・新キー両対応で日本語表示
         // ロードマップ実データ優先、なければWP_PLANSから
         const roadmapPlan = buildWpPlanFromRoadmap(t);
         const plan = roadmapPlan ? roadmapPlan[phaseIdx] : (WP_PLANS[t]?.[phaseIdx]);
-        const task = plan ? plan.weekly.split('＋')[0].trim() : t;
-        return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;margin-bottom:3px;background:${c}18;color:${c};font-weight:600;line-height:1.5;"><strong>${t}</strong><br>${task}</div>`;
+        const task = plan ? plan.weekly.split('＋')[0].trim() : '';
+        return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;margin-bottom:3px;background:${c}18;color:${c};font-weight:600;line-height:1.5;"><strong>${displayName}</strong>${task ? '<br><span style="font-weight:400;font-size:9px;">' + task + '</span>' : ''}</div>`;
       }).join('')}
     </div>`;
   }).join('');
@@ -6017,6 +6045,7 @@ function printWeeklyPlanPDF() {
   const allSubjectsHTML = subs.map(function(sub) {
     var plans = WP_PLANS[sub] || WP_PLANS['英語'];
     var subColor = getDayColor(sub) || '#1a1a2e';
+    var subDisplayName = resolveSubjectLabel(sub);
     var monthCards = plans.map(function(m, i) {
       return '<div style="background:' + phaseBg[i] + ';border-radius:8px;padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
         + '<div style="font-size:8px;font-weight:700;color:' + phaseColors[i] + ';letter-spacing:.07em;margin-bottom:3px;">' + (i+1) + 'ヶ月目</div>'
@@ -6030,7 +6059,7 @@ function printWeeklyPlanPDF() {
         + '</div>';
     }).join('');
     return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px;">'
-      + '<div style="display:inline-block;font-size:11px;font-weight:700;color:white;background:' + subColor + ';padding:3px 12px;border-radius:12px;margin-bottom:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + sub + '</div>'
+      + '<div style="display:inline-block;font-size:11px;font-weight:700;color:white;background:' + subColor + ';padding:3px 12px;border-radius:12px;margin-bottom:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + subDisplayName + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' + monthCards + '</div>'
       + '</div>';
   }).join('');
@@ -6066,9 +6095,10 @@ function printWeeklyPlanPDF() {
         if (t === '復習・弱点補強') return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;background:#e8e4dc;color:#1a1a2e;font-weight:600;">📚 復習</div>';
         if (t.indexOf('📝') === 0) return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;background:#1a1a2e;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + t + '</div>';
         var clr = getDayColor(t) || '#1a1a2e';
+        var displayName = resolveSubjectLabel(t);
         var plan = WP_PLANS[t] ? WP_PLANS[t][phaseIdx] : null;
-        var task = plan ? plan.weekly.split('＋')[0].trim() : t;
-        return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:' + clr + '18;color:' + clr + ';font-weight:600;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>' + t + '</b><br>' + task + '</div>';
+        var task = plan ? plan.weekly.split('＋')[0].trim() : '';
+        return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:' + clr + '18;color:' + clr + ';font-weight:600;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>' + displayName + '</b>' + (task ? '<br>' + task : '') + '</div>';
       }).join('');
       return '<div style="background:' + (isWknd ? '#fdf8f0' : 'white') + ';border:1px solid #d8d0c0;border-radius:6px;padding:5px 6px;min-height:70px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
         + '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'
