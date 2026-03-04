@@ -3356,63 +3356,54 @@ function printRoadmapPDF() {
     const toP = function(v) { return Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100)); };
     const barColors = ['#c84b31','#c9a84c','#4a6fa5','#2a7f6f'];
 
-    // 上段：総合サマリー（3列）
+    // 上段：総合サマリー（実テーブルタグで確実描画）
     const gapColor = gap > 10 ? '#c84b31' : gap > 5 ? '#c9a84c' : '#2a7f6f';
-    let h = '<div style="display:flex;width:100%;gap:0;margin-bottom:12px;border-radius:10px;overflow:hidden;">';
-    // 総合ギャップ
-    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#fdf8f0,#f0e8d8);border-radius:10px 0 0 10px;border:1px solid #e0d4c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">総合ギャップ</div>'
-      + '<div style="font-size:42px;font-weight:700;color:'+gapColor+';line-height:1;font-family:\'DM Mono\',monospace;">+'+ gap +'</div>'
-      + '<div style="font-size:12px;color:#666;margin-top:4px;">偏差値</div>'
-      + '</div>';
-    // 現状→目標
-    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border:1px solid #1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">現状 → 目標</div>'
-      + '<div style="display:flex;align-items:baseline;gap:8px;">'
-      + '<span style="font-size:36px;font-weight:700;color:white;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.devVal +'</span>'
-      + '<span style="font-size:18px;color:#c9a84c;font-weight:700;">→</span>'
-      + '<span style="font-size:36px;font-weight:700;color:#c9a84c;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.univInfo.dev +'</span>'
-      + '</div>'
-      + '<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;">（'+ s.univName +'）</div>'
-      + '</div>';
-    // 残り期間
-    h += '<div style="flex:1;padding:16px 20px;background:linear-gradient(135deg,#eef5f3,#d8eee8);border-radius:0 10px 10px 0;border:1px solid #b0d8d0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">残り期間</div>'
-      + '<div style="font-size:42px;font-weight:700;color:#2a7f6f;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.months +'</div>'
-      + '<div style="font-size:12px;color:#666;margin-top:4px;">ヶ月</div>'
-      + '</div>';
-    h += '</div>';
+    let h = '<table style="width:100%;border-collapse:collapse;margin-bottom:14px;border-radius:10px;overflow:hidden;" cellpadding="0" cellspacing="0">'
+      + '<tr>'
+      + '<td style="width:33%;padding:14px 18px;background:#fdf4e8;border:1px solid #e0d4c0;border-radius:10px 0 0 10px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:9px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:5px;text-transform:uppercase;">総合ギャップ</div>'
+        + '<div style="font-size:38px;font-weight:700;color:'+gapColor+';line-height:1;font-family:\'DM Mono\',monospace;">+'+ gap +'</div>'
+        + '<div style="font-size:11px;color:#666;margin-top:4px;">偏差値</div>'
+      + '</td>'
+      + '<td style="width:33%;padding:14px 18px;background:#1a1a2e;border:1px solid #1a1a2e;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.07em;margin-bottom:5px;text-transform:uppercase;">現状 → 目標</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:4px;">（'+ s.univName +'）</div>'
+        + '<table cellpadding="0" cellspacing="0"><tr>'
+        + '<td style="font-size:32px;font-weight:700;color:white;line-height:1;font-family:\'DM Mono\',monospace;padding:0;">'+ s.devVal +'</td>'
+        + '<td style="font-size:18px;color:#c9a84c;font-weight:700;padding:0 8px;">→</td>'
+        + '<td style="font-size:32px;font-weight:700;color:#c9a84c;line-height:1;font-family:\'DM Mono\',monospace;padding:0;">'+ s.univInfo.dev +'</td>'
+        + '</tr></table>'
+      + '</td>'
+      + '<td style="width:33%;padding:14px 18px;background:#eef5f3;border:1px solid #b0d8d0;border-radius:0 10px 10px 0;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:9px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:5px;text-transform:uppercase;">残り期間</div>'
+        + '<div style="font-size:38px;font-weight:700;color:#2a7f6f;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.months +'</div>'
+        + '<div style="font-size:11px;color:#666;margin-top:4px;">ヶ月</div>'
+      + '</td>'
+      + '</tr></table>';
 
-    // 科目別バー（横幅いっぱい）
+    // 科目別バー（シンプルテーブルベース）
     h += '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:10px;text-transform:uppercase;">科目別：現状 vs 目標偏差値</div>';
     subjects.forEach(function(sub, si) {
       const diff = sub.target - sub.current;
       const col = barColors[si % barColors.length];
-      const curP = toP(sub.current), tarP = toP(sub.target);
-      const gapLeft = Math.min(curP, tarP), gapW = Math.abs(tarP - curP);
-      h += '<div style="margin-bottom:12px;">';
-      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
-        + '<span style="font-size:14px;font-weight:700;color:#1a1a2e;min-width:44px;">'+ sub.name +'</span>'
-        + '<div style="display:flex;align-items:baseline;gap:6px;">'
-        + '<span style="font-size:22px;font-weight:700;color:#1a1a2e;font-family:\'DM Mono\',monospace;line-height:1;">'+ sub.current +'</span>'
-        + '<span style="font-size:14px;color:#888;">→</span>'
-        + '<span style="font-size:22px;font-weight:700;color:'+col+';font-family:\'DM Mono\',monospace;line-height:1;">'+ sub.target +'</span>'
-        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:'+col+'20;color:'+col+';border:1px solid '+col+'50;">+'+ diff +'</span>'
-        + '</div>'
-        + '</div>';
-      // バー本体（太め・目盛付き）
-      const ticks = [40, 50, 60, 70];
-      h += '<div style="position:relative;padding-bottom:18px;">';
-      h += '<div style="height:12px;background:#f0ebe0;border-radius:6px;position:relative;overflow:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="position:absolute;top:0;left:'+gapLeft+'%;width:'+gapW+'%;height:100%;background:'+col+'30;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:0;left:0;width:'+curP+'%;height:100%;background:'+col+';border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:-3px;left:'+tarP+'%;width:3px;height:18px;background:'+col+';transform:translateX(-50%);border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + ticks.map(function(v) {
-            return '<div style="position:absolute;bottom:-16px;left:'+toP(v)+'%;transform:translateX(-50%);font-size:8px;color:#aaa;">'+ v +'</div>';
-          }).join('')
-        + '</div>';
-      h += '</div>';
-      h += '</div>';
+      const curP = toP(sub.current);
+      const tarP = toP(sub.target);
+      h += '<table style="width:100%;border-collapse:collapse;margin-bottom:10px;" cellpadding="0" cellspacing="0"><tr>'
+        + '<td style="width:48px;vertical-align:middle;font-size:13px;font-weight:700;color:#1a1a2e;padding:0 8px 0 0;">'+ sub.name +'</td>'
+        + '<td style="vertical-align:middle;padding:0;">'
+          // バー背景
+          + '<div style="background:#f0ebe0;border-radius:4px;height:14px;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+            + '<div style="background:'+col+';border-radius:4px;height:14px;width:'+curP+'%;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+          + '</div>'
+          + '<div style="font-size:9px;color:#aaa;margin-top:2px;">35 ←────────────────────────────────── 80</div>'
+        + '</td>'
+        + '<td style="width:130px;vertical-align:middle;padding:0 0 0 10px;white-space:nowrap;">'
+          + '<span style="font-size:18px;font-weight:700;color:#1a1a2e;font-family:\'DM Mono\',monospace;">'+ sub.current +'</span>'
+          + '<span style="font-size:12px;color:#888;margin:0 4px;">→</span>'
+          + '<span style="font-size:18px;font-weight:700;color:'+col+';font-family:\'DM Mono\',monospace;">'+ sub.target +'</span>'
+          + '&nbsp;<span style="font-size:10px;font-weight:700;color:'+col+';background:'+col+'18;padding:2px 6px;border-radius:8px;border:1px solid '+col+'50;">+'+ diff +'</span>'
+        + '</td>'
+        + '</tr></table>';
     });
 
     return h;
