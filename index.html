@@ -4587,7 +4587,7 @@ function downloadDynPDF() {
   if (!body) return;
   const noprint = body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
 }
 
 function downloadReportPDF() {
@@ -4600,7 +4600,7 @@ function downloadReportPDF() {
   if (!body) return;
   const noprint = body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
 }
 
 function downloadAsPDF() {
@@ -4614,7 +4614,7 @@ function downloadAsPDF() {
     margin: [10, 12, 10, 12],
     filename: filename,
     image: { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
+    html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css'] }
   };
