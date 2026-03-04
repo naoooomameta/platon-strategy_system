@@ -1295,16 +1295,22 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
 
-    <!-- 参考書ルート：フェーズ別カード表示 -->
+    <!-- 参考書ルート：月別タイムライン -->
     <div class="card fade-in" id="roadmap-books-card" style="margin-top:1.5rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px;">
         <div>
-          <div class="card-title" style="margin-bottom:2px;">📚 参考書ルート（フェーズ別）</div>
+          <div class="card-title" style="margin-bottom:2px;">📚 参考書ルート（受験月逆算）</div>
           <div style="font-size:11px;color:var(--text-muted);" id="roadmap-books-subtitle">受験月から逆算した推奨参考書スケジュールです</div>
         </div>
+        <div id="roadmap-books-total" style="font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 14px;display:none;">
+          📦 合計目安：<span id="books-total-price" style="color:var(--accent);">—</span>
+        </div>
       </div>
-      <!-- フェーズ別カード表示エリア -->
-      <div id="roadmap-books-phases">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;" id="roadmap-books-filter">
+        <!-- 科目フィルタボタン：JS生成 -->
+      </div>
+      <!-- 月別タイムライン表示 -->
+      <div id="roadmap-books-timeline">
         <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">ロードマップを生成すると表示されます</div>
       </div>
       <!-- テーブル（PDF取得用・非表示） -->
@@ -1440,9 +1446,8 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="section-desc">3ヶ月分（12週）の週次ロードマップと毎日課題を管理します</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="wp-student-sel" onchange="wpInit()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
-          <option>田中 悠斗（高3・理系）</option>
-          <option>佐藤 美咲（高2・文系）</option>
+        <select id="wp-student-sel" onchange="wpSelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
+          <option value="">── 生徒を選択 ──</option>
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('weekly-plan')" id="edit-toggle-weekly-plan" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printWeeklyPlanPDF()" style="font-size:13px;">📄 PDF保存</button>
@@ -2088,170 +2093,170 @@ function showDeptAll(idx) {}
 // sub: カラークラス / category: フィルタ用 / level: 1=入門 2=基礎 3=標準 4=応用 5=発展
 const ALL_TEXTBOOKS = [
   // ── 英語：単語 ──
-  { name: 'ワードボックス英単語・熟語【エッセンシャル】', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学〜高校基礎' },
-  { name: 'CD付 夢をかなえる英単語 新ユメタン0', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学修了〜高校基礎' },
-  { name: '英単語ターゲット1200 改訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト基礎レベル' },
-  { name: 'システム英単語Basic〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト〜私大基礎' },
-  { name: 'システム英単語〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' },
-  { name: '英単語ターゲット1900 6訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' },
-  { name: '必携 英単語 LEAP Basic', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '共通テスト〜私大' },
-  { name: '改訂版 必携 英単語 LEAP', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '国公立〜難関私大' },
-  { name: 'Z会 速読英単語 必修編', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '長文読解と並行' },
-  { name: '速読英単語 上級編 改訂第5版', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 8, stream: 'both', note: '難関国公立・早慶' },
-  { name: '改訂版 鉄緑会東大英単語熟語 鉄壁', sub: 'eng', subLabel: '英語', category: '英単語', level: 5, dur: 12, stream: 'both', note: '東大・最難関向け' },
+  { name: 'ワードボックス英単語・熟語【エッセンシャル】', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学〜高校基礎' , price: 1100 },
+  { name: 'CD付 夢をかなえる英単語 新ユメタン0', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学修了〜高校基礎' , price: 1320 },
+  { name: '英単語ターゲット1200 改訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト基礎レベル' , price: 990 },
+  { name: 'システム英単語Basic〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト〜私大基礎' , price: 1100 },
+  { name: 'システム英単語〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' , price: 1210 },
+  { name: '英単語ターゲット1900 6訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' , price: 1100 },
+  { name: '必携 英単語 LEAP Basic', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '共通テスト〜私大' , price: 1210 },
+  { name: '改訂版 必携 英単語 LEAP', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '国公立〜難関私大' , price: 1320 },
+  { name: 'Z会 速読英単語 必修編', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '長文読解と並行' , price: 1430 },
+  { name: '速読英単語 上級編 改訂第5版', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 8, stream: 'both', note: '難関国公立・早慶' , price: 1430 },
+  { name: '改訂版 鉄緑会東大英単語熟語 鉄壁', sub: 'eng', subLabel: '英語', category: '英単語', level: 5, dur: 12, stream: 'both', note: '東大・最難関向け' , price: 2310 },
 
   // ── 英語：文法 ──
-  { name: '中学英語をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '中学文法の復習' },
-  { name: '高校英文法をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 6, stream: 'both', note: '高校文法の基礎固め' },
-  { name: '英文法レベル別問題集1', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '超基礎レベル' },
-  { name: '英文法レベル別問題集2', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 4, stream: 'both', note: '基礎〜共通テスト' },
-  { name: '英文法レベル別問題集3 標準編【3訂版】', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 6, stream: 'both', note: '私大標準レベル' },
-  { name: '英文法・語法 Vintage 4th Edition', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 8, stream: 'both', note: '私大〜国公立対応' },
+  { name: '中学英語をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '中学文法の復習' , price: 1320 },
+  { name: '高校英文法をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 6, stream: 'both', note: '高校文法の基礎固め' , price: 1320 },
+  { name: '英文法レベル別問題集1', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '超基礎レベル' , price: 990 },
+  { name: '英文法レベル別問題集2', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 4, stream: 'both', note: '基礎〜共通テスト' , price: 990 },
+  { name: '英文法レベル別問題集3 標準編【3訂版】', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 6, stream: 'both', note: '私大標準レベル' , price: 990 },
+  { name: '英文法・語法 Vintage 4th Edition', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 8, stream: 'both', note: '私大〜国公立対応' , price: 1540 },
 
   // ── 英語：解釈 ──
-  { name: '大学受験スーパーゼミ 入門英文解釈の技術70', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 2, dur: 6, stream: 'both', note: '入門〜基礎レベル' },
-  { name: '大学受験スーパーゼミ 基礎英文解釈の技術100', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 3, dur: 8, stream: 'both', note: '共通テスト〜私大' },
+  { name: '大学受験スーパーゼミ 入門英文解釈の技術70', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 2, dur: 6, stream: 'both', note: '入門〜基礎レベル' , price: 1320 },
+  { name: '大学受験スーパーゼミ 基礎英文解釈の技術100', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 3, dur: 8, stream: 'both', note: '共通テスト〜私大' , price: 1430 },
 
   // ── 英語：長文 ──
-  { name: '関正生のThe Rules 英語長文問題集1', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 6, stream: 'both', note: '共通テスト基礎' },
-  { name: '関正生のThe Rules 英語長文問題集2', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 6, stream: 'both', note: '私大標準' },
-  { name: '関正生のThe Rules 英語長文問題集3', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 6, stream: 'both', note: '難関私大・国公立' },
-  { name: '関正生のThe Rules 英語長文問題集4', sub: 'eng', subLabel: '英語', category: '英語長文', level: 5, dur: 6, stream: 'both', note: '最難関大学' },
+  { name: '関正生のThe Rules 英語長文問題集1', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 6, stream: 'both', note: '共通テスト基礎' , price: 1320 },
+  { name: '関正生のThe Rules 英語長文問題集2', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 6, stream: 'both', note: '私大標準' , price: 1320 },
+  { name: '関正生のThe Rules 英語長文問題集3', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 6, stream: 'both', note: '難関私大・国公立' , price: 1320 },
+  { name: '関正生のThe Rules 英語長文問題集4', sub: 'eng', subLabel: '英語', category: '英語長文', level: 5, dur: 6, stream: 'both', note: '最難関大学' , price: 1320 },
 
   // ── 英語：リスニング ──
-  { name: '究極の英語リスニング Vol.1', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 1, dur: 6, stream: 'both', note: '入門〜基礎' },
-  { name: '究極の英語リスニング Vol.2', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 6, stream: 'both', note: '共通テストレベル' },
-  { name: '究極の英語リスニング Vol.3', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 3, dur: 6, stream: 'both', note: '難関大学レベル' },
+  { name: '究極の英語リスニング Vol.1', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 1, dur: 6, stream: 'both', note: '入門〜基礎' , price: 1650 },
+  { name: '究極の英語リスニング Vol.2', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 6, stream: 'both', note: '共通テストレベル' , price: 1650 },
+  { name: '究極の英語リスニング Vol.3', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 3, dur: 6, stream: 'both', note: '難関大学レベル' , price: 1650 },
 
   // ── 英語：英作文 ──
-  { name: '改訂版 竹岡広信の 英作文が面白いほど書ける本', sub: 'eng', subLabel: '英語', category: '英作文', level: 2, dur: 8, stream: 'both', note: '基礎〜標準' },
-  { name: '改訂版 大学入試 関正生の英作文 プラチナルール', sub: 'eng', subLabel: '英語', category: '英作文', level: 3, dur: 8, stream: 'both', note: '標準〜難関' },
+  { name: '改訂版 竹岡広信の 英作文が面白いほど書ける本', sub: 'eng', subLabel: '英語', category: '英作文', level: 2, dur: 8, stream: 'both', note: '基礎〜標準' , price: 1320 },
+  { name: '改訂版 大学入試 関正生の英作文 プラチナルール', sub: 'eng', subLabel: '英語', category: '英作文', level: 3, dur: 8, stream: 'both', note: '標準〜難関' , price: 1320 },
 
   // ── 英語：英検 ──
-  { name: '2025年度版 英検3級 過去6回全問題集', sub: 'eng', subLabel: '英語', category: '英検', level: 1, dur: 6, stream: 'both', note: '英検3級' },
-  { name: '【音声アプリ対応】英検準2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' },
-  { name: '出る順で最短合格! 英検準2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' },
-  { name: '【音声アプリ対応】英検2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' },
-  { name: '出る順で最短合格! 英検2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' },
-  { name: '【音声アプリ対応】英検準1級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' },
-  { name: '出る順で最短合格!英検準1級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' },
+  { name: '2025年度版 英検3級 過去6回全問題集', sub: 'eng', subLabel: '英語', category: '英検', level: 1, dur: 6, stream: 'both', note: '英検3級' , price: 1320 },
+  { name: '【音声アプリ対応】英検準2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' , price: 1320 },
+  { name: '出る順で最短合格! 英検準2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' , price: 1320 },
+  { name: '【音声アプリ対応】英検2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' , price: 1320 },
+  { name: '出る順で最短合格! 英検2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' , price: 1320 },
+  { name: '【音声アプリ対応】英検準1級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' , price: 1320 },
+  { name: '出る順で最短合格!英検準1級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' , price: 1320 },
 
   // ── 英語：TEAP ──
-  { name: 'TEAP技能別問題集 リーディング・リスニング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' },
-  { name: 'TEAP技能別問題集 ライティング・スピーキング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' },
+  { name: 'TEAP技能別問題集 リーディング・リスニング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' , price: 1650 },
+  { name: 'TEAP技能別問題集 ライティング・スピーキング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' , price: 1320 },
 
   // ── 数学 ──
-  { name: 'やさしい数学1A', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' },
-  { name: 'やさしい高校数学(数学2・B)', sub: 'math', subLabel: '数学', category: '数学2B', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' },
-  { name: 'やさしい高校数学(数学III・C)', sub: 'math', subLabel: '数学', category: '数学3C', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' },
-  { name: '新課程 チャート式 基礎と演習 数学Ⅰ＋Ａ（白チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' },
-  { name: '新課程 チャート式 基礎と演習 数学Ⅱ＋Ｂ（白チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' },
-  { name: '新課程 チャート式 基礎と演習 数学C', sub: 'math', subLabel: '数学', category: '数学3C', level: 2, dur: 10, stream: 'rikei', note: '共通テスト基礎' },
-  { name: '基礎からの数学I+A（青チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' },
-  { name: '特装版 チャート式 基礎からの数学Ⅱ+B（青チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' },
-  { name: '特装版 チャート式 基礎からの数学III+C（青チャート）', sub: 'math', subLabel: '数学', category: '数学3C', level: 3, dur: 16, stream: 'rikei', note: '国公立標準〜難関' },
-  { name: '1対1対応の演習/数学1', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' },
-  { name: '1対1対応の演習/数学A', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' },
-  { name: '共通テスト必勝マニュアル 数学1A', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' },
-  { name: '共通テスト必勝マニュアル 数学2BC', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' },
+  { name: 'やさしい数学1A', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
+  { name: 'やさしい高校数学(数学2・B)', sub: 'math', subLabel: '数学', category: '数学2B', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
+  { name: 'やさしい高校数学(数学III・C)', sub: 'math', subLabel: '数学', category: '数学3C', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
+  { name: '新課程 チャート式 基礎と演習 数学Ⅰ＋Ａ（白チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' , price: 2860 },
+  { name: '新課程 チャート式 基礎と演習 数学Ⅱ＋Ｂ（白チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' , price: 2860 },
+  { name: '新課程 チャート式 基礎と演習 数学C', sub: 'math', subLabel: '数学', category: '数学3C', level: 2, dur: 10, stream: 'rikei', note: '共通テスト基礎' , price: 1320 },
+  { name: '基礎からの数学I+A（青チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' , price: 2860 },
+  { name: '特装版 チャート式 基礎からの数学Ⅱ+B（青チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' , price: 2860 },
+  { name: '特装版 チャート式 基礎からの数学III+C（青チャート）', sub: 'math', subLabel: '数学', category: '数学3C', level: 3, dur: 16, stream: 'rikei', note: '国公立標準〜難関' , price: 2860 },
+  { name: '1対1対応の演習/数学1', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' , price: 1430 },
+  { name: '1対1対応の演習/数学A', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' , price: 1430 },
+  { name: '共通テスト必勝マニュアル 数学1A', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' , price: 1320 },
+  { name: '共通テスト必勝マニュアル 数学2BC', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' , price: 1320 },
 
   // ── 国語：現代文 ──
-  { name: '大学入試 全レベル問題集 現代文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '現代文入門' },
-  { name: '大学入試 全レベル問題集 現代文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: '共通テスト対策' },
-  { name: '大学入試 全レベル問題集 現代文3 私大標準レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 6, stream: 'bunkei', note: '私大標準' },
-  { name: '大学入試 全レベル問題集 現代文6 国公立大レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 5, dur: 8, stream: 'both', note: '国公立最難関' },
+  { name: '大学入試 全レベル問題集 現代文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '現代文入門' , price: 880 },
+  { name: '大学入試 全レベル問題集 現代文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: '共通テスト対策' , price: 880 },
+  { name: '大学入試 全レベル問題集 現代文3 私大標準レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 6, stream: 'bunkei', note: '私大標準' , price: 880 },
+  { name: '大学入試 全レベル問題集 現代文6 国公立大レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 5, dur: 8, stream: 'both', note: '国公立最難関' , price: 880 },
 
   // ── 国語：古文 ──
-  { name: '古典文法ドリル', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '古文文法の基礎' },
-  { name: '望月光 古典文法講義の実況中継(1)', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 6, stream: 'bunkei', note: '古文文法基礎' },
-  { name: '望月光 古典文法講義の実況中継(2)', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文文法応用' },
-  { name: '読んで見て聞いて覚える 重要古文単語315', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文単語' },
-  { name: '古文レベル別問題集1 文法編', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '文法確認' },
-  { name: '古文レベル別問題集2 初級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'bunkei', note: '初級演習' },
-  { name: '古文レベル別問題集3 標準編', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'bunkei', note: '標準演習' },
-  { name: '古文レベル別問題集4', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'bunkei', note: '応用演習' },
-  { name: '古文レベル別問題集5 上級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 5, dur: 4, stream: 'bunkei', note: '難関大学向け' },
+  { name: '古典文法ドリル', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '古文文法の基礎' , price: 1100 },
+  { name: '望月光 古典文法講義の実況中継(1)', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 6, stream: 'bunkei', note: '古文文法基礎' , price: 1320 },
+  { name: '望月光 古典文法講義の実況中継(2)', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文文法応用' , price: 1320 },
+  { name: '読んで見て聞いて覚える 重要古文単語315', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文単語' , price: 1320 },
+  { name: '古文レベル別問題集1 文法編', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '文法確認' , price: 880 },
+  { name: '古文レベル別問題集2 初級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'bunkei', note: '初級演習' , price: 880 },
+  { name: '古文レベル別問題集3 標準編', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'bunkei', note: '標準演習' , price: 880 },
+  { name: '古文レベル別問題集4', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'bunkei', note: '応用演習' , price: 880 },
+  { name: '古文レベル別問題集5 上級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 5, dur: 4, stream: 'bunkei', note: '難関大学向け' , price: 880 },
 
   // ── 国語：漢文 ──
-  { name: '寺師の漢文をはじめから丁寧に', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '漢文入門' },
-  { name: '大学入試 全レベル問題集 漢文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '基礎演習' },
-  { name: '大学入試 全レベル問題集 漢文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' },
-  { name: '大学入試 全レベル問題集 漢文3 私大・国公立大レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 3, dur: 6, stream: 'bunkei', note: '上位私大・国公立' },
+  { name: '寺師の漢文をはじめから丁寧に', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '漢文入門' , price: 1210 },
+  { name: '大学入試 全レベル問題集 漢文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '基礎演習' , price: 880 },
+  { name: '大学入試 全レベル問題集 漢文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' , price: 880 },
+  { name: '大学入試 全レベル問題集 漢文3 私大・国公立大レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 3, dur: 6, stream: 'bunkei', note: '上位私大・国公立' , price: 880 },
 
   // ── 国語：小論文 ──
-  { name: '小論文（カテゴリ内のテキスト参照）', sub: 'jpn', subLabel: '国語', category: '小論文', level: 3, dur: 8, stream: 'both', note: '慶應・国公立向け' },
+  { name: '小論文（カテゴリ内のテキスト参照）', sub: 'jpn', subLabel: '国語', category: '小論文', level: 3, dur: 8, stream: 'both', note: '慶應・国公立向け' , price: 1320 },
 
   // ── 理科：物理 ──
-  { name: '橋元の物理基礎をはじめからていねいに', sub: 'sci', subLabel: '理科', category: '物理', level: 1, dur: 6, stream: 'rikei', note: '物理基礎入門' },
-  { name: 'チャート式シリーズ 新物理基礎', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '物理基礎の体系学習' },
-  { name: '大学入試 全レベル問題集 物理1 基礎レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 6, stream: 'rikei', note: '共通テスト基礎' },
-  { name: '大学入試 全レベル問題集 物理2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' },
-  { name: '大学入試 全レベル問題集 物理3 私大標準・国公立大レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 4, dur: 8, stream: 'rikei', note: '難関大向け' },
-  { name: '改訂版 漆原晃の物理基礎・物理[力学・熱力学]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '力学・熱力学' },
-  { name: '改訂版 漆原晃の物理基礎・物理[波動・原子]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '波動・原子' },
-  { name: '改訂版 漆原晃の物理基礎・物理[電磁気]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 8, stream: 'rikei', note: '電磁気' },
+  { name: '橋元の物理基礎をはじめからていねいに', sub: 'sci', subLabel: '理科', category: '物理', level: 1, dur: 6, stream: 'rikei', note: '物理基礎入門' , price: 1320 },
+  { name: 'チャート式シリーズ 新物理基礎', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '物理基礎の体系学習' , price: 1320 },
+  { name: '大学入試 全レベル問題集 物理1 基礎レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 6, stream: 'rikei', note: '共通テスト基礎' , price: 880 },
+  { name: '大学入試 全レベル問題集 物理2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
+  { name: '大学入試 全レベル問題集 物理3 私大標準・国公立大レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 4, dur: 8, stream: 'rikei', note: '難関大向け' , price: 880 },
+  { name: '改訂版 漆原晃の物理基礎・物理[力学・熱力学]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '力学・熱力学' , price: 1320 },
+  { name: '改訂版 漆原晃の物理基礎・物理[波動・原子]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '波動・原子' , price: 1320 },
+  { name: '改訂版 漆原晃の物理基礎・物理[電磁気]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 8, stream: 'rikei', note: '電磁気' , price: 1320 },
 
   // ── 理科：化学 ──
-  { name: 'チャート式問題集 共通テスト対策 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト化学基礎' },
-  { name: '決める！共通テスト 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' },
-  { name: '特装版 チャート式シリーズ 新化学 化学基礎・化学', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 16, stream: 'rikei', note: '化学の体系学習' },
-  { name: '改訂版 フォトサイエンス化学図録', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 4, stream: 'rikei', note: '視覚的理解の補助' },
-  { name: '大学受験Do 鎌田の理論化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '理論化学' },
-  { name: '大学受験Do 鎌田の有機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '有機化学' },
-  { name: '大学受験Do 福間の無機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '無機化学' },
-  { name: '大学入試 全レベル問題集 化学1 基礎レベル', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' },
-  { name: '大学入試 全レベル問題集 化学2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' },
+  { name: 'チャート式問題集 共通テスト対策 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト化学基礎' , price: 1320 },
+  { name: '決める！共通テスト 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
+  { name: '特装版 チャート式シリーズ 新化学 化学基礎・化学', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 16, stream: 'rikei', note: '化学の体系学習' , price: 1320 },
+  { name: '改訂版 フォトサイエンス化学図録', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 4, stream: 'rikei', note: '視覚的理解の補助' , price: 1320 },
+  { name: '大学受験Do 鎌田の理論化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '理論化学' , price: 1320 },
+  { name: '大学受験Do 鎌田の有機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '有機化学' , price: 1320 },
+  { name: '大学受験Do 福間の無機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '無機化学' , price: 1320 },
+  { name: '大学入試 全レベル問題集 化学1 基礎レベル', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' , price: 880 },
+  { name: '大学入試 全レベル問題集 化学2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
 
   // ── 理科：生物 ──
-  { name: 'チャート式シリーズ 新生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 8, stream: 'rikei', note: '生物基礎の体系学習' },
-  { name: 'チャート式問題集 共通テスト対策 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト生物基礎' },
-  { name: '決める！共通テスト 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' },
-  { name: '生物基礎一問一答【完全版】', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '用語確認' },
-  { name: 'よくわかる高校生物基礎 問題集', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' },
+  { name: 'チャート式シリーズ 新生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 8, stream: 'rikei', note: '生物基礎の体系学習' , price: 1320 },
+  { name: 'チャート式問題集 共通テスト対策 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト生物基礎' , price: 1320 },
+  { name: '決める！共通テスト 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
+  { name: '生物基礎一問一答【完全版】', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '用語確認' , price: 1320 },
+  { name: 'よくわかる高校生物基礎 問題集', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' , price: 1320 },
 
   // ── 社会：日本史 ──
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 原始・古代史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門①' },
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 中世・近世史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門②' },
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 文化史', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 4, stream: 'bunkei', note: '文化史' },
-  { name: '改訂版 共通テスト 歴史総合、日本史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' },
-  { name: '大学入試 全レベル問題集 日本史1 基礎レベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 6, stream: 'bunkei', note: '基礎演習' },
-  { name: '大学入試 全レベル問題集 日本史2 共通テストレベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '共通テスト対策' },
-  { name: '日本史探究授業の実況中継(1) 原始~古代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' },
-  { name: '日本史探究授業の実況中継(2) 中世~近世', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' },
-  { name: '日本史探究授業の実況中継(3) 近世~近代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' },
-  { name: '日本史探究授業の実況中継(4) 近現代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' },
-  { name: '日本史基礎問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 8, stream: 'bunkei', note: '基礎〜標準演習' },
-  { name: '日本史標準問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 8, stream: 'bunkei', note: '難関大学向け' },
+  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 原始・古代史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門①' , price: 1430 },
+  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 中世・近世史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門②' , price: 1430 },
+  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 文化史', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 4, stream: 'bunkei', note: '文化史' , price: 1430 },
+  { name: '改訂版 共通テスト 歴史総合、日本史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
+  { name: '大学入試 全レベル問題集 日本史1 基礎レベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 6, stream: 'bunkei', note: '基礎演習' , price: 880 },
+  { name: '大学入試 全レベル問題集 日本史2 共通テストレベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '共通テスト対策' , price: 880 },
+  { name: '日本史探究授業の実況中継(1) 原始~古代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' , price: 1320 },
+  { name: '日本史探究授業の実況中継(2) 中世~近世', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' , price: 1320 },
+  { name: '日本史探究授業の実況中継(3) 近世~近代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' , price: 1320 },
+  { name: '日本史探究授業の実況中継(4) 近現代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' , price: 1320 },
+  { name: '日本史基礎問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 8, stream: 'bunkei', note: '基礎〜標準演習' , price: 1430 },
+  { name: '日本史標準問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 8, stream: 'bunkei', note: '難関大学向け' , price: 1980 },
 
   // ── 社会：世界史 ──
-  { name: 'ものがたり世界史 古代~近代へ', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門①' },
-  { name: 'ものがたり世界史 近代~現代', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門②' },
-  { name: '時代と流れで覚える世界史', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '通史の整理' },
-  { name: '改訂版 共通テスト 歴史総合、世界史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' },
-  { name: 'よくわかる高校歴史総合問題集', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '歴史総合対策' },
-  { name: '世界史探究授業の実況中継(1)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' },
-  { name: '世界史探究授業の実況中継(2)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' },
-  { name: '世界史探究授業の実況中継(3)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' },
-  { name: '世界史探究授業の実況中継(4)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' },
-  { name: '世界史 一問一答【完全版】4th edition', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 8, stream: 'bunkei', note: '用語確認・暗記' },
-  { name: '一橋大の世界史20カ年', sub: 'soc', subLabel: '社会', category: '世界史', level: 5, dur: 8, stream: 'bunkei', note: '一橋大学専用' },
+  { name: 'ものがたり世界史 古代~近代へ', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門①' , price: 1430 },
+  { name: 'ものがたり世界史 近代~現代', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門②' , price: 1430 },
+  { name: '時代と流れで覚える世界史', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '通史の整理' , price: 1320 },
+  { name: '改訂版 共通テスト 歴史総合、世界史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
+  { name: 'よくわかる高校歴史総合問題集', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '歴史総合対策' , price: 1320 },
+  { name: '世界史探究授業の実況中継(1)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' , price: 1320 },
+  { name: '世界史探究授業の実況中継(2)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' , price: 1320 },
+  { name: '世界史探究授業の実況中継(3)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' , price: 1320 },
+  { name: '世界史探究授業の実況中継(4)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' , price: 1320 },
+  { name: '世界史 一問一答【完全版】4th edition', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 8, stream: 'bunkei', note: '用語確認・暗記' , price: 1320 },
+  { name: '一橋大の世界史20カ年', sub: 'soc', subLabel: '社会', category: '世界史', level: 5, dur: 8, stream: 'bunkei', note: '一橋大学専用' , price: 1320 },
 
   // ── 社会：地理 ──
-  { name: '改訂第2版 共通テスト 地理総合、地理探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' },
-  { name: '共通テスト 地理 集中講義 改訂版', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'bunkei', note: '共通テスト対策' },
+  { name: '改訂第2版 共通テスト 地理総合、地理探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
+  { name: '共通テスト 地理 集中講義 改訂版', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
 
   // ── 社会：公共・政治経済 ──
-  { name: 'よくわかる高校公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 1, dur: 4, stream: 'bunkei', note: '公共の基礎' },
-  { name: 'よくわかる高校公共問題集', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '公共の演習' },
-  { name: '蔭山の共通テスト公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' },
-  { name: '蔭山の共通テスト政治・経済', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 6, stream: 'bunkei', note: '政治経済対策' },
-  { name: '完全MASTER 倫理+公共 問題集 共通テスト新訂版', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 6, stream: 'bunkei', note: '倫理・公共上級' },
-  { name: '公共 一問一答【完全版】清水雅博', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '用語確認' },
+  { name: 'よくわかる高校公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 1, dur: 4, stream: 'bunkei', note: '公共の基礎' , price: 1210 },
+  { name: 'よくわかる高校公共問題集', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '公共の演習' , price: 1210 },
+  { name: '蔭山の共通テスト公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
+  { name: '蔭山の共通テスト政治・経済', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 6, stream: 'bunkei', note: '政治経済対策' , price: 1320 },
+  { name: '完全MASTER 倫理+公共 問題集 共通テスト新訂版', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 6, stream: 'bunkei', note: '倫理・公共上級' , price: 1320 },
+  { name: '公共 一問一答【完全版】清水雅博', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '用語確認' , price: 1320 },
 
   // ── 情報 ──
-  { name: 'ゼロから始める情報I', sub: 'etc', subLabel: 'その他', category: '情報', level: 1, dur: 4, stream: 'both', note: '情報I入門' },
-  { name: 'ライバルに差をつける 情報I 鉄板の100題', sub: 'etc', subLabel: 'その他', category: '情報', level: 2, dur: 4, stream: 'both', note: '共通テスト対策' },
-  { name: '情報I 共通テスト プログラミング問題対策', sub: 'etc', subLabel: 'その他', category: '情報', level: 3, dur: 4, stream: 'both', note: 'プログラミング演習' },
+  { name: 'ゼロから始める情報I', sub: 'etc', subLabel: 'その他', category: '情報', level: 1, dur: 4, stream: 'both', note: '情報I入門' , price: 1320 },
+  { name: 'ライバルに差をつける 情報I 鉄板の100題', sub: 'etc', subLabel: 'その他', category: '情報', level: 2, dur: 4, stream: 'both', note: '共通テスト対策' , price: 1320 },
+  { name: '情報I 共通テスト プログラミング問題対策', sub: 'etc', subLabel: 'その他', category: '情報', level: 3, dur: 4, stream: 'both', note: 'プログラミング演習' , price: 1320 },
 ];
 
 // 文理・レベルでフィルタしてロードマップ用に返す
@@ -2274,12 +2279,28 @@ let deviationChart = null;
 
 // ===== NAVIGATION =====
 // ===== 生徒リスト管理 =====
-let _allStudents = [];
+// 生徒データをlocalStorageから読み込む
+function _loadStudentsFromStorage() {
+  try {
+    const raw = localStorage.getItem('platon_students');
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+function _saveStudentsToStorage(arr) {
+  try { localStorage.setItem('platon_students', JSON.stringify(arr)); } catch(e) {}
+}
+let _allStudents = _loadStudentsFromStorage();
 
 function saveStudentToList(s) {
-  const exists = _allStudents.find(x => x.name === s.name);
-  if (!exists) _allStudents.push(s);
+  const idx = _allStudents.findIndex(x => x.name === s.name);
+  if (idx >= 0) {
+    _allStudents[idx] = s; // 既存生徒の更新
+  } else {
+    _allStudents.push(s); // 新規追加
+  }
+  _saveStudentsToStorage(_allStudents);
   renderStudentList();
+  renderWpStudentSelect(); // 3ヶ月プランのプルダウンも更新
 }
 
 function loadStudentFromList(name) {
@@ -2340,7 +2361,7 @@ function showPage(name) {
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
   if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
-  if (name === 'weekly-plan') { setTimeout(wpInit, 50); }
+  if (name === 'weekly-plan') { renderWpStudentSelect(); setTimeout(wpInit, 50); }
   if (name === 'tests')       { setTimeout(testInit, 50); }
   if (name === 'monthly')     { setTimeout(monthlyInit, 50); }
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -2605,10 +2626,10 @@ function renderRoadmap() {
 function renderRoadmapBooks() {
   const s = currentStudent;
   if (!s) return;
-  const tbody = document.getElementById('roadmap-books-tbody');
   const filterWrap = document.getElementById('roadmap-books-filter');
   const subtitle = document.getElementById('roadmap-books-subtitle');
-  if (!tbody) return;
+  const timelineEl = document.getElementById('roadmap-books-timeline');
+  if (!timelineEl) return;
 
   const subjectToSub = {
     '英語':'eng','数学':'math','国語':'jpn',
@@ -2676,113 +2697,106 @@ function renderRoadmapBooks() {
 }
 
 function renderRoadmapBooksRows(books) {
-  const tbody = document.getElementById('roadmap-books-tbody');
-  const phasesEl = document.getElementById('roadmap-books-phases');
-  if (!tbody || !phasesEl) return;
+  const timelineEl = document.getElementById('roadmap-books-timeline');
+  const tbody      = document.getElementById('roadmap-books-tbody');
+  const totalEl    = document.getElementById('roadmap-books-total');
+  const totalPrEl  = document.getElementById('books-total-price');
+  if (!timelineEl) return;
 
   const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
-  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
   const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const now = new Date();
-  const startMonthAbs = now.getFullYear() * 12 + now.getMonth();
+  const nowAbs = now.getFullYear() * 12 + now.getMonth();
 
-  if (books.length === 0) {
-    phasesEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">該当する参考書がありません</div>';
-    tbody.innerHTML = '';
+  if (!books.length) {
+    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">該当する参考書がありません</div>';
+    if (totalEl) totalEl.style.display = 'none';
     return;
   }
 
-  // フェーズ境界を全書籍のspan範囲から計算
-  const allStartAbs = books.map(b => b.startY * 12 + b.startM);
-  const allEndAbs   = books.map(b => b.endY * 12 + b.endM);
-  const minAbs = Math.min(...allStartAbs);
-  const maxAbs = Math.max(...allEndAbs);
-  const totalMonths = Math.max(1, maxAbs - minAbs + 1);
-  const p1end = minAbs + Math.round(totalMonths * 0.4);
-  const p2end = minAbs + Math.round(totalMonths * 0.75);
+  // 合計価格
+  const totalPrice = books.reduce((s, b) => s + (b.price || 1320), 0);
+  if (totalEl) totalEl.style.display = '';
+  if (totalPrEl) totalPrEl.textContent = '¥' + totalPrice.toLocaleString() + '（目安）';
 
-  const phases = [
-    { key: 'kiso',   label: '基礎期',  color: '#2a7f6f', bg: '#e8f4f1', border: '#2a7f6f',
-      desc: '基礎を固める段階', range: `${JAmonths[(minAbs)%12]}〜${JAmonths[(p1end-1)%12]}` },
-    { key: 'hyojun', label: '標準期', color: '#c9a84c', bg: '#fdf8ee', border: '#c9a84c',
-      desc: '実力を伸ばす段階', range: `${JAmonths[(p1end)%12]}〜${JAmonths[(p2end-1)%12]}` },
-    { key: 'enshu',  label: '演習期',  color: '#c84b31', bg: '#fef0ee', border: '#c84b31',
-      desc: '仕上げ・過去問段階', range: `${JAmonths[(p2end)%12]}〜${JAmonths[(maxAbs)%12]}` },
-  ];
+  // 月ごとにグループ化（着手月基準）
+  const byMonth = {};
+  books.forEach(b => {
+    const key = b.startY * 12 + b.startM;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(b);
+  });
+  const sortedMonths = Object.keys(byMonth).map(Number).sort((a, b2) => a - b2);
 
-  function getPhase(b) {
-    const midAbs = b.startY * 12 + b.startM + Math.floor((b.endY * 12 + b.endM - b.startY * 12 - b.startM) / 2);
-    if (midAbs < p1end) return 0;
-    if (midAbs < p2end) return 1;
-    return 2;
-  }
-
-  // 科目グループ化
-  const subOrder = ['eng', 'math', 'jpn', 'sci', 'soc', 'etc'];
-  const subs = [...new Set(books.map(b => b.sub))].sort((a, b2) => subOrder.indexOf(a) - subOrder.indexOf(b2));
-
-  let phasesHTML = '';
-  phases.forEach((ph, pi) => {
-    const phBooks = books.filter(b => getPhase(b) === pi);
-    if (phBooks.length === 0) return;
-
-    phasesHTML += `<div style="margin-bottom:18px;border:2px solid ${ph.border};border-radius:10px;overflow:hidden;">
-      <div style="background:${ph.color};padding:9px 16px;display:flex;align-items:center;gap:10px;">
-        <span style="font-size:13px;font-weight:700;color:white;font-family:'Noto Serif JP',serif;">${ph.label}</span>
-        <span style="font-size:10px;color:rgba(255,255,255,.75);">${ph.range}</span>
-        <span style="font-size:10px;color:rgba(255,255,255,.6);margin-left:auto;">${ph.desc}</span>
+  let html = '';
+  let lastYear = null;
+  sortedMonths.forEach(absMonth => {
+    const yr  = Math.floor(absMonth / 12);
+    const mo  = absMonth % 12;
+    const isNow = absMonth === nowAbs;
+    // 年セパレーター
+    if (yr !== lastYear) {
+      html += `<div style="display:flex;align-items:center;gap:10px;margin:${lastYear?'20px':'4px'} 0 12px;">
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">── ${yr}年 ──</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
       </div>`;
-
-    subs.forEach(sub => {
-      const subBooks = phBooks.filter(b => b.sub === sub);
-      if (subBooks.length === 0) return;
-      const col = subColorMap[sub] || '#333';
-      const lbl = subLabelMap[sub] || sub;
-      phasesHTML += `<div style="padding:10px 14px 10px;border-top:1px solid ${ph.border}33;background:${ph.bg};">
-        <div style="font-size:10px;font-weight:700;color:${col};letter-spacing:.06em;margin-bottom:7px;display:flex;align-items:center;gap:6px;">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};"></span>${lbl}
+      lastYear = yr;
+    }
+    // 月ヘッダー
+    html += `<div style="display:flex;gap:0;margin-bottom:10px;">
+      <div style="width:52px;flex-shrink:0;padding-top:2px;">
+        <div style="font-size:13px;font-weight:700;color:${isNow?'var(--accent)':'var(--ink)'};">${JAmonths[mo]}</div>
+        ${isNow ? '<div style="font-size:9px;font-weight:700;background:var(--accent);color:white;border-radius:4px;padding:1px 5px;display:inline-block;margin-top:2px;">今月</div>' : ''}
+      </div>
+      <div style="flex:1;padding-left:10px;border-left:2px solid ${isNow?'var(--accent)':'var(--border)'};">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">`;
+    byMonth[absMonth].forEach(b => {
+      const col  = subColorMap[b.sub] || '#333';
+      const lvl  = ['','入門','基礎','標準','応用','発展'][b.level] || '';
+      const endAbs  = b.endY * 12 + b.endM;
+      const isUrgent = (endAbs - nowAbs) <= 2;
+      const dlColor  = isUrgent ? '#c84b31' : '#2a7f6f';
+      html += `<div style="background:white;border:1.5px solid ${col}33;border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${col};"></div>
+        <div style="padding-left:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px;">
+            <div style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.4;">${b.name}</div>
+            <span style="flex-shrink:0;font-size:9px;font-weight:700;background:${col};color:white;padding:2px 6px;border-radius:6px;white-space:nowrap;">${b.subLabel}</span>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:10px;background:${col}15;color:${col};padding:1px 7px;border-radius:5px;font-weight:700;">${b.category}</span>
+            <span style="font-size:10px;background:var(--paper);color:var(--text-muted);padding:1px 7px;border-radius:5px;">${lvl}</span>
+          </div>
+          <div style="font-size:10px;color:${dlColor};margin-top:5px;font-weight:${isUrgent?'700':'400'};">
+            ${isUrgent?'🔴':'⚠️'} ${b.endY}年${JAmonths[b.endM]}まで
+          </div>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px;">`;
-      subBooks.forEach(b => {
-        const lvlLabel = ['','入門','基礎','標準','応用','発展'][b.level] || '';
-        const endAbs = b.endY * 12 + b.endM;
-        const isUrgent = (endAbs - startMonthAbs) <= 2;
-        const deadlineColor = isUrgent ? '#c84b31' : '#666';
-        phasesHTML += `<div style="background:white;border:1px solid ${col}33;border-radius:8px;padding:8px 10px;min-width:160px;max-width:220px;flex:1;">
-          <div style="font-size:11px;font-weight:700;color:#1a1a2e;line-height:1.4;margin-bottom:4px;">${b.name}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-            <span style="font-size:9px;background:${col}18;color:${col};padding:1px 6px;border-radius:6px;font-weight:700;">${b.category}</span>
-            <span style="font-size:9px;background:#f0ebe0;color:#666;padding:1px 6px;border-radius:6px;">${lvlLabel}</span>
-          </div>
-          <div style="font-size:9px;color:${deadlineColor};margin-top:4px;font-weight:${isUrgent?'700':'400'};">
-            ${isUrgent?'🔴':'📅'} ${b.endY}年${JAmonths[b.endM]}まで
-          </div>
-        </div>`;
-      });
-      phasesHTML += `</div></div>`;
+      </div>`;
     });
-
-    phasesHTML += `</div>`;
+    html += `</div></div></div>`;
   });
 
-  phasesEl.innerHTML = phasesHTML;
+  // 合計金額フッター
+  html += `<div style="margin-top:16px;padding:12px 16px;background:var(--paper);border-radius:8px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+    <div style="font-size:11px;color:var(--text-muted);">※ 試験月までに完了できる参考書のみ表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。</div>
+    <div style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;">
+      📦 全${books.length}冊 合計目安：<span style="color:var(--accent);">¥${totalPrice.toLocaleString()}</span>
+    </div>
+  </div>`;
+
+  timelineEl.innerHTML = html;
 
   // PDFテーブル用（非表示）
-  tbody.innerHTML = books.map((b, i) => {
-    const lvlLabel = ['','入門','基礎','標準','応用','発展'][b.level];
-    const col = subColorMap[b.sub] || '#333';
-    const endAbs = b.endY * 12 + b.endM;
-    const isUrgent = (endAbs - startMonthAbs) <= 2;
-    const deadlineColor = isUrgent ? '#c84b31' : '#2a7f6f';
-    return `<tr>
-      <td>${subLabelMap[b.sub]||b.sub}</td>
-      <td>${b.name}</td>
-      <td>${b.category}</td>
-      <td>${lvlLabel}</td>
+  if (tbody) {
+    const lvlLabels = ['','入門','基礎','標準','応用','発展'];
+    tbody.innerHTML = books.map(b => `<tr>
+      <td>${b.subLabel}</td><td>${b.name}</td><td>${b.category}</td>
+      <td>${lvlLabels[b.level]||''}</td>
       <td>${b.startY}年${JAmonths[b.startM]}〜</td>
-      <td>${isUrgent?'🔴':'📅'} ${b.endY}年${JAmonths[b.endM]}まで</td>
-    </tr>`;
-  }).join('');
+      <td>${(b.endY*12+b.endM-nowAbs)<=2?'🔴':'📅'} ${b.endY}年${JAmonths[b.endM]}まで</td>
+    </tr>`).join('');
+  }
 }
 
 function filterRoadmapBooks(sub, btn) {
@@ -5104,10 +5118,53 @@ function getWpSubs() {
   return ['英語リーディング','英語リスニング','数学1A','数学2BC','物理','化学'];
 }
 
+// 3ヶ月プラン用：プルダウンを生徒一覧で再描画
+function renderWpStudentSelect() {
+  const sel = document.getElementById('wp-student-sel');
+  if (!sel) return;
+  const gradeLabel = { high1:'高1', high2:'高2', high3:'高3', ronin:'浪人' };
+  const defaults = [
+    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12 },
+    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23 },
+  ];
+  const allSorted = defaults.filter(d => !_allStudents.find(s => s.name === d.name)).concat(_allStudents);
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">── 生徒を選択 ──</option>';
+  allSorted.forEach(s => {
+    const gl = gradeLabel[s.grade] || '';
+    const sl = s.stream === 'rikei' ? '理系' : '文系';
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = `${s.name}（${gl}・${sl}）`;
+    if (currentStudent && s.name === currentStudent.name) opt.selected = true;
+    else if (s.name === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// 3ヶ月プラン用：生徒選択時にcurrentStudentを切り替え
+function wpSelectStudent(name) {
+  if (!name) { wpInit(); return; }
+  const defaults = [
+    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12 },
+    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23 },
+  ];
+  const allSorted = defaults.filter(d => !_allStudents.find(s => s.name === d.name)).concat(_allStudents);
+  const s = allSorted.find(x => x.name === name);
+  if (s) { currentStudent = s; }
+  wpInit();
+}
+
 function wpInit() {
-  const s = currentStudent || {devVal:63, univName:'東京大学', univInfo:{dev:72}};
+  renderWpStudentSelect();
+  const s = currentStudent || {devVal:63, univName:'東京大学', univInfo:{dev:72,cat:'national'}, stream:'bunkei', grade:'high3'};
   const badge = document.getElementById('wp-goal-badge');
   if (badge) badge.textContent = `目標：${s.univName || '東京大学'} 偏差値${s.univInfo?.dev || 72}`;
+  // 選択中の生徒をプルダウンに反映
+  const sel = document.getElementById('wp-student-sel');
+  if (sel && s.name) {
+    for (let o of sel.options) { if (o.value === s.name) { o.selected = true; break; } }
+  }
   buildWpSubjectTabs();
   renderWpWeekGrid();
 }
