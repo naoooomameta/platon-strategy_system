@@ -4258,62 +4258,87 @@ function exportPDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
 
-  const fullHtml = buildReportHTML(s);
-  const name = s.name || '生徒';
+  // ① 既存モーダル削除
+  const old = document.getElementById('_pdf-preview-modal');
+  if (old) old.remove();
 
-  // 既存のモーダルを削除
-  const oldModal = document.getElementById('_pdf-preview-modal');
-  if (oldModal) oldModal.remove();
-
-  // フルスクリーンモーダルを作成
+  // ② モーダルを即座に表示（ローディング状態）
   const modal = document.createElement('div');
   modal.id = '_pdf-preview-modal';
-  modal.style.cssText = [
-    'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;',
-    'font-family:"Noto Sans JP",sans-serif;'
-  ].join('');
+  Object.assign(modal.style, {
+    position:'fixed', top:'0', left:'0', right:'0', bottom:'0',
+    zIndex:'99999', display:'flex', flexDirection:'column', background:'#f5f0e8'
+  });
 
-  // 上部バー
-  const bar = document.createElement('div');
-  bar.id = '_pdf-bar';
-  bar.style.cssText = [
-    'background:#1a1a2e;border-bottom:3px solid #c9a84c;',
-    'padding:10px 24px;display:flex;align-items:center;',
-    'justify-content:space-between;gap:16px;flex-shrink:0;',
-    'box-shadow:0 2px 12px rgba(0,0,0,.4);'
-  ].join('');
-  bar.innerHTML = 
-    '<div>'
-    + '<div style="color:white;font-size:14px;font-weight:700;">'
-    + '📄 合格ロードマップ ｜ ' + name + ' さん'
-    + '</div>'
-    + '<div style="color:#8888aa;font-size:11px;margin-top:2px;">プレビューを確認して「PDFダウンロード」を押してください</div>'
-    + '</div>'
-    + '<div style="display:flex;gap:8px;align-items:center;">'
-    + '<button id="_pdf-dl-btn" onclick="exportPDF_download()" style="padding:10px 24px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">📥 PDFダウンロード</button>'
-    + '<button onclick="document.getElementById(&quot;_pdf-preview-modal&quot;).remove()" style="padding:10px 16px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>'
+  const name = s.name || '生徒';
+
+  modal.innerHTML =
+    '<div id="_pdf-bar" style="background:#1a1a2e;border-bottom:3px solid #c9a84c;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'
+    + '<div><div style="color:#fff;font-size:14px;font-weight:700;">📄 生徒レポート ｜ ' + name + ' さん</div>'
+    + '<div style="color:#aaa;font-size:11px;margin-top:3px;">レポートを生成中...</div></div>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button id="_pdf-dl-btn" disabled style="padding:10px 24px;background:#888;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.6;">📥 PDF ダウンロード</button>'
+    + '<button onclick="document.getElementById(&quot;_pdf-preview-modal&quot;).remove()" style="padding:10px 16px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">✕ 閉じる</button>'
+    + '</div></div>'
+    + '<div id="_pdf-loading" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">'
+    + '<div style="font-size:32px;">⏳</div>'
+    + '<div style="font-size:13px;color:#666;">レポートを生成しています...</div>'
     + '</div>';
 
-  // iframe（プレビュー本体）
-  const iframe = document.createElement('iframe');
-  iframe.id = '_pdf-iframe';
-  iframe.style.cssText = 'flex:1;border:none;width:100%;background:white;';
-
-  modal.appendChild(bar);
-  modal.appendChild(iframe);
   document.body.appendChild(modal);
 
-  // iframeにHTMLを書き込む
-  const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open();
-  doc.write(fullHtml);
-  doc.close();
+  // ③ 非同期でHTML生成・iframe表示（UIをブロックしない）
+  setTimeout(function() {
+    var html, err;
+    try { html = buildReportHTML(s); }
+    catch(e) { err = e; }
 
-  // pdf生成用にHTMLを保存
-  window._pdfHtml   = fullHtml;
-  window._pdfName   = name;
+    if (err || !html) {
+      document.getElementById('_pdf-loading').innerHTML =
+        '<div style="font-size:24px;">❌</div>'
+        + '<div style="font-size:13px;color:#c84b31;">レポート生成に失敗しました</div>'
+        + '<div style="font-size:11px;color:#888;margin-top:6px;">' + (err ? err.message : '不明なエラー') + '</div>';
+      console.error('buildReportHTML failed:', err);
+      return;
+    }
+
+    window._pdfHtml = html;
+    window._pdfName = name;
+
+    // iframe 作成
+    var iframe = document.createElement('iframe');
+    Object.assign(iframe.style, { flex:'1', border:'none', width:'100%', background:'white' });
+
+    // ローディング表示をiframeに置き換え
+    var loading = document.getElementById('_pdf-loading');
+    if (loading) loading.replaceWith(iframe);
+
+    // iframeに書き込み
+    try {
+      if ('srcdoc' in iframe) {
+        iframe.srcdoc = html;
+      } else {
+        var d = iframe.contentDocument || iframe.contentWindow.document;
+        d.open(); d.write(html); d.close();
+      }
+    } catch(e2) { console.error('iframe write error:', e2); }
+
+    // バーのサブテキストとボタンを有効化
+    var bar = document.getElementById('_pdf-bar');
+    if (bar) {
+      bar.querySelector('div > div + div').textContent = 'プレビューを確認して「PDFダウンロード」を押してください';
+    }
+    var dlBtn = document.getElementById('_pdf-dl-btn');
+    if (dlBtn) {
+      dlBtn.disabled = false;
+      dlBtn.style.background = '#c9a84c';
+      dlBtn.style.color = '#1a1a2e';
+      dlBtn.style.cursor = 'pointer';
+      dlBtn.style.opacity = '1';
+      dlBtn.onclick = exportPDF_download;
+    }
+  }, 50);
 }
-
 function exportPDF_download() {
   const btn = document.getElementById('_pdf-dl-btn');
   if (!btn) return;
