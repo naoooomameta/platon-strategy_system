@@ -935,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
         <div class="form-group">
           <label>文理区分</label>
-          <select id="f-stream">
+          <select id="f-stream" onchange="renderSubjectCheckboxes()">
             <option value="bunkei">文系</option>
             <option value="rikei" selected>理系</option>
           </select>
@@ -1180,6 +1180,18 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
           </div>
         </div>
+
+        <!-- 主要対策科目 -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:center;gap:8px;">
+            主要対策科目
+            <span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--paper-dark);padding:2px 8px;border-radius:10px;">チェックした科目の参考書ルートを生成します</span>
+          </label>
+          <div id="subject-checkboxes" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+            <!-- JS で文理に合わせて生成 -->
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">※ 未選択の場合は志望校の入試科目から自動設定します</div>
+        </div>
         <div class="form-group full">
           <label>講師メモ（任意）</label>
           <textarea id="f-memo" placeholder="入塾時の特記事項や学習の課題など..."></textarea>
@@ -1301,9 +1313,23 @@ document.addEventListener('DOMContentLoaded', function(){
         <div>
           <div class="card-title" style="margin-bottom:2px;">📚 参考書ルート（受験月逆算）</div>
           <div style="font-size:11px;color:var(--text-muted);" id="roadmap-books-subtitle">受験月から逆算した推奨参考書スケジュールです</div>
+          <!-- 対策科目バッジ -->
+          <div id="roadmap-subject-badges" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" id="roadmap-books-filter">
-          <!-- 科目フィルタボタン：JS生成 -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <!-- 科目切替ボタン（フィルタ） -->
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;" id="roadmap-books-filter">
+            <!-- 科目フィルタボタン：JS生成 -->
+          </div>
+          <!-- 対策科目を変更して再生成 -->
+          <button onclick="openSubjectEditor()" style="
+            padding:5px 12px;border-radius:16px;border:1.5px dashed var(--border);
+            background:white;color:var(--text-muted);font-size:11px;cursor:pointer;
+            font-family:inherit;font-weight:600;transition:all .15s;white-space:nowrap;
+          " onmouseenter="this.style.borderColor='var(--ink)';this.style.color='var(--ink)'"
+             onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+            ✏️ 対策科目を変更
+          </button>
         </div>
       </div>
       <div id="roadmap-books-timeline">
@@ -2344,6 +2370,7 @@ function showPage(name) {
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
   if (name === 'dashboard') renderStudentList();
+  if (name === 'new-student') setTimeout(renderSubjectCheckboxes, 50);
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
@@ -2505,6 +2532,80 @@ function autoFillExamMonth() {
   document.getElementById('f-exam-month').value = `${y}-02`;
 }
 
+// ===== 主要対策科目チェックボックス生成 =====
+const SUBJECT_OPTIONS = {
+  bunkei: [
+    { key: 'eng', label: '英語',  color: '#2a7f6f', bg: '#e8f5f2' },
+    { key: 'jpn', label: '国語',  color: '#9a7a20', bg: '#fdf8e8' },
+    { key: 'soc', label: '社会',  color: '#2e7d32', bg: '#eaf4ea' },
+    { key: 'math',label: '数学',  color: '#c84b31', bg: '#fdf0ee' },
+  ],
+  rikei: [
+    { key: 'eng', label: '英語',  color: '#2a7f6f', bg: '#e8f5f2' },
+    { key: 'math',label: '数学',  color: '#c84b31', bg: '#fdf0ee' },
+    { key: 'sci', label: '理科',  color: '#7b4fa6', bg: '#f3eefa' },
+    { key: 'jpn', label: '国語',  color: '#9a7a20', bg: '#fdf8e8' },
+    { key: 'soc', label: '社会',  color: '#2e7d32', bg: '#eaf4ea' },
+  ]
+};
+
+function renderSubjectCheckboxes(preChecked) {
+  const wrap   = document.getElementById('subject-checkboxes');
+  if (!wrap) return;
+  const stream = document.getElementById('f-stream')?.value || 'bunkei';
+  const opts   = SUBJECT_OPTIONS[stream] || SUBJECT_OPTIONS.bunkei;
+
+  wrap.innerHTML = opts.map(o => {
+    const checked = preChecked ? preChecked.includes(o.key) : (stream === 'bunkei' ? ['eng','jpn','soc'].includes(o.key) : ['eng','math','sci'].includes(o.key));
+    return `
+    <label id="subj-lbl-${o.key}" onclick="toggleSubjectChip('${o.key}','${o.color}','${o.bg}')" style="
+      display:flex;align-items:center;gap:7px;
+      padding:8px 16px;border-radius:20px;cursor:pointer;
+      border:2px solid ${checked ? o.color : 'var(--border)'};
+      background:${checked ? o.bg : 'white'};
+      transition:all .15s;user-select:none;
+    ">
+      <input type="checkbox" id="subj-${o.key}" value="${o.key}" ${checked ? 'checked' : ''}
+        style="display:none;">
+      <span style="
+        width:14px;height:14px;border-radius:4px;flex-shrink:0;
+        background:${checked ? o.color : '#ddd'};
+        display:flex;align-items:center;justify-content:center;
+        transition:background .15s;
+      " id="subj-box-${o.key}">${checked ? '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</span>
+      <span style="font-size:12px;font-weight:700;color:${checked ? o.color : 'var(--text-muted)'};transition:color .15s;" id="subj-txt-${o.key}">${o.label}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleSubjectChip(key, color, bg) {
+  const cb  = document.getElementById(`subj-${key}`);
+  const lbl = document.getElementById(`subj-lbl-${key}`);
+  const box = document.getElementById(`subj-box-${key}`);
+  const txt = document.getElementById(`subj-txt-${key}`);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  if (cb.checked) {
+    lbl.style.border      = `2px solid ${color}`;
+    lbl.style.background  = bg;
+    box.style.background  = color;
+    box.innerHTML         = '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    txt.style.color       = color;
+  } else {
+    lbl.style.border      = '2px solid var(--border)';
+    lbl.style.background  = 'white';
+    box.style.background  = '#ddd';
+    box.innerHTML         = '';
+    txt.style.color       = 'var(--text-muted)';
+  }
+}
+
+function getCheckedSubjects() {
+  const stream = document.getElementById('f-stream')?.value || 'bunkei';
+  const opts   = SUBJECT_OPTIONS[stream] || SUBJECT_OPTIONS.bunkei;
+  return opts.map(o => o.key).filter(k => document.getElementById(`subj-${k}`)?.checked);
+}
+
 function generateRoadmap() {
   const name     = document.getElementById('f-name').value || '新規生徒';
   const grade    = document.getElementById('f-grade').value;
@@ -2558,8 +2659,12 @@ function generateRoadmap() {
   const univName3 = univData3 ? univData3[0] : univ3;
   const univInfo3 = _univCustom[3] ? _univCustom[3] : univData3 ? univData3[1] : null;
 
+  // 主要対策科目（チェックあり優先、なければ大学DBに委ねる）
+  const targetSubjectKeys = getCheckedSubjects();
+
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
-    univName2, univInfo2, dept2, univName3, univInfo3, dept3 };
+    univName2, univInfo2, dept2, univName3, univInfo3, dept3,
+    targetSubjectKeys: targetSubjectKeys.length > 0 ? targetSubjectKeys : null };
 
   // ダッシュボードに追加
   saveStudentToList(currentStudent);
@@ -2611,10 +2716,10 @@ function renderRoadmap() {
 function renderRoadmapBooks() {
   const s = currentStudent;
   if (!s) return;
-  const tbody = document.getElementById('roadmap-books-tbody');
+  const container = document.getElementById('roadmap-books-timeline');
   const filterWrap = document.getElementById('roadmap-books-filter');
   const subtitle = document.getElementById('roadmap-books-subtitle');
-  if (!tbody) return;
+  if (!container) return;
 
   const subjectToSub = {
     '英語':'eng','数学':'math','国語':'jpn',
@@ -2624,9 +2729,26 @@ function renderRoadmapBooks() {
   const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
   const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
 
-  const targetSubs = [...new Set(
-    (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
-  )];
+  // 主要対策科目チェックがあればそれ優先、なければ大学DBの入試科目から生成
+  const targetSubs = s.targetSubjectKeys && s.targetSubjectKeys.length > 0
+    ? [...new Set(s.targetSubjectKeys)]
+    : [...new Set(
+        (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
+      )];
+
+  // 対策科目バッジ表示
+  const badgeWrap = document.getElementById('roadmap-subject-badges');
+  if (badgeWrap) {
+    const source = s.targetSubjectKeys && s.targetSubjectKeys.length > 0 ? '手動設定' : '志望校DBから自動設定';
+    badgeWrap.innerHTML =
+      `<span style="font-size:10px;color:var(--text-muted);margin-right:4px;align-self:center;">対策科目：</span>` +
+      targetSubs.map(sub => {
+        const col = subColorMap[sub] || '#666';
+        const lbl = subLabelMap[sub] || sub;
+        return `<span style="font-size:10px;font-weight:700;color:${col};background:${col}18;border:1px solid ${col}44;padding:2px 10px;border-radius:12px;">${lbl}</span>`;
+      }).join('') +
+      `<span style="font-size:10px;color:var(--text-muted);background:var(--paper-dark);padding:2px 8px;border-radius:10px;margin-left:4px;">${source}</span>`;
+  }
 
   const lv = s.levelVal || (s.devVal >= 65 ? 4 : s.devVal >= 55 ? 3 : 2);
   const minLv = Math.max(1, lv - 1);
@@ -2686,139 +2808,259 @@ function renderRoadmapBooksRows(books) {
   const container = document.getElementById('roadmap-books-timeline');
   if (!container) return;
 
-  const subColorMap  = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
-  const subBgMap     = { eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa' };
-  const JAmonths     = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  const lvlLabel     = ['','入門','基礎','標準','応用','発展'];
-  const now          = new Date();
-  const startMonth   = now.getFullYear() * 12 + now.getMonth();
+  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const subBgMap    = { eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa' };
+  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
+  const JAmonths    = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const lvlLabel    = ['','入門','基礎','標準','応用','発展'];
+  const now         = new Date();
+  const startMonth  = now.getFullYear() * 12 + now.getMonth();
 
   if (books.length === 0) {
     container.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">該当する参考書がありません</div>`;
     return;
   }
 
-  // 全体期間の算出
-  const minAbsM = startMonth;
-  const maxAbsM = Math.max(...books.map(b => b.endY * 12 + b.endM));
-  const totalMonths = Math.max(1, maxAbsM - minAbsM + 1);
-
-  // 科目ごとにグループ化
+  // 全書籍を「着手月」でソート、同月なら科目順
   const subOrder = ['eng','math','jpn','sci','soc','etc'];
-  const grouped  = {};
-  books.forEach(b => {
-    if (!grouped[b.sub]) grouped[b.sub] = [];
-    grouped[b.sub].push(b);
+  const sorted   = [...books].sort((a, b) => {
+    const aM = a.startY * 12 + a.startM;
+    const bM = b.startY * 12 + b.startM;
+    if (aM !== bM) return aM - bM;
+    return subOrder.indexOf(a.sub) - subOrder.indexOf(b.sub);
   });
-  const activeSubjects = subOrder.filter(s => grouped[s]);
 
-  // 月ラベル（多い場合は2ヶ月おき）
-  const step = totalMonths > 18 ? 3 : totalMonths > 10 ? 2 : 1;
-  const monthTicks = [];
-  for (let i = 0; i <= totalMonths; i += step) {
-    const absM = minAbsM + i;
-    const yr = Math.floor(absM / 12);
-    const mo = absM % 12;
-    monthTicks.push({ label: `${yr}'${JAmonths[mo]}`, pct: (i / totalMonths * 100).toFixed(2) });
-  }
-  // 必ず最終月を追加
-  const lastAbsM = minAbsM + totalMonths;
-  const lastLabelExists = monthTicks.some(t => parseFloat(t.pct) >= 99);
-  if (!lastLabelExists) {
-    monthTicks.push({ label: `${Math.floor(lastAbsM/12)}'${JAmonths[lastAbsM%12]}`, pct: '100.00' });
-  }
-
-  const LABEL_W = 52; // 科目ラベル幅(px)
-
-  let html = `
-  <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;padding-left:${LABEL_W}px;">
-    📅 受験月までの参考書スケジュール
-  </div>
-  <div style="overflow-x:auto;padding-bottom:4px;">
-  <div style="min-width:560px;">
-
-  <!-- 月ラベル行 -->
-  <div style="display:flex;margin-left:${LABEL_W}px;margin-bottom:4px;position:relative;height:20px;">`;
-
-  monthTicks.forEach(t => {
-    html += `<div style="position:absolute;left:${t.pct}%;transform:translateX(-50%);font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;white-space:nowrap;">${t.label}</div>`;
+  // 月ごとにグループ化
+  const byMonth = new Map();
+  sorted.forEach(b => {
+    const key = `${b.startY}-${b.startM}`;
+    if (!byMonth.has(key)) byMonth.set(key, { year: b.startY, month: b.startM, books: [] });
+    byMonth.get(key).books.push(b);
   });
-  html += `</div>`;
 
-  // 月グリッド縦線
-  const gridLines = monthTicks.map(t =>
-    `<div style="position:absolute;top:0;bottom:0;left:${t.pct}%;width:1px;background:var(--border);opacity:.5;pointer-events:none;"></div>`
-  ).join('');
+  // 受験月
+  const maxAbsM = Math.max(...books.map(b => b.endY * 12 + b.endM));
+  const examYear = Math.floor((maxAbsM + 1) / 12);
+  const examMo   = (maxAbsM + 1) % 12;
 
-  // 科目レーン
-  activeSubjects.forEach((sub, si) => {
-    const col   = subColorMap[sub];
-    const bg    = subBgMap[sub];
-    const bks   = grouped[sub];
-    const label = bks[0].subLabel;
+  let html = `<div style="display:flex;flex-direction:column;gap:0;">`;
 
-    html += `
-    <div style="display:flex;align-items:stretch;margin-bottom:${si < activeSubjects.length-1 ? '10' : '4'}px;">
-      <!-- 科目ラベル -->
-      <div style="width:${LABEL_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding-right:8px;">
-        <div style="writing-mode:vertical-rl;font-size:11px;font-weight:700;color:${col};letter-spacing:.05em;">${label}</div>
-      </div>
-      <!-- ガントレーン -->
-      <div style="flex:1;position:relative;background:var(--paper-dark);border-radius:6px;min-height:54px;">
-        ${gridLines}`;
+  let prevYear = null;
 
-    bks.forEach((b, bi) => {
-      const sAbs  = b.startY * 12 + b.startM;
-      const eAbs  = b.endY   * 12 + b.endM;
-      const left  = ((sAbs - minAbsM) / totalMonths * 100).toFixed(2);
-      const width = Math.max(2, ((eAbs - sAbs + 1) / totalMonths * 100)).toFixed(2);
-      const isUrgent = (eAbs - startMonth) <= 2;
-      const isDone   = eAbs < startMonth;
-      const barCol   = isDone ? '#bbb' : isUrgent ? '#c84b31' : col;
-      const barBg    = isDone ? '#e8e8e8' : isUrgent ? '#fdecea' : bg;
-      const lv       = lvlLabel[b.level] || '';
-      const tip      = `${b.name}｜${b.category}｜${lv}｜${b.startY}年${JAmonths[b.startM]}〜${b.endY}年${JAmonths[b.endM]}`;
+  byMonth.forEach(({ year, month, books: mBooks }) => {
+    const absM      = year * 12 + month;
+    const isCurrent = absM === startMonth;
+    const isPast    = absM < startMonth;
 
+    // 年が変わったら年ヘッダーを挿入
+    if (year !== prevYear) {
+      prevYear = year;
       html += `
-        <div title="${tip}"
-          style="position:absolute;top:6px;left:${left}%;width:${width}%;min-width:6px;
-            background:${barBg};border:1.5px solid ${barCol};border-radius:5px;
-            padding:4px 7px;box-sizing:border-box;overflow:hidden;cursor:default;
-            transition:box-shadow .15s,transform .1s;z-index:${bi+1};"
-          onmouseenter="this.style.boxShadow='0 3px 12px rgba(0,0,0,.18)';this.style.zIndex=99;this.style.transform='translateY(-1px)'"
-          onmouseleave="this.style.boxShadow='none';this.style.zIndex=${bi+1};this.style.transform='none'">
-          <div style="font-size:10px;font-weight:700;color:${barCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${isUrgent?'🔴 ':''}${b.name}</div>
-          <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:nowrap;overflow:hidden;">
-            <span style="font-size:9px;background:${barCol}22;color:${barCol};padding:1px 5px;border-radius:8px;white-space:nowrap;flex-shrink:0;">${b.category}</span>
-            <span style="font-size:9px;color:${barCol};opacity:.8;white-space:nowrap;flex-shrink:0;">${lv}</span>
-          </div>
-        </div>`;
-    });
+      <div style="display:flex;align-items:center;gap:10px;margin:${byMonth.keys().next().value === `${year}-${month}` ? '0' : '12px'} 0 8px;">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;white-space:nowrap;">── ${year}年 ──</div>
+      </div>`;
+    }
 
+    // 月行
     html += `
+    <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">
+      <!-- 月ラベル -->
+      <div style="width:40px;flex-shrink:0;padding-top:10px;text-align:right;">
+        <div style="
+          font-size:${isCurrent ? '13' : '11'}px;
+          font-weight:${isCurrent ? '700' : '500'};
+          color:${isCurrent ? 'var(--gold)' : isPast ? 'var(--text-muted)' : 'var(--ink)'};
+          opacity:${isPast ? '.5' : '1'};
+        ">${JAmonths[month]}</div>
+        ${isCurrent ? `<div style="font-size:9px;color:var(--gold);font-weight:700;margin-top:1px;">今月</div>` : ''}
+      </div>
+
+      <!-- 縦線 + カード群 -->
+      <div style="display:flex;gap:0;flex:1;align-items:flex-start;">
+        <!-- 縦線ドット -->
+        <div style="display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;padding-top:12px;">
+          <div style="
+            width:${isCurrent ? '12' : '8'}px;
+            height:${isCurrent ? '12' : '8'}px;
+            border-radius:50%;
+            background:${isCurrent ? 'var(--gold)' : isPast ? '#ccc' : 'var(--ink)'};
+            flex-shrink:0;
+            box-shadow:${isCurrent ? '0 0 0 3px rgba(201,168,76,0.25)' : 'none'};
+          "></div>
+          <div style="width:2px;flex:1;background:var(--border);margin-top:3px;min-height:20px;"></div>
+        </div>
+
+        <!-- カードグリッド -->
+        <div style="flex:1;display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 4px 10px;">
+          ${mBooks.map(b => {
+            const col      = subColorMap[b.sub];
+            const bg       = subBgMap[b.sub];
+            const eAbs     = b.endY * 12 + b.endM;
+            const isUrgent = (eAbs - startMonth) <= 2 && !isPast;
+            const isDone   = eAbs < startMonth;
+            const lv       = lvlLabel[b.level] || '';
+            const barCol   = isDone ? '#999' : isUrgent ? '#c84b31' : col;
+            const cardBg   = isDone ? '#f4f4f4' : isUrgent ? '#fff5f4' : bg;
+            const deadline = `${b.endY}年${JAmonths[b.endM]}まで`;
+
+            return `
+            <div style="
+              background:${cardBg};
+              border:1.5px solid ${isDone ? '#ddd' : isUrgent ? '#c84b31' : col + '88'};
+              border-left:4px solid ${isDone ? '#bbb' : barCol};
+              border-radius:8px;
+              padding:9px 12px;
+              width:calc(50% - 8px);
+              min-width:180px;
+              box-sizing:border-box;
+              opacity:${isDone ? '.6' : '1'};
+            ">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px;">
+                <div style="font-size:12px;font-weight:700;color:${isDone ? '#888' : 'var(--ink)'};line-height:1.4;flex:1;">${isUrgent ? '🔴 ' : isDone ? '✓ ' : ''}${b.name}</div>
+                <span style="
+                  font-size:9px;font-weight:700;
+                  background:${barCol}18;color:${barCol};
+                  padding:2px 7px;border-radius:10px;
+                  white-space:nowrap;flex-shrink:0;
+                  line-height:1.6;
+                ">${subLabelMap[b.sub]}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:10px;color:${isDone?'#aaa':barCol};background:${barCol}12;padding:1px 7px;border-radius:8px;">${b.category}</span>
+                ${lv ? `<span style="font-size:10px;color:var(--text-muted);">${lv}</span>` : ''}
+                <span style="font-size:10px;color:${isUrgent && !isDone ? '#c84b31' : 'var(--text-muted)'};margin-left:auto;white-space:nowrap;">${isUrgent && !isDone ? '⚠️ ' : ''}${deadline}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
     </div>`;
   });
 
+  // 受験月マーカー
   html += `
-  </div><!-- min-width -->
-  </div><!-- overflow -->
+    <div style="display:flex;gap:12px;align-items:center;margin-top:4px;">
+      <div style="width:40px;flex-shrink:0;text-align:right;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);">${JAmonths[examMo]}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;flex:1;">
+        <div style="display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;">
+          <div style="width:16px;height:16px;border-radius:50%;background:var(--accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            <div style="font-size:8px;">🎯</div>
+          </div>
+        </div>
+        <div style="margin-left:10px;font-size:12px;font-weight:700;color:var(--accent);font-family:'Noto Serif JP',serif;">
+          ${examYear}年${JAmonths[examMo]} 受験本番
+        </div>
+      </div>
+    </div>`;
+
+  html += `</div>
 
   <!-- 凡例 -->
-  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
-      <div style="width:14px;height:10px;border-radius:2px;background:#e8f5f2;border:1.5px solid #2a7f6f;"></div>通常
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);align-items:center;">
+    <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);">
+      <div style="width:10px;height:14px;border-radius:2px;border-left:4px solid #2a7f6f;background:#e8f5f2;"></div>通常
     </div>
-    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
-      <div style="width:14px;height:10px;border-radius:2px;background:#fdecea;border:1.5px solid #c84b31;"></div>🔴 直近2ヶ月以内に完了
+    <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);">
+      <div style="width:10px;height:14px;border-radius:2px;border-left:4px solid #c84b31;background:#fff5f4;"></div>🔴 直近2ヶ月で完了必須
     </div>
-    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
-      <div style="width:14px;height:10px;border-radius:2px;background:#e8e8e8;border:1.5px solid #bbb;"></div>完了済み
+    <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);">
+      <div style="width:10px;height:14px;border-radius:2px;border-left:4px solid #bbb;background:#f4f4f4;"></div>✓ 完了済み
     </div>
-    <div style="margin-left:auto;font-size:10px;color:var(--text-muted);">📌 カードにマウスを合わせると詳細が表示されます</div>
   </div>`;
 
   container.innerHTML = html;
+}
+
+// ===== 対策科目クイック変更モーダル =====
+function openSubjectEditor() {
+  const s = currentStudent;
+  if (!s) { showToast('先にロードマップを生成してください'); return; }
+
+  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const subBgMap    = { eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa' };
+  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
+  const allSubs = s.stream === 'rikei'
+    ? ['eng','math','sci','jpn','soc']
+    : ['eng','jpn','soc','math','sci'];
+
+  const current = s.targetSubjectKeys || [];
+
+  const existing = document.getElementById('subject-editor-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'subject-editor-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;width:460px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="font-family:'Noto Serif JP',serif;font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px;">✏️ 対策科目を変更</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">参考書ルートを生成する科目を選択してください</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;" id="se-chips">
+        ${allSubs.map(sub => {
+          const checked = current.length === 0
+            ? (s.stream === 'rikei' ? ['eng','math','sci'].includes(sub) : ['eng','jpn','soc'].includes(sub))
+            : current.includes(sub);
+          const col = subColorMap[sub];
+          const bg  = subBgMap[sub];
+          return `
+          <label id="se-lbl-${sub}" onclick="seToggle('${sub}','${col}','${bg}')" style="
+            display:flex;align-items:center;gap:8px;
+            padding:10px 18px;border-radius:20px;cursor:pointer;
+            border:2px solid ${checked ? col : 'var(--border)'};
+            background:${checked ? bg : 'white'};
+            transition:all .15s;user-select:none;">
+            <input type="checkbox" id="se-cb-${sub}" value="${sub}" ${checked?'checked':''} style="display:none;">
+            <span id="se-box-${sub}" style="width:14px;height:14px;border-radius:4px;background:${checked?col:'#ddd'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;">
+              ${checked ? '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+            </span>
+            <span id="se-txt-${sub}" style="font-size:13px;font-weight:700;color:${checked?col:'var(--text-muted)'};transition:color .15s;">${subLabelMap[sub]}</span>
+          </label>`;
+        }).join('')}
+      </div>
+
+      <div style="font-size:11px;color:var(--text-muted);background:var(--paper-dark);border-radius:8px;padding:10px 14px;margin-bottom:20px;">
+        💡 科目を変更すると参考書ルートが即時更新されます。未選択の場合は志望校の入試科目から自動設定します。
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button onclick="document.getElementById('subject-editor-modal').remove()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:white;color:var(--text-muted);font-size:13px;cursor:pointer;font-family:inherit;">キャンセル</button>
+        <button onclick="applySubjectEditorChanges()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--ink);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ 反映してルートを再生成</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function seToggle(sub, color, bg) {
+  const cb  = document.getElementById(`se-cb-${sub}`);
+  const lbl = document.getElementById(`se-lbl-${sub}`);
+  const box = document.getElementById(`se-box-${sub}`);
+  const txt = document.getElementById(`se-txt-${sub}`);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  if (cb.checked) {
+    lbl.style.border = `2px solid ${color}`; lbl.style.background = bg;
+    box.style.background = color;
+    box.innerHTML = '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    txt.style.color = color;
+  } else {
+    lbl.style.border = '2px solid var(--border)'; lbl.style.background = 'white';
+    box.style.background = '#ddd'; box.innerHTML = ''; txt.style.color = 'var(--text-muted)';
+  }
+}
+
+function applySubjectEditorChanges() {
+  const allSubs = ['eng','math','jpn','sci','soc','etc'];
+  const selected = allSubs.filter(sub => document.getElementById(`se-cb-${sub}`)?.checked);
+  if (currentStudent) {
+    currentStudent.targetSubjectKeys = selected.length > 0 ? selected : null;
+  }
+  document.getElementById('subject-editor-modal')?.remove();
+  renderRoadmapBooks();
+  showToast('対策科目を更新して参考書ルートを再生成しました ✓');
 }
 
 function filterRoadmapBooks(sub, btn) {
@@ -3490,9 +3732,25 @@ function printRoadmapPDF() {
   const timelineHTML = window._pdfTimelineHTML || '';
 
 
-  // 参考書テーブル取得
-  const booksTableEl = document.getElementById('roadmap-books-tbody');
-  const booksHTML = booksTableEl ? booksTableEl.innerHTML : '';
+  // 参考書テーブル取得（タイムラインに変わったので _roadmapBooksAll から再生成）
+  const _booksData = window._roadmapBooksAll || [];
+  const _JAm = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const _subCol = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const _lvl = ['','入門','基礎','標準','応用','発展'];
+  const _nowM = new Date().getFullYear() * 12 + new Date().getMonth();
+  const booksHTML = _booksData.map((b, i) => {
+    const col = _subCol[b.sub] || '#333';
+    const eAbs = b.endY * 12 + b.endM;
+    const urgent = (eAbs - _nowM) <= 2;
+    return `<tr style="border-bottom:1px solid #eee;${i%2?'background:#fafaf8;':''}">
+      <td style="padding:5px 8px;"><span style="background:${col}18;color:${col};font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;">${b.subLabel}</span></td>
+      <td style="padding:5px 8px;font-size:11px;font-weight:500;">${b.name}</td>
+      <td style="padding:5px 8px;font-size:10px;color:#666;">${b.category}</td>
+      <td style="padding:5px 8px;font-size:10px;color:#666;">${_lvl[b.level]||''}</td>
+      <td style="padding:5px 8px;font-size:10px;color:#888;white-space:nowrap;">${b.startY}年${_JAm[b.startM]}〜</td>
+      <td style="padding:5px 8px;white-space:nowrap;"><span style="font-size:10px;font-weight:700;color:${urgent?'#c84b31':'#2a7f6f'};">${urgent?'🔴 ':'📅 '}${b.endY}年${_JAm[b.endM]}まで</span></td>
+    </tr>`;
+  }).join('');
 
   // 偏差値ギャップ取得
   const gapEl = document.getElementById('gap-stats');
@@ -3681,9 +3939,11 @@ function exportPDF() {
     '理科':'sci','理科2科目':'sci','社会':'soc',
     '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
   };
-  const targetSubs = [...new Set(
-    (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
-  )];
+  const targetSubs = s.targetSubjectKeys && s.targetSubjectKeys.length > 0
+    ? [...new Set(s.targetSubjectKeys)]
+    : [...new Set(
+        (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
+      )];
 
   // レベル幅：levelVal-1 〜 levelVal+1 の範囲（ただし1〜5内）
   const _lv2 = s.levelVal || (s.devVal >= 65 ? 4 : s.devVal >= 55 ? 3 : 2);
