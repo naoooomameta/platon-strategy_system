@@ -1225,7 +1225,6 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
-        <button class="btn btn-secondary" onclick="exportPDF()" style="font-size:13px;">📄 生徒レポート</button>
         <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
         <button class="btn btn-teal" onclick="showToast('ロードマップを保存しました')">💾 保存する</button>
       </div>
@@ -3276,7 +3275,7 @@ function printRoadmapPDF() {
 
     // 上段：総合サマリー（3列）
     const gapColor = gap > 10 ? '#c84b31' : gap > 5 ? '#c9a84c' : '#2a7f6f';
-    let h = '<div style="display:table;width:100%;border-collapse:separate;border-spacing:0;margin-bottom:18px;">';
+    let h = '<div style="display:table;width:100%;border-collapse:separate;border-spacing:0;margin-bottom:12px;">';
     // 総合ギャップ
     h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#fdf8f0,#f0e8d8);border-radius:10px 0 0 10px;border:1px solid #e0d4c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">総合ギャップ</div>'
@@ -3302,13 +3301,13 @@ function printRoadmapPDF() {
     h += '</div>';
 
     // 科目別バー（横幅いっぱい）
-    h += '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:14px;text-transform:uppercase;">科目別：現状 vs 目標偏差値</div>';
+    h += '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:10px;text-transform:uppercase;">科目別：現状 vs 目標偏差値</div>';
     subjects.forEach(function(sub, si) {
       const diff = sub.target - sub.current;
       const col = barColors[si % barColors.length];
       const curP = toP(sub.current), tarP = toP(sub.target);
       const gapLeft = Math.min(curP, tarP), gapW = Math.abs(tarP - curP);
-      h += '<div style="margin-bottom:16px;">';
+      h += '<div style="margin-bottom:12px;">';
       h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
         + '<span style="font-size:14px;font-weight:700;color:#1a1a2e;min-width:44px;">'+ sub.name +'</span>'
         + '<div style="display:flex;align-items:baseline;gap:6px;">'
@@ -3465,9 +3464,9 @@ function printRoadmapPDF() {
 
   // ━━━━━ セクションタイトル共通スタイル ━━━━━
   const secTitle = function(icon, text) {
-    return '<div style="display:flex;align-items:center;gap:10px;margin:22px 0 12px;">'
-      + '<div style="width:4px;height:28px;background:linear-gradient(180deg,#c9a84c,#c84b31);border-radius:2px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-      + '<span style="font-family:\'Noto Serif JP\',serif;font-size:15px;font-weight:700;color:#1a1a2e;letter-spacing:.04em;">'+ icon +' '+ text +'</span>'
+    return '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;">'
+      + '<div style="width:4px;height:22px;background:linear-gradient(180deg,#c9a84c,#c84b31);border-radius:2px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+      + '<span style="font-family:\'Noto Serif JP\',serif;font-size:14px;font-weight:700;color:#1a1a2e;letter-spacing:.04em;">'+ icon +' '+ text +'</span>'
       + '<div style="flex:1;height:1px;background:linear-gradient(90deg,#d8d0c0,transparent);margin-left:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
       + '</div>';
   };
@@ -3479,12 +3478,12 @@ function printRoadmapPDF() {
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
     + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:12px;}'
-    + '.card{background:white;border-radius:10px;padding:16px 18px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;}'
-    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:10mm 12mm;size:A4;}}'
+    + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:7mm 10mm;size:A4;}}'
     + '</style></head><body>'
 
     // ── ヘッダー
-    + '<div style="background-color:#1a1a2e;color:white;padding:14px 28px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div style="background-color:#1a1a2e;color:white;padding:10px 22px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;">PLATON EXAM STRATEGY MANAGEMENT</div>'
     + '<div style="font-family:\'Noto Serif JP\',serif;font-size:20px;font-weight:700;color:white;margin-top:3px;letter-spacing:.04em;">合格ロードマップ</div></div>'
     + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.65);">'
@@ -3493,7 +3492,7 @@ function printRoadmapPDF() {
     + '<div>発行日：' + today + '</div></div></div>'
 
     // ── 生徒情報バンド
-    + '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:12px 28px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:9px 22px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div style="display:table-cell;width:25%;padding-right:12px;vertical-align:top;">'
     + '<div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-bottom:3px;">生徒氏名</div>'
     + '<div style="font-size:15px;font-weight:700;color:white;font-family:\'Noto Serif JP\',serif;">' + s.name + '</div>'
@@ -3512,7 +3511,7 @@ function printRoadmapPDF() {
     + '<div style="font-size:9px;color:#c9a84c;margin-top:3px;">' + (s.goalYear||'') + '年' + (s.goalMonth!=null?s.goalMonth+1:2) + '月 受験</div></div>'
     + '</div>'
 
-    + '<div style="max-width:960px;margin:0 auto;padding:18px 24px;">'
+    + '<div style="max-width:960px;margin:0 auto;padding:12px 18px;">'
 
     + secTitle('📅', '月別ロードマップ（タイムライン）')
     + '<div class="card">' + timelineHTML + '</div>'
