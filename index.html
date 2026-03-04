@@ -1255,15 +1255,16 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
 
-    <!-- TABS -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('timeline')">📅 タイムライン</button>
-      <button class="tab" onclick="switchTab('gap')">📊 偏差値ギャップ</button>
-    </div>
+    <!-- TIMELINE + GAP 統合カード -->
+    <div class="card fade-in" style="margin-bottom:1.5rem;">
 
-    <!-- TAB: TIMELINE -->
-    <div id="tab-timeline">
-      <div class="card fade-in">
+      <!-- タイムライン セクション -->
+      <div style="margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--border);">
+          <span style="font-size:16px;">📅</span>
+          <div class="card-title" style="margin:0;">月別ロードマップ（タイムライン）</div>
+        </div>
+
         <div class="card-title">月別ロードマップ（タイムライン）</div>
         <div class="timeline-wrapper">
           <div class="timeline" id="timeline-content">
@@ -1325,12 +1326,18 @@ document.addEventListener('DOMContentLoaded', function(){
       <div style="margin-top:10px;font-size:10px;color:var(--text-muted);">
         ※ 試験月までに完了できる参考書のみ表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。
       </div>
-    </div>
+      </div>
 
-    <!-- TAB: TEXTBOOKS -->
-    <!-- TAB: GAP -->
-    <div id="tab-gap" style="display:none;">
-      <div class="card fade-in">
+      <!-- 区切り線 -->
+      <div style="border-top:2px dashed var(--border);margin:0 -14px 1.5rem;"></div>
+
+      <!-- 偏差値ギャップ セクション -->
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--border);">
+          <span style="font-size:16px;">📊</span>
+          <div class="card-title" style="margin:0;">偏差値ギャップ分析</div>
+        </div>
+
         <div class="card-title">偏差値ギャップ分析</div>
         <div class="gap-panel">
           <div>
@@ -1350,6 +1357,7 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
       </div>
 
+    </div>
       <!-- ===== 塾長からの戦略アドバイス ===== -->
       <div class="card fade-in fade-in-delay-1" style="margin-top:1.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
@@ -2355,15 +2363,7 @@ function showPage(name) {
 }
 
 function switchTab(name) {
-  ['timeline','gap'].forEach(t => {
-    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
-  });
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['timeline','gap'][i] === name);
-  });
-  // 参考書ルートカードはタイムライン時のみ表示
-  const booksCard = document.getElementById('roadmap-books-card');
-  if (booksCard) booksCard.style.display = name === 'timeline' ? 'block' : 'none';
+  // タブ統合済みのため不要（互換性のため残す）
   if (name === 'gap') renderGapChart();
 }
 
@@ -2612,6 +2612,7 @@ function renderRoadmap() {
 
   renderTimeline();
   renderGapStats();
+  renderGapChart();
   renderRoadmapBooks();
 }
 
