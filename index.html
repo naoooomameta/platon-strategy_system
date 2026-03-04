@@ -1238,7 +1238,6 @@ document.addEventListener('DOMContentLoaded', function(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="exportPDF()" style="font-size:13px;">📄 生徒レポート</button>
-        <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
         <button class="btn btn-teal" onclick="showToast('ロードマップを保存しました')">💾 保存する</button>
       </div>
     </div>
@@ -3933,77 +3932,27 @@ function exportPDF() {
     </div>`;
   });
 
-  // ── 参考書ルート：受験月から逆算してスケジュール付き全件表示 ──
+  // ── 参考書ルート：画面表示のタイムラインをそのままキャプチャ ──
+  const timelineEl = document.getElementById('roadmap-books-timeline');
+  const timelineCapture = timelineEl ? timelineEl.innerHTML : '<p style="color:#999;font-size:12px;">参考書ルートが生成されていません</p>';
+
+  // 対策科目バッジ
   const subjectToSub = {
     '英語':'eng','数学':'math','国語':'jpn',
     '理科':'sci','理科2科目':'sci','社会':'soc',
     '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
   };
+  const _subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const _subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
   const targetSubs = s.targetSubjectKeys && s.targetSubjectKeys.length > 0
     ? [...new Set(s.targetSubjectKeys)]
     : [...new Set(
         (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
       )];
+  const subjectBadgesHtml = targetSubs.map(sub =>
+    `<span style="font-size:10px;font-weight:700;color:${_subColorMap[sub]};background:${_subColorMap[sub]}18;border:1px solid ${_subColorMap[sub]}44;padding:2px 10px;border-radius:12px;">${_subLabelMap[sub]}</span>`
+  ).join(' ');
 
-  // レベル幅：levelVal-1 〜 levelVal+1 の範囲（ただし1〜5内）
-  const _lv2 = s.levelVal || (s.devVal >= 65 ? 4 : s.devVal >= 55 ? 3 : 2);
-  const minLv = Math.max(1, _lv2 - 1);
-  const maxLv = Math.min(5, _lv2 + 2);
-
-  // 科目ごとに全候補取得（levelとstreamで絞り、levelの昇順で並べる）
-  const booksBySub = {};
-  targetSubs.forEach(sub => {
-    booksBySub[sub] = ALL_TEXTBOOKS.filter(b =>
-      b.sub === sub &&
-      (b.stream === 'both' || b.stream === s.stream) &&
-      b.level >= minLv && b.level <= maxLv
-    ).sort((a, b2) => a.level - b2.level);
-  });
-
-  // 試験月（goalYear/goalMonth）から逆算して各書籍の着手月・完了月を計算
-  const now2 = new Date();
-  const startMonth = now2.getFullYear() * 12 + now2.getMonth(); // 絶対月数
-  const examMonth  = (s.goalYear || now2.getFullYear() + 1) * 12 + (s.goalMonth ?? 1);
-  const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33));
-
-  // 科目ごとに累積週を管理して着手月を割り当て
-  const scheduledBooks = [];
-  targetSubs.forEach(sub => {
-    let cumulativeWeeks = 0;
-    (booksBySub[sub] || []).forEach(b => {
-      const startAbsWeek = cumulativeWeeks;
-      const endAbsWeek   = cumulativeWeeks + b.dur;
-      if (endAbsWeek > totalWeeks) return; // 試験までに終わらないものはスキップ
-      // 開始月・終了月を計算
-      const startAbs = startMonth + Math.floor(startAbsWeek / 4.33);
-      const endAbs   = startMonth + Math.floor((endAbsWeek - 1) / 4.33);
-      const sY = Math.floor(startAbs / 12), sM = startAbs % 12;
-      const eY = Math.floor(endAbs   / 12), eM = endAbs   % 12;
-      scheduledBooks.push({ ...b, startY: sY, startM: sM, endY: eY, endM: eM });
-      cumulativeWeeks = endAbsWeek;
-    });
-  });
-
-  const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  const bookRows = scheduledBooks.map((b, i) => {
-    const lvlLabel = ['','入門','基礎','標準','応用','発展'][b.level];
-    const subColor = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' }[b.sub] || '#333';
-    const deadline = `${b.endY}年${JAmonths[b.endM]}まで`;
-    const startLabel = `${b.startY}年${JAmonths[b.startM]}〜`;
-    const isUrgent = (b.endY * 12 + b.endM) - startMonth <= 2;
-    return `<tr style="border-bottom:1px solid #eee;${i % 2 === 0 ? '' : 'background:#fafaf8;'}">
-      <td style="padding:6px 8px;"><span style="background:${subColor}18;color:${subColor};font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;">${b.subLabel}</span></td>
-      <td style="padding:6px 8px;font-size:12px;font-weight:500;">${b.name}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#666;">${b.category}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#666;">${lvlLabel}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#888;">${startLabel}</td>
-      <td style="padding:6px 8px;">
-        <span style="font-size:11px;font-weight:700;color:${isUrgent ? '#c84b31' : '#2a7f6f'};white-space:nowrap;">
-          📅 ${deadline}
-        </span>
-      </td>
-    </tr>`;
-  }).join('');
 
   const gapData = s.stream === 'rikei'
     ? [['英語', s.devVal-3, s.univInfo.dev-2],['数学',s.devVal+2,s.univInfo.dev+1],['国語',s.devVal-5,s.univInfo.dev-5],['物理',s.devVal-1,s.univInfo.dev-2]]
@@ -4041,6 +3990,9 @@ function exportPDF() {
   .section{margin-bottom:24px;}
   .section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;}
   .advice-box{background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:14px 18px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;white-space:pre-wrap;}
+  :root{--ink:#1a1a2e;--paper:#f5f0e8;--paper-dark:#ede8dc;--accent:#c84b31;--gold:#c9a84c;--teal:#2a7f6f;--text:#2c2c3e;--text-muted:#6b6b80;--border:#d8d0c0;}
+  .timeline-capture{font-size:11px;overflow-x:auto;}
+  .timeline-capture *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .task-table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:10px;overflow:hidden;}
   .subjects-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .book-table{width:100%;border-collapse:collapse;}
@@ -4153,11 +4105,9 @@ ${(s.univName2 || s.univName3) ? `
     <table class="task-table"><tbody>${tasksHtml}</tbody></table>
   </div>` : ''}
   <div class="section">
-    <div class="section-title">📚 配当参考書ルート</div>
-    <table class="book-table">
-      <thead><tr><th>科目</th><th>参考書名</th><th>カテゴリ</th><th>レベル</th><th>着手時期</th><th>完了期限</th></tr></thead>
-      <tbody>${bookRows}</tbody>
-    </table>
+    <div class="section-title">📚 参考書ルート（受験月逆算）</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;"><span style="font-size:10px;color:#6b6b80;align-self:center;">対策科目：</span>${subjectBadgesHtml}</div>
+    <div class="timeline-capture">${timelineCapture}</div>
   </div>
   <div class="footer">
     <div style="font-size:10px;color:#aaa;">プラトン 大学受験 戦略管理システム｜本レポートは生徒指導用の内部資料です</div>
