@@ -902,11 +902,11 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="card-title">統計</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div style="text-align:center;padding:12px;background:var(--paper);border-radius:8px;">
-              <div style="font-size:28px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;">2</div>
+              <div id="stat-student-count" style="font-size:28px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;">0</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">在籍生徒数</div>
             </div>
             <div style="text-align:center;padding:12px;background:var(--paper);border-radius:8px;">
-              <div style="font-size:28px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace;">2</div>
+              <div id="stat-roadmap-count" style="font-size:28px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace;">0</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">稼働中ロードマップ</div>
             </div>
           </div>
@@ -2342,21 +2342,38 @@ let deviationChart = null;
 
 // ===== NAVIGATION =====
 // ===== 生徒リスト管理 =====
-let _allStudents = [];
+function _loadStudents() {
+  try {
+    const raw = localStorage.getItem('platon_students');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function _persistStudents() {
+  try { localStorage.setItem('platon_students', JSON.stringify(_allStudents)); } catch {}
+}
+let _allStudents = _loadStudents();
 
 function saveStudentToList(s) {
-  const exists = _allStudents.find(x => x.name === s.name);
-  if (!exists) _allStudents.push(s);
+  const idx = _allStudents.findIndex(x => x.name === s.name);
+  if (idx >= 0) {
+    _allStudents[idx] = s;  // 既存生徒は上書き更新
+  } else {
+    _allStudents.push(s);
+  }
+  _persistStudents();
   renderStudentList();
 }
 
+function deleteStudent(name) {
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  _allStudents = _allStudents.filter(s => s.name !== name);
+  _persistStudents();
+  renderStudentList();
+  showToast(`${name} を削除しました`);
+}
+
 function loadStudentFromList(name) {
-  const now = new Date();
-  const _defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national',subjects:['英語','数学','理科2科目','国語']}, devVal:68, months:12, enrolled:'2024-04', levelVal:3, goalYear: now.getMonth()>=3 ? now.getFullYear()+1 : now.getFullYear(), goalMonth:1 },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private',subjects:['英語','国語','社会']}, devVal:56, months:23, enrolled:'2024-09', levelVal:2, goalYear: now.getFullYear()+2, goalMonth:1 },
-  ];
-  const s = _allStudents.find(x => x.name === name) || _defaults.find(x => x.name === name);
+  const s = _allStudents.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
   currentStudent = s;
   renderRoadmap();
@@ -2367,12 +2384,15 @@ function renderStudentList() {
   var el = document.getElementById('student-list-dynamic');
   if (!el) return;
   var gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' };
-  var defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12, enrolled:'2024-04' },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23, enrolled:'2024-09' },
-  ];
-  var allSorted = defaults.filter(function(d){ return !_allStudents.find(function(s){ return s.name === d.name; }); }).concat(_allStudents);
-  var html = allSorted.map(function(s) {
+
+  if (_allStudents.length === 0) {
+    el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">まだ生徒が登録されていません</div>'
+      + '<div class="student-row" onclick="showPage(\'new-student\')"><div class="student-avatar" style="background:var(--border);color:var(--text-muted);">+</div><div class="student-info"><div class="student-name" style="color:var(--text-muted);">新規生徒を登録する</div><div class="student-meta">クリックして登録フォームへ</div></div></div>';
+    _updateDashboardStats();
+    return;
+  }
+
+  var html = _allStudents.map(function(s) {
     var gl = gradeLabel[s.grade] || '';
     var sl = s.stream === 'rikei' ? '理系' : '文系';
     var catBadge = (s.univInfo && s.univInfo.cat === 'national') ? 'badge-national' : 'badge-private';
@@ -2380,28 +2400,39 @@ function renderStudentList() {
     var diffColor = diff > 10 ? '#c84b31' : diff > 5 ? '#c9a84c' : '#2a7f6f';
     var av = s.name.charAt(0);
     var enrolled = s.enrolled ? s.enrolled.replace('-', '年') + '月' : '—';
-    var dn = s.name.replace(/'/g, "\\'");
-    return '<div class="student-row" onclick="loadStudentFromList(\'' + dn + '\')">'
+    var dn = s.name.replace(/'/g, "\'");
+    var goalLabel = s.goalYear ? s.goalYear + '年' + ((s.goalMonth != null ? s.goalMonth + 1 : 2)) + '月受験' : '';
+    return '<div class="student-row" style="position:relative;" onclick="loadStudentFromList(\'' + dn + '\')">'
       + '<div class="student-avatar">' + av + '</div>'
       + '<div class="student-info">'
       + '<div class="student-name">' + s.name + '</div>'
-      + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + '</div>'
+      + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + (goalLabel ? ' / ' + goalLabel : '') + '</div>'
       + '</div>'
-      + '<div style="text-align:right;">'
-      + '<div class="badge ' + catBadge + '" style="margin-bottom:4px;">' + s.univName + (s.dept1 ? ' ' + s.dept1 : '') + '</div>'
+      + '<div style="text-align:right;flex:1;">'
+      + '<div class="badge ' + catBadge + '" style="margin-bottom:4px;">' + (s.univName || '—') + (s.dept1 ? ' ' + s.dept1 : '') + '</div>'
       + '<div style="font-size:11px;font-weight:700;color:' + diffColor + ';">偏差値 ' + (s.devVal || '—') + ' → ' + ((s.univInfo && s.univInfo.dev) || '—') + '（差' + (diff > 0 ? '+' : '') + diff + '）</div>'
       + '</div>'
+      + '<button onclick="event.stopPropagation();deleteStudent(\'' + dn + '\')" title="削除" style="margin-left:12px;flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text-muted);cursor:pointer;line-height:1;">🗑</button>'
       + '</div>';
   }).join('');
+
   html += '<div class="student-row" onclick="showPage(\'new-student\')">'
     + '<div class="student-avatar" style="background:var(--border);color:var(--text-muted);">+</div>'
     + '<div class="student-info">'
     + '<div class="student-name" style="color:var(--text-muted);">新規生徒を登録する</div>'
     + '<div class="student-meta">クリックして登録フォームへ</div>'
     + '</div></div>';
+
   el.innerHTML = html;
+  _updateDashboardStats();
 }
 
+function _updateDashboardStats() {
+  var countEl = document.getElementById('stat-student-count');
+  if (countEl) countEl.textContent = _allStudents.length;
+  var rmapEl = document.getElementById('stat-roadmap-count');
+  if (rmapEl) rmapEl.textContent = _allStudents.length;
+}
 
 
 function showPage(name) {
@@ -2409,7 +2440,12 @@ function showPage(name) {
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
   if (name === 'dashboard') renderStudentList();
-  if (name === 'new-student') setTimeout(renderSubjectCheckboxes, 50);
+  if (name === 'new-student') {
+    setTimeout(() => {
+      resetRegistrationForm();
+      renderSubjectCheckboxes();
+    }, 50);
+  }
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
@@ -2643,6 +2679,26 @@ function getCheckedSubjects() {
   const stream = document.getElementById('f-stream')?.value || 'bunkei';
   const opts   = SUBJECT_OPTIONS[stream] || SUBJECT_OPTIONS.bunkei;
   return opts.map(o => o.key).filter(k => document.getElementById(`subj-${k}`)?.checked);
+}
+
+
+function resetRegistrationForm() {
+  const fields = ['f-name','f-enrolled','f-exam-month','f-univ1','f-dept1','f-univ2','f-dept2','f-univ3','f-dept3'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const grade = document.getElementById('f-grade');
+  if (grade) grade.value = 'high3';
+  const stream = document.getElementById('f-stream');
+  if (stream) stream.value = 'bunkei';
+  const level = document.getElementById('f-level');
+  if (level) level.value = '2';
+  const dev = document.getElementById('f-deviation');
+  if (dev) dev.value = '';
+  // 入塾日はデフォルト今月
+  const enrolled = document.getElementById('f-enrolled');
+  if (enrolled) {
+    const now = new Date();
+    enrolled.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
 }
 
 function generateRoadmap() {
