@@ -4118,28 +4118,30 @@ function buildReportHTML(s) {
 </div>
 
 <!-- STUDENT BAND -->
-<div style="background:${C.inkL};padding:12px 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
-  <div>
+<table style="width:100%;border-collapse:collapse;background:${C.inkL};-webkit-print-color-adjust:exact;print-color-adjust:exact;" cellpadding="0" cellspacing="0">
+<tr>
+  <td style="width:25%;padding:12px 20px 12px 28px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">生徒氏名</div>
     <div style="font-size:16px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.name}</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">${gradeLabel}｜${streamLabel}</div>
-  </div>
-  <div>
+  </td>
+  <td style="width:25%;padding:12px 20px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">第一志望</div>
     <div style="font-size:13px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.univName}</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">${catLabel}${s.dept1?' | '+s.dept1:''}</div>
-  </div>
-  <div>
+  </td>
+  <td style="width:25%;padding:12px 20px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">目標偏差値</div>
     <div style="font-size:24px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.univInfo.dev}</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">現状 ${s.devVal}（偏差値ギャップ ${gap>0?'+':''}${gap}）</div>
-  </div>
-  <div>
+  </td>
+  <td style="width:25%;padding:12px 28px 12px 20px;vertical-align:top;">
     <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.08em;">残り期間</div>
     <div style="font-size:24px;font-weight:700;font-family:'Noto Serif JP',serif;color:white;margin-top:3px;">${s.months}ヶ月</div>
     <div style="font-size:10px;color:${C.gold};margin-top:2px;">${s.goalYear}年${(s.goalMonth!=null?s.goalMonth+1:2)}月 受験</div>
-  </div>
-</div>
+  </td>
+</tr>
+</table>
 
 <!-- BODY -->
 <div style="padding:16px 28px;">
@@ -4149,8 +4151,8 @@ function buildReportHTML(s) {
 
   ${sh('📊','偏差値ギャップ分析')}
   ${card(`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
-      <div>
+    <table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:50%;padding-right:14px;vertical-align:top;">
         <div style="font-size:11px;font-weight:700;color:${C.ink};margin-bottom:14px;">科目別：現状 vs 目標偏差値</div>
         ${gapHtml}
         <div style="margin-top:14px;padding:12px 16px;background:${C.paper};border-radius:8px;border:1px solid ${C.border};display:flex;align-items:center;gap:24px;">
@@ -4165,11 +4167,11 @@ function buildReportHTML(s) {
           </div>
         </div>
       </div>
-      <div>
+      <td style="width:50%;padding-left:14px;vertical-align:top;">
         <div style="font-size:11px;font-weight:700;color:${C.ink};margin-bottom:12px;">偏差値推移予測</div>
         ${chartImg}
-      </div>
-    </div>
+      </td>
+    </tr></table>
   `)}
 
   ${booksData.length ? sh('📚','参考書ルート') + card(booksHtml + `
@@ -4255,21 +4257,66 @@ function exportPDF() {
 }
 
 function downloadRoadmapPDF() {
+  const s = currentStudent;
+  if (!s) return;
+  const btn = document.getElementById('pdf-dl-btn');
+  if (btn) { btn.innerHTML = '⏳ 生成中...'; btn.disabled = true; }
+
   const html = window._reportHTML;
-  if (!html) return;
-  // 新規ウィンドウで開いてブラウザ印刷→PDF保存（レイアウト崩れなし）
-  const win = window.open('', '_blank', 'width=900,height=800');
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  // フォント読み込み待ってから印刷ダイアログ
-  win.onload = function() {
-    setTimeout(() => { win.focus(); win.print(); }, 600);
-  };
-  // onloadが発火しない場合のフォールバック
+  if (!html) { if (btn) { btn.innerHTML = '❌ エラー'; btn.disabled = false; } return; }
+
+  // 隠しiframeにHTMLを書き込み、フォント読み込み後にhtml2pdfで処理
+  let iframe = document.getElementById('_pdf_temp_iframe');
+  if (iframe) iframe.remove();
+  iframe = document.createElement('iframe');
+  iframe.id = '_pdf_temp_iframe';
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;visibility:hidden;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+
   setTimeout(() => {
-    try { win.focus(); win.print(); } catch(e) {}
-  }, 1200);
+    const body = iframe.contentDocument.body;
+    if (!body) { if (btn) { btn.innerHTML = '❌ エラー'; btn.disabled = false; } return; }
+
+    const name = s.name || '生徒';
+    html2pdf().set({
+      margin: [10, 12, 10, 12],
+      filename: name + '_合格ロードマップ.pdf',
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'css', before: '.page-break' }
+    }).from(body).save()
+      .then(() => {
+        if (btn) {
+          btn.innerHTML = '✅ 保存しました';
+          btn.style.background = '#2a7f6f';
+          btn.style.color = 'white';
+          setTimeout(() => {
+            btn.innerHTML = '📥 PDFダウンロード';
+            btn.style.background = '#c9a84c';
+            btn.style.color = '#1a1a2e';
+            btn.disabled = false;
+          }, 2500);
+        }
+        iframe.remove();
+      })
+      .catch(err => {
+        console.error('PDF生成エラー:', err);
+        if (btn) { btn.innerHTML = '❌ 失敗'; btn.disabled = false; }
+        iframe.remove();
+      });
+  }, 1000);
 }
 
 function printReport() {
@@ -6938,4 +6985,4 @@ function toggleMonthlyAns() {
 // ===== 月次実力診断 =====================================
 </script>
 </body>
-</html>
+</html>  
