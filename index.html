@@ -1485,7 +1485,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <option>佐藤 美咲（高2・文系）</option>
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('weekly-plan')" id="edit-toggle-weekly-plan" style="font-size:13px;">✏️ 手動編集</button>
-        <button class="btn btn-secondary" onclick="printPage('weekly-plan','3ヶ月学習プラン')" style="font-size:13px;">📄 PDF保存</button>
+        <button class="btn btn-secondary" onclick="printWeeklyPlanPDF()" style="font-size:13px;">📄 PDF保存</button>
         <button class="btn btn-primary" onclick="wpInit()">🗓 プランを更新</button>
       </div>
     </div>
@@ -3195,10 +3195,7 @@ function exportPDF() {
   .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e8e0d0;display:flex;justify-content:space-between;}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none!important;}}
 </style></head><body>
-<div class="no-print" style="background:#f0f0f0;padding:12px 24px;display:flex;justify-content:flex-end;gap:10px;position:sticky;top:0;z-index:100;border-bottom:1px solid #ccc;">
-  <span style="font-size:12px;color:#666;align-self:center;">プレビュー確認後、印刷・PDF保存できます</span>
-  <button onclick="window.print()" style="padding:8px 20px;background:#1a1a2e;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">🖨️ 印刷 / PDF保存</button>
-</div>
+
 <div class="header-band">
   <div>
     <div class="logo-txt">PLATON EXAM STRATEGY MANAGEMENT</div>
@@ -3324,7 +3321,7 @@ ${(s.univName2 || s.univName3) ? `
   bar.innerHTML = `
     <span style="color:white;font-size:13px;font-weight:700;">📄 生徒レポートプレビュー｜${s.name} さん</span>
     <div style="display:flex;gap:8px;">
-      <button onclick="printReport()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">🖨️ 印刷 / PDF保存</button>
+      <button onclick="downloadReportPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>
       <button onclick="document.getElementById('pdf-modal').remove()" style="padding:7px 14px;background:rgba(255,255,255,0.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>
     </div>`;
 
@@ -3994,6 +3991,32 @@ function resetPageEdit(pageId) {
 }
 
 // ===== 各ページPDF保存（iframeモーダル印刷） =====
+function downloadDynPDF() {
+  const modal = document.getElementById('pdf-modal-dyn');
+  if (!modal) return;
+  const iframe = modal.querySelector('iframe');
+  const titleEl = modal.querySelector('span');
+  const filename = (titleEl ? titleEl.textContent.replace('📄 ','').trim() : 'test') + '.pdf';
+  const body = iframe.contentDocument ? iframe.contentDocument.body : null;
+  if (!body) return;
+  const noprint = body.querySelector('.no-print');
+  if (noprint) noprint.style.display = 'none';
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+}
+
+function downloadReportPDF() {
+  const modal = document.getElementById('pdf-modal');
+  if (!modal) return;
+  const iframe = modal.querySelector('iframe');
+  const titleEl = modal.querySelector('span');
+  const filename = (titleEl ? titleEl.textContent.replace('📄 ','').trim() : 'report') + '.pdf';
+  const body = iframe ? (iframe.contentDocument ? iframe.contentDocument.body : null) : null;
+  if (!body) return;
+  const noprint = body.querySelector('.no-print');
+  if (noprint) noprint.style.display = 'none';
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+}
+
 function downloadAsPDF() {
   const iframe = document.getElementById('pdf-print-frame');
   if (!iframe) return;
@@ -4565,6 +4588,138 @@ function renderWpWeekGrid() {
     </div>`;
   }).join('');
 }
+
+
+function printWeeklyPlanPDF() {
+  const s = currentStudent;
+  const studentName = s ? s.name : '';
+  const univName = s ? (s.univName || '') : '';
+  const targetDev = s ? (s.univInfo?.dev || '') : '';
+  const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+  const subs = getWpSubs();
+  const cols = ['#c84b31','#c9a84c','#2a7f6f'];
+  const now = new Date();
+  const day = now.getDay();
+
+  // 全科目プランHTML生成
+  const allSubjectsHTML = subs.map(sub => {
+    const plans = WP_PLANS[sub] || WP_PLANS['英語'];
+    const subColor = DAY_COLORS[sub] || '#1a1a2e';
+    const monthCards = plans.map((m,i) => {
+      return '<div style="background:#f5f0e8;border-radius:10px;padding:12px;border-top:3px solid ' + cols[i] + ';page-break-inside:avoid;">'
+        + '<div style="font-size:9px;font-weight:700;color:' + cols[i] + ';letter-spacing:.07em;margin-bottom:4px;">' + (i+1) + 'ヶ月目</div>'
+        + '<div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">' + m.phase + '</div>'
+        + '<div style="font-size:10px;color:#6b6b80;margin-bottom:6px;">🎯 ' + m.goal + '</div>'
+        + '<div style="border-top:1px solid #d8d0c0;padding-top:6px;margin-bottom:6px;">'
+        + m.books.map(b => '<div style="font-size:10px;padding:1px 0;"><span style="color:' + cols[i] + ';">▸</span> ' + b + '</div>').join('')
+        + '</div>'
+        + '<div style="background:white;border-radius:5px;padding:4px 7px;font-size:10px;color:#1a1a2e;margin-bottom:4px;"><strong>週課題：</strong>' + m.weekly + '</div>'
+        + '<div style="background:' + cols[i] + '20;border-radius:5px;padding:3px 7px;font-size:9px;color:' + cols[i] + ';font-weight:700;">📝 ' + m.test + '</div>'
+        + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:24px;">'
+      + '<div style="font-size:13px;font-weight:700;color:white;background:' + subColor + ';padding:6px 16px;border-radius:20px;display:inline-block;margin-bottom:10px;">' + sub + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' + monthCards + '</div>'
+      + '</div>';
+  }).join('');
+
+  // 12週間スケジュール生成
+  const monday0 = new Date(now);
+  monday0.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+
+  const allWeeksHTML = Array.from({length:12}, function(_,wi) {
+    const monday = new Date(monday0);
+    monday.setDate(monday0.getDate() + wi * 7);
+    const monthN = Math.floor(wi / 4) + 1;
+    const weekInM = (wi % 4) + 1;
+    const phaseIdx = Math.min(Math.floor(wi / 4), 2);
+    const phaseLabel = ['基礎','標準','演習'][phaseIdx];
+    const phaseColor = cols[phaseIdx];
+    const assign = [
+      [subs[0], subs[1]],
+      [subs[2]||subs[1], subs[0]],
+      [subs[1], subs[3]||subs[2]||subs[1]],
+      [subs[0], subs[2]||subs[1]],
+      [subs[1], subs[4]||subs[3]||subs[2]],
+      ['復習・弱点補強'],
+      ['📝 確認テスト'],
+    ];
+    const daysCells = DAYS.map(function(dayName, di) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + di);
+      const isWknd = di >= 5;
+      const tasks = assign[di] || [];
+      const taskHTML = tasks.map(function(t) {
+        if (t === '復習・弱点補強') return '<div style="font-size:9px;padding:3px 5px;border-radius:4px;background:#1a1a2e18;color:#1a1a2e;font-weight:600;">📚 復習・弱点補強</div>';
+        if (t.indexOf('📝') === 0) return '<div style="font-size:9px;padding:3px 5px;border-radius:4px;background:#1a1a2e;color:white;font-weight:700;">' + t + '</div>';
+        const clr = DAY_COLORS[t] || '#1a1a2e';
+        const plan = WP_PLANS[t] ? WP_PLANS[t][phaseIdx] : null;
+        const task = plan ? plan.weekly.split('＋')[0].trim() : t;
+        return '<div style="font-size:9px;padding:3px 5px;border-radius:4px;margin-bottom:2px;background:' + clr + '18;color:' + clr + ';font-weight:600;line-height:1.4;"><strong>' + t + '</strong><br>' + task + '</div>';
+      }).join('');
+      return '<div style="background:' + (isWknd?'#fdf8f0':'white') + ';border:1px solid #d8d0c0;border-radius:7px;padding:7px;min-height:80px;">'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+        + '<span style="font-size:10px;font-weight:700;color:' + (isWknd?'#c84b31':'#6b6b80') + ';">' + dayName + '</span>'
+        + '<span style="font-size:9px;color:#6b6b80;">' + (d.getMonth()+1) + '/' + d.getDate() + '</span>'
+        + '</div>' + taskHTML + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:16px;page-break-inside:avoid;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+      + '<span style="font-size:11px;font-weight:700;color:#1a1a2e;">Week' + (wi+1) + '（' + monthN + 'ヶ月目 第' + weekInM + '週）</span>'
+      + '<span style="font-size:9px;background:' + phaseColor + '20;color:' + phaseColor + ';border-radius:10px;padding:2px 8px;font-weight:700;">' + phaseLabel + '期</span>'
+      + '<span style="font-size:10px;color:#6b6b80;">' + (monday.getMonth()+1) + '月' + monday.getDate() + '日〜</span>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">' + daysCells + '</div>'
+      + '</div>';
+  }).join('');
+
+  const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
+    + '<title>3ヶ月学習プラン｜' + studentName + '</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:\'Noto Sans JP\',sans-serif;color:#2c2c3e;background:white;font-size:12px;}'
+    + '.print-header{background:#1a1a2e;color:white;padding:16px 32px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.container{max-width:960px;margin:0 auto;padding:24px 28px;}'
+    + '.section-hd{font-family:\'Noto Serif JP\',serif;font-size:15px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:24px 0 14px;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:10mm 12mm;}}</style></head><body>'
+    + '<div class="print-header">'
+    + '<div><div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:18px;font-weight:700;margin-top:3px;">3ヶ月学習プラン</div></div>'
+    + '<div style="text-align:right;font-size:11px;color:rgba(255,255,255,.6);">'
+    + (studentName ? '<div style="font-size:13px;font-weight:700;color:white;">' + studentName + ' さん</div>' : '')
+    + (univName ? '<div>第一志望：' + univName + '　偏差値目標：' + targetDev + '</div>' : '')
+    + '<div>発行日：' + today + '</div></div></div>'
+    + '<div class="container">'
+    + '<div class="section-hd">科目別 学習プラン（参考書×週次課題）</div>'
+    + allSubjectsHTML
+    + '<div class="section-hd" style="margin-top:32px;">週間スケジュール詳細（全12週）</div>'
+    + allWeeksHTML
+    + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:9px;color:#bbb;">'
+    + '<div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
+    + (studentName ? '<div>' + studentName + ' 様専用</div>' : '')
+    + '</div></div></body></html>';
+
+  const existing = document.getElementById('pdf-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pdf-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;flex-direction:column;';
+  const bar = document.createElement('div');
+  bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+  bar.innerHTML = '<span style="color:white;font-size:13px;font-weight:700;">📄 3ヶ月学習プラン' + (studentName ? '｜' + studentName + ' さん' : '') + '</span>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="downloadAsPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>'
+    + '<button onclick="document.getElementById(\'pdf-modal\').remove()" style="padding:7px 14px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>'
+    + '</div>';
+  const iframe = document.createElement('iframe');
+  iframe.id = 'pdf-print-frame';
+  iframe.style.cssText = 'flex:1;border:none;background:white;';
+  modal.appendChild(bar);
+  modal.appendChild(iframe);
+  document.body.appendChild(modal);
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+}
+
 
 function changeWpWeek(d) {
   wpWeekIdx = Math.max(0, Math.min(11, wpWeekIdx + d));
@@ -5477,10 +5632,7 @@ function exportPDFModal(test, withAnswers) {
 .logo{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
 @media print{.top-bar{display:none!important;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body>
-<div class="top-bar">
-  <span style="font-size:11px;color:#666;align-self:center;">確認後、印刷 / PDFとして保存してください</span>
-  <button onclick="window.print()" style="padding:7px 18px;background:#1a1a2e;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🖨️ 印刷 / PDF保存</button>
-</div>
+
 <div class="page">
 <div class="header">
   <div><div class="logo">PLATON EXAM STRATEGY MANAGEMENT</div><h1>${test.title}${suffix}</h1></div>
@@ -5496,8 +5648,276 @@ ${bodyHtml}
   bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
   bar.innerHTML = `<span style="color:white;font-size:13px;font-weight:700;">📄 ${test.title}${suffix}</span>
     <div style="display:flex;gap:8px;">
-      <button onclick="document.getElementById('pdf-modal-dyn').querySelector('iframe').contentWindow.print()"
-        style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">🖨️ 印刷 / PDF保存</button>
+      <button onclick="downloadDynPDF()"
+        style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>
+      <button onclick="document.getElementById('pdf-modal-dyn').remove()"
+        style="padding:7px 14px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>
+    </div>`;
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'flex:1;border:none;background:white;';
+  modal.appendChild(bar); modal.appendChild(iframe);
+  document.body.appendChild(modal);
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+}
+
+// ======================================================
+// ===== 月次実力診断 =====================================
+// ======================================================
+let monthlyTestData = null;
+let monthlyChartInst = null;
+let monthlyScores = {};
+let monthlyAnsVisible = false;
+
+function monthlyInit() {
+  const s = currentStudent || {devVal:63, univInfo:{dev:72}, months:11};
+  document.getElementById('ms-initial').textContent = s.devVal || 63;
+  document.getElementById('ms-target').textContent = s.univInfo?.dev || 72;
+  if (!monthlyChartInst) buildMonthlyChart(s, {});
+}
+
+function genMonthlyTest() {
+  const s = currentStudent || {name:'田中 悠斗', stream:'rikei', univName:'東京大学', univInfo:{dev:72}, devVal:63};
+  const subs = s.stream === 'rikei' ? ['英語','数学','物理','化学'] : ['英語','数学','国語','社会'];
+  const now = new Date();
+  const monthStr = `${now.getFullYear()}年${now.getMonth()+1}月`;
+  // 月ごとにオフセットを変えて問題が毎月異なるようにする
+  const offset = now.getMonth() * 3;
+
+  monthlyTestData = {
+    title: `${monthStr} 実力診断テスト`,
+    duration: 60,
+    subjects: subs.map(sub => {
+      const bank  = getEffectiveQB(sub);
+      const total = bank.q.length;
+      return {
+        name: sub,
+        questions: [0, 1, 2].map((_, i) => {
+          const qi = (offset + i) % total;
+          return { no: i+1, question: bank.q[qi], answer: bank.a[qi], explanation: bank.e[qi], points: 10 };
+        })
+      };
+    })
+  };
+
+  const btn = document.querySelector('[onclick="genMonthlyTest()"]');
+  if (btn) { btn.textContent = '📊 今月の診断テストを作成'; btn.disabled = false; }
+  renderMonthlyScoringForm(s);
+  renderMonthlyTestBody();
+  document.getElementById('monthly-test-content').style.display = 'block';
+  showToast('月次実力診断テストを作成しました ✓');
+}
+
+
+function renderMonthlyScoringForm(s) {
+  if (!monthlyTestData) return;
+  const el = document.getElementById('monthly-scoring');
+  let html = `<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;">${monthlyTestData.title}</div>`;
+  monthlyTestData.subjects.forEach(subj => {
+    const max = subj.questions.reduce((a,q) => a+(q.points||10), 0);
+    html += `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--ink);">${subj.name}</label>
+        <span style="font-size:11px;color:var(--text-muted);">満点 ${max}点</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="ms-score-${subj.name}" min="0" max="${max}" placeholder="得点を入力"
+          style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;"
+          oninput="calcMonthlyDev()">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">/ ${max}</span>
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="calcMonthlyDev()">📊 偏差値を算出する</button>`;
+  el.innerHTML = html;
+}
+
+function calcMonthlyDev() {
+  if (!monthlyTestData) return;
+  const s = currentStudent || {devVal:63, univInfo:{dev:72}, months:11};
+  let total = 0, max = 0;
+  monthlyTestData.subjects.forEach(subj => {
+    const m = subj.questions.reduce((a,q)=>a+(q.points||10),0);
+    const v = parseInt(document.getElementById(`ms-score-${subj.name}`)?.value || 0);
+    total += isNaN(v) ? 0 : v;
+    max += m;
+  });
+  if (max === 0) return;
+
+  const pct = total / max;
+  const base = s.devVal || 63;
+  const estimated = Math.min(80, Math.max(35, Math.round(base + (pct - 0.5) * 30)));
+  const target = s.univInfo?.dev || 72;
+  const pred3m = Math.min(target, estimated + Math.round((target - estimated) * 0.4));
+
+  document.getElementById('ms-current').textContent = estimated;
+  document.getElementById('ms-3month').textContent = pred3m;
+
+  const key = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+  monthlyScores[key] = {dev:estimated, raw:total, max};
+
+  renderMonthlyBreakdown(estimated, total, max, s);
+  buildMonthlyChart(s, monthlyScores);
+  showToast(`推定偏差値 ${estimated} を算出しました ✓`);
+}
+
+function renderMonthlyBreakdown(dev, score, max, s) {
+  const el = document.getElementById('monthly-deviation');
+  const pct = Math.round(score / max * 100);
+  const target = s.univInfo?.dev || 72;
+  const col = dev >= target ? 'var(--teal)' : dev >= target-5 ? 'var(--gold)' : 'var(--accent)';
+  const diff = dev - (s.devVal || 63);
+  const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
+
+  let rows = '';
+  if (monthlyTestData) {
+    monthlyTestData.subjects.forEach(subj => {
+      const sm = subj.questions.reduce((a,q)=>a+(q.points||10),0);
+      const sv = parseInt(document.getElementById(`ms-score-${subj.name}`)?.value || 0);
+      const sp = Math.round((isNaN(sv)?0:sv)/sm*100);
+      const sc = sp >= 70 ? '#2a7f6f' : sp >= 50 ? '#c9a84c' : '#c84b31';
+      rows += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;font-weight:600;">${subj.name}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${sp}%;background:${sc};border-radius:3px;"></div></div>
+          <span style="font-size:12px;font-weight:700;color:${sc};min-width:32px;text-align:right;">${sp}%</span>
+        </div>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = `<div style="text-align:center;margin-bottom:1.2rem;">
+    <div style="font-size:54px;font-weight:700;font-family:'Noto Serif JP',serif;color:${col};line-height:1;">${dev}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">今月の推定偏差値</div>
+    <div style="display:inline-flex;gap:14px;font-size:12px;margin-top:6px;">
+      <span style="color:${col};font-weight:700;">入塾時比 ${diffStr}</span>
+      <span style="color:var(--text-muted);">正答率 ${pct}%（${score}/${max}点）</span>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:10px;">${rows}</div>`;
+}
+
+function buildMonthlyChart(s, scores) {
+  const canvas = document.getElementById('monthly-chart');
+  if (!canvas) return;
+  if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
+
+  const init = s.devVal || 63;
+  const target = s.univInfo?.dev || 72;
+  const months = Math.min(s.months || 11, 12);
+  const now = new Date();
+
+  const labels = Array.from({length:months+1}, (_,i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i - 1, 1);
+    return `${d.getFullYear()}/${d.getMonth()+1}月`;
+  });
+
+  const forecast = labels.map((_,i) => {
+    const p = i / months;
+    return Math.round(init + (target - init) * Math.pow(p, 0.65));
+  });
+
+  const actual = labels.map((_,i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i - 1, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    return scores[key]?.dev ?? null;
+  });
+
+  monthlyChartInst = new Chart(canvas, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'予測推移', data:forecast, borderColor:'#2a7f6f', backgroundColor:'rgba(42,127,111,.08)',
+         borderWidth:2, pointRadius:3, tension:.4, fill:true},
+        {label:`目標 ${target}`, data:Array(labels.length).fill(target),
+         borderColor:'#c84b31', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false},
+        {label:'実績', data:actual, borderColor:'#c9a84c', backgroundColor:'#c9a84c',
+         borderWidth:2.5, pointRadius:6, pointBackgroundColor:'#c9a84c', tension:.3, fill:false, spanGaps:false},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{family:"'Noto Sans JP',sans-serif",size:11},boxWidth:14}}},
+      scales:{
+        y:{min:Math.max(30,init-10), max:Math.min(82,target+8),
+           grid:{color:'rgba(0,0,0,.05)'},
+           ticks:{font:{family:"'Noto Sans JP',sans-serif",size:10}}},
+        x:{grid:{color:'rgba(0,0,0,.04)'},
+           ticks:{font:{family:"'Noto Sans JP',sans-serif",size:10},maxRotation:45}}
+      }
+    }
+  });
+}
+
+function renderMonthlyTestBody() {
+  if (!monthlyTestData) return;
+  const el = document.getElementById('monthly-test-body');
+  let qNum = 0, html = '';
+  monthlyTestData.subjects.forEach(subj => {
+    let qh = '';
+    subj.questions.forEach(q => {
+      qNum++;
+      qh += `<div style="margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--border);">
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:6px;">
+          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--ink);color:white;
+            font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${qNum}</div>
+          <div style="font-size:13px;line-height:1.8;white-space:pre-line;flex:1;">${q.question}</div>
+        </div>
+        <div style="margin:4px 0 0 36px;font-size:11px;color:var(--text-muted);">（${q.points}点）</div>
+        <div id="mans-${qNum}" style="display:none;margin-top:8px;margin-left:36px;">
+          <div style="background:#e8f5f2;border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:5px;">
+            <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:3px;">✅ 模範解答</div>
+            <div style="font-size:12px;line-height:1.8;white-space:pre-line;">${q.answer}</div>
+          </div>
+          <div style="background:#fdf8f0;border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:3px;">📖 解説・学習ポイント</div>
+            <div style="font-size:12px;line-height:1.7;">${q.explanation}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `<div style="margin-bottom:1.5rem;">
+      <div style="font-size:12px;font-weight:700;color:white;background:var(--ink);
+        padding:5px 14px;border-radius:6px 6px 0 0;display:inline-block;">${subj.name}</div>
+      <div style="border:1.5px solid var(--border);border-radius:0 10px 10px 10px;padding:1rem;">${qh}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function toggleMonthlyAns() {
+  monthlyAnsVisible = !monthlyAnsVisible;
+  const total = document.querySelectorAll('[id^="mans-"]').length;
+  for (let i = 1; i <= total; i++) {
+    const el = document.getElementById(`mans-${i}`);
+    if (el) el.style.display = monthlyAnsVisible ? 'block' : 'none';
+  }
+  const btn = document.getElementById('btn-monthly-ans');
+  if (btn) btn.textContent = monthlyAnsVisible ? '🔒 解答・解説を隠す' : '🔑 解答・解説を表示';
+}
+
+</script>
+</body>
+</html>
+<div class="page">
+<div class="header">
+  <div><div class="logo">PLATON EXAM STRATEGY MANAGEMENT</div><h1>${test.title}${suffix}</h1></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.5);">${today}｜所要 ${test.duration}分</div>
+</div>
+${bodyHtml}
+</div></body></html>`;
+
+  const modal = document.createElement('div');
+  modal.id = 'pdf-modal-dyn';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;flex-direction:column;';
+  const bar = document.createElement('div');
+  bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+  bar.innerHTML = `<span style="color:white;font-size:13px;font-weight:700;">📄 ${test.title}${suffix}</span>
+    <div style="display:flex;gap:8px;">
+      <button onclick="downloadDynPDF()"
+        style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>
       <button onclick="document.getElementById('pdf-modal-dyn').remove()"
         style="padding:7px 14px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>
     </div>`;
