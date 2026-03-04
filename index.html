@@ -778,6 +778,31 @@
   }
   .student-status.active { background: #e0f4f0; color: var(--teal); }
 
+  /* ===== PDF出力用スタイル（html2pdf.js用） =====
+     page-roadmap に .pdf-mode クラスが付いているとき適用 */
+  #page-roadmap.pdf-mode .timeline-wrapper {
+    overflow: visible !important;
+    overflow-x: visible !important;
+  }
+  #page-roadmap.pdf-mode .timeline {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  #page-roadmap.pdf-mode .card,
+  #page-roadmap.pdf-mode .fade-in {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #page-roadmap.pdf-mode .timeline-row,
+  #page-roadmap.pdf-mode .test-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #page-roadmap.pdf-mode button,
+  #page-roadmap.pdf-mode #roadmap-books-filter {
+    display: none !important;
+  }
+
   /* ===== ロードマップ印刷専用スタイル ===== */
   @media print {
     /* ① ヘッダー・ナビゲーション全体を非表示 */
@@ -4003,7 +4028,6 @@ function exportPDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
 
-  // ロードマップページへ切り替え
   showPage('roadmap');
   window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -4011,39 +4035,82 @@ function exportPDF() {
     const el = document.getElementById('page-roadmap');
     if (!el) { showToast('ロードマップが見つかりません'); return; }
 
-    // 一時的にボタン行を非表示
-    const btnRow = el.querySelector('.container > div:first-child');
-    const filter = document.getElementById('roadmap-books-filter');
-    const editBtns = el.querySelectorAll('button');
-    const hidden = [];
-    editBtns.forEach(b => { hidden.push([b, b.style.display]); b.style.display = 'none'; });
-    if (filter) { hidden.push([filter, filter.style.display]); filter.style.display = 'none'; }
-
     const name = s.name || '生徒';
     const filename = name + '_合格ロードマップ.pdf';
 
+    // ===== 一時的なスタイル適用 =====
+    const restore = [];
+
+    // ① ボタン類・フィルターを非表示
+    el.querySelectorAll('button').forEach(b => {
+      restore.push([b, 'display', b.style.display]);
+      b.style.display = 'none';
+    });
+    const filter = document.getElementById('roadmap-books-filter');
+    if (filter) { restore.push([filter, 'display', filter.style.display]); filter.style.display = 'none'; }
+
+    // ② タイムラインのoverflow:auto を解除（切れ防止）
+    const tlWrapper = el.querySelector('.timeline-wrapper');
+    if (tlWrapper) {
+      restore.push([tlWrapper, 'overflow', tlWrapper.style.overflow]);
+      restore.push([tlWrapper, 'overflowX', tlWrapper.style.overflowX]);
+      tlWrapper.style.overflow = 'visible';
+      tlWrapper.style.overflowX = 'visible';
+    }
+    // タイムライン本体のmin-widthを解除
+    const tlInner = el.querySelector('.timeline');
+    if (tlInner) {
+      restore.push([tlInner, 'minWidth', tlInner.style.minWidth]);
+      tlInner.style.minWidth = '0';
+    }
+
+    // ③ .card に page-break-inside: avoid を付与
+    el.querySelectorAll('.card, .fade-in').forEach(c => {
+      restore.push([c, 'pageBreakInside', c.style.pageBreakInside]);
+      restore.push([c, 'breakInside', c.style.breakInside]);
+      c.style.pageBreakInside = 'avoid';
+      c.style.breakInside = 'avoid';
+    });
+
+    // ④ タイムライン各行に page-break-inside: avoid
+    el.querySelectorAll('.timeline-row, .test-row').forEach(r => {
+      restore.push([r, 'pageBreakInside', r.style.pageBreakInside]);
+      restore.push([r, 'breakInside', r.style.breakInside]);
+      r.style.pageBreakInside = 'avoid';
+      r.style.breakInside = 'avoid';
+    });
+
     const opt = {
-      margin: [8, 6, 8, 6],
+      margin: [10, 8, 10, 8],
       filename: filename,
-      image: { type: 'jpeg', quality: 0.97 },
+      image: { type: 'jpeg', quality: 0.95 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#faf9f5'
+        backgroundColor: '#faf9f5',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.scrollWidth
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: {
+        mode: ['avoid-all', 'css', 'legacy'],
+        avoid: ['.card', '.timeline-row', '.test-row', '.chart-container', '.info-box', '.gap-panel']
+      }
     };
 
-    html2pdf().set(opt).from(el).save().then(() => {
-      // 非表示にしたボタンを戻す
-      hidden.forEach(([node, prev]) => { node.style.display = prev; });
-      showToast('PDFを保存しました');
-    }).catch(err => {
-      hidden.forEach(([node, prev]) => { node.style.display = prev; });
-      showToast('PDF保存に失敗しました');
-      console.error(err);
-    });
+    const doRestore = () => {
+      restore.forEach(([node, prop, val]) => { node.style[prop] = val; });
+      el.classList.remove('pdf-mode');
+    };
+
+    // pdf-mode クラスを付けてCSSで制御
+    el.classList.add('pdf-mode');
+
+    html2pdf().set(opt).from(el).save()
+      .then(() => { doRestore(); showToast('PDFを保存しました'); })
+      .catch(err => { doRestore(); showToast('PDF保存に失敗しました'); console.error(err); });
   }, 500);
 }
 
