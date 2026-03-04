@@ -4026,13 +4026,25 @@ function printPage(pageId, title) {
   const studentName = studentSel ? studentSel.options[studentSel.selectedIndex]?.text.replace(/（.+）/, '').trim() : '';
 
   // ページのHTMLを取得（ボタン・バナー・select・canvas除外）
+  // canvasを先に画像化
+  const chartImages = {};
+  page.querySelectorAll('.chart-container canvas').forEach(canvas => {
+    try { chartImages[canvas.id] = canvas.toDataURL('image/png'); } catch(e) {}
+  });
+
   const clone = page.querySelector('.container').cloneNode(true);
 
   // 除外要素を削除
-  clone.querySelectorAll('button, select, canvas, input, .edit-banner, [id^="edit-banner"]').forEach(el => el.remove());
-  // chart canvasをプレースホルダーに置換
-  clone.querySelectorAll('.chart-container').forEach(c => {
-    c.innerHTML = '<div style="height:200px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;">（グラフはブラウザでご確認ください）</div>';
+  clone.querySelectorAll('button, select, input, .edit-banner, [id^="edit-banner"]').forEach(el => el.remove());
+  // chart canvasを画像に置換
+  clone.querySelectorAll('.chart-container').forEach(container => {
+    const canvas = container.querySelector('canvas');
+    const imgSrc = canvas ? (chartImages[canvas.id] || null) : null;
+    if (imgSrc) {
+      container.innerHTML = `<img src="${imgSrc}" style="width:100%;height:auto;border-radius:8px;display:block;">`;
+    } else {
+      container.innerHTML = '<div style="height:200px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;">（グラフデータなし）</div>';
+    }
   });
   // contenteditable属性を除去
   clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
@@ -4046,6 +4058,13 @@ function printPage(pageId, title) {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#1a1a2e;--ink-light:#2d2d4e;--paper:#f5f0e8;--paper-dark:#ede8dc;--accent:#c84b31;--gold:#c9a84c;--teal:#2a7f6f;--text:#2c2c3e;--text-muted:#6b6b80;--border:#d8d0c0;}
+  /* 生徒情報ボックス */
+  .info-box{background:linear-gradient(135deg,var(--ink) 0%,var(--ink-light) 100%);border-radius:12px;padding:20px 28px;color:white;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .info-item label{font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;}
+  .info-item .val{font-size:17px;font-weight:700;color:white;font-family:"Noto Serif JP",serif;margin-top:4px;}
+  .info-item .sub-val{font-size:11px;color:var(--gold);margin-top:2px;}
+  /* ラベル・値ペア（既存のカード内） */
+  label{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text-muted);display:block;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Noto Sans JP',sans-serif;color:var(--text);background:white;font-size:13px;padding:0;}
   /* ヘッダーバンド */
@@ -4079,10 +4098,7 @@ function printPage(pageId, title) {
     @page{margin:12mm 14mm;}
   }
 </style></head><body>
-<div class="no-print">
-  <span style="font-size:12px;color:var(--text-muted);">プレビュー確認後、印刷・PDF保存できます</span>
-  <button onclick="window.print()" style="padding:7px 18px;background:var(--ink);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">🖨️ 印刷 / PDF保存</button>
-</div>
+
 <div class="print-header">
   <div>
     <div class="print-logo">PLATON EXAM STRATEGY MANAGEMENT</div>
