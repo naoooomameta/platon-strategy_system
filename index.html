@@ -3160,9 +3160,10 @@ function printRoadmapPDF() {
   const gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || '';
   const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
   const catLabel = s.univInfo.cat === 'national' ? '国公立' : '私立';
+  const gap = s.univInfo.dev - s.devVal;
 
-  // ── タイムラインHTML（既存のPDF専用生成ロジック）──
-  (function() {
+  // ━━━━━ タイムライン（フェーズ結合セル = 横書き確定）━━━━━
+  const timelineHTML = (function() {
     const months = Math.min(s.months, 12);
     const now2 = new Date();
     const monthLabels = [];
@@ -3175,123 +3176,173 @@ function printRoadmapPDF() {
     const p2end = Math.round(months * 0.72);
     const subjects = isRikei
       ? [
-          { label:'英語', color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
-          { label:'数学', color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
-          { label:'国語', color:'#c9a84c', bg:'#fdf8f0', phases:['現代文 読解基礎','演習量 積み上げ','記述・過去問 演習'] },
-          { label:'理科', color:'#4a6fa5', bg:'#eef2f9', phases:['概念・公式 理解期','標準問題 演習期','実戦・難問 演習'] },
+          { label:'英語',  color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
+          { label:'数学',  color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
+          { label:'国語',  color:'#c9a84c', bg:'#fdf8f0', phases:['現代文 読解基礎','演習量 積み上げ','記述・過去問 演習'] },
+          { label:'理科',  color:'#4a6fa5', bg:'#eef2f9', phases:['概念・公式 理解期','標準問題 演習期','実戦・難問 演習'] },
         ]
       : [
-          { label:'英語', color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
-          { label:'数学', color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
-          { label:'国語', color:'#c9a84c', bg:'#fdf8f0', phases:['現代文＋古文 基礎','演習量 積み上げ','記述・過去問 演習'] },
-          { label:'社会', color:'#4a6fa5', bg:'#eef2f9', phases:['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'] },
+          { label:'英語',  color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
+          { label:'数学',  color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
+          { label:'国語',  color:'#c9a84c', bg:'#fdf8f0', phases:['現代文＋古文 基礎','演習量 積み上げ','記述・過去問 演習'] },
+          { label:'社会',  color:'#4a6fa5', bg:'#eef2f9', phases:['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'] },
         ];
     const phaseDef = [
-      { label:'基礎期', border:'#2a7f6f', headerBg:'#c8eae4' },
-      { label:'標準期', border:'#c9a84c', headerBg:'#f9edcc' },
-      { label:'演習期', border:'#c84b31', headerBg:'#f8d4cd' },
+      { label:'基礎期',  border:'#2a7f6f', headerBg:'#c8eae4', span:p1end,          rangeStart:1,        rangeEnd:p1end },
+      { label:'標準期',  border:'#c9a84c', headerBg:'#f9edcc', span:p2end-p1end,   rangeStart:p1end+1,  rangeEnd:p2end },
+      { label:'演習期',  border:'#c84b31', headerBg:'#f8d4cd', span:months-p2end,  rangeStart:p2end+1,  rangeEnd:months },
     ];
-    let tlHtml = '<div style="overflow-x:auto;">';
-    tlHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-    tlHtml += '<thead><tr>';
-    tlHtml += '<th style="width:52px;border:1px solid #ccc;background:#f0ebe0;"></th>';
-    let i2 = 0;
-    while (i2 < months) {
-      const ph = i2 < p1end ? 0 : i2 < p2end ? 1 : 2;
-      const phSpan = ph === 0 ? p1end : ph === 1 ? (p2end - p1end) : (months - p2end);
-      tlHtml += '<th colspan="' + phSpan + '" style="padding:5px 4px;background:' + phaseDef[ph].headerBg + ';border:2px solid ' + phaseDef[ph].border + ';font-size:10px;font-weight:700;color:' + phaseDef[ph].border + ';text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + phaseDef[ph].label + '（' + (ph===0?'1〜'+p1end : ph===1?(p1end+1)+'〜'+p2end : (p2end+1)+'〜'+months) + 'ヶ月目）</th>';
-      i2 += phSpan;
-    }
-    tlHtml += '</tr><tr>';
-    tlHtml += '<th style="padding:5px 4px;background:#f0ebe0;font-size:10px;color:#6b6b80;text-align:center;border:1px solid #ccc;font-weight:700;">科目</th>';
+    const SUBJ_W = 46;
+
+    let h = '<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:\'Noto Sans JP\',sans-serif;">';
+
+    // ── フェーズ行 ──
+    h += '<tr>';
+    h += '<th style="width:'+SUBJ_W+'px;background:#f0ebe0;border:1px solid #ccc;"></th>';
+    phaseDef.forEach(function(ph) {
+      h += '<th colspan="'+ph.span+'" style="padding:6px 4px;background:'+ph.headerBg+';border:2px solid '+ph.border+';font-size:11px;font-weight:700;color:'+ph.border+';text-align:center;letter-spacing:.04em;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + ph.label + '（' + ph.rangeStart + '〜' + ph.rangeEnd + 'ヶ月目）'
+        + '</th>';
+    });
+    h += '</tr>';
+
+    // ── 月ラベル行 ──
+    h += '<tr>';
+    h += '<th style="padding:5px 3px;background:#f0ebe0;font-size:10px;color:#6b6b80;text-align:center;border:1px solid #ccc;font-weight:700;">科目</th>';
     monthLabels.forEach(function(m, i) {
       const isLast = i === months - 1;
-      tlHtml += '<th style="padding:5px 2px;background:' + (isLast?'#f8d4cd':'#f5f0e8') + ';font-size:10px;font-weight:700;color:' + (isLast?'#c84b31':'#444') + ';text-align:center;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + m + '</th>';
+      h += '<th style="padding:5px 2px;background:'+(isLast?'#f8d4cd':'#f5f0e8')+';font-size:10px;font-weight:700;color:'+(isLast?'#c84b31':'#444')+';text-align:center;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+m+'</th>';
     });
-    tlHtml += '</tr></thead><tbody>';
-    subjects.forEach(function(sub) {
-      tlHtml += '<tr>';
-      tlHtml += '<td style="padding:5px 6px;background:#fafaf8;font-size:11px;font-weight:700;color:' + sub.color + ';text-align:center;border:1px solid #ccc;white-space:nowrap;">' + sub.label + '</td>';
-      monthLabels.forEach(function(m, i) {
-        const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
-        const isPhaseStart = (i === 0 || i === p1end || i === p2end);
-        const border = isPhaseStart ? '2px solid ' + sub.color : '1px solid ' + sub.bg;
-        const label = isPhaseStart ? sub.phases[ph] : '';
-        tlHtml += '<td style="padding:5px 5px;background:' + sub.bg + ';border-top:2px solid ' + phaseDef[ph].border + ';border-bottom:1px solid #ccc;border-left:' + border + ';border-right:1px solid ' + sub.bg + ';font-size:9px;color:' + sub.color + ';font-weight:' + (isPhaseStart?'700':'400') + ';line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + label + '</td>';
-      });
-      tlHtml += '</tr>';
-    });
-    tlHtml += '<tr>';
-    tlHtml += '<td style="padding:4px;background:#f5f0e8;font-size:9px;font-weight:700;color:#6b6b80;text-align:center;border:1px solid #ccc;">確認<br>テスト</td>';
-    monthLabels.forEach(function() {
-      tlHtml += '<td style="padding:3px 2px;background:white;border:1px solid #ddd;text-align:center;"><div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;">';
-      tlHtml += '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>';
-      tlHtml += '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>';
-      tlHtml += '<div style="width:15px;height:15px;border-radius:50%;background:#c84b31;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">月</div>';
-      tlHtml += '</div></td>';
-    });
-    tlHtml += '</tr></tbody></table></div>';
-    tlHtml += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;padding:6px 10px;background:#f9f7f4;border-radius:6px;">';
-    phaseDef.forEach(function(p) {
-      tlHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#444;"><div style="width:22px;height:10px;border-radius:2px;background:' + p.headerBg + ';border:2px solid ' + p.border + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>' + p.label + '</div>';
-    });
-    tlHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#444;"><div style="width:12px;height:12px;border-radius:50%;background:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>週次テスト</div>';
-    tlHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#444;"><div style="width:12px;height:12px;border-radius:50%;background:#c84b31;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>月次テスト</div>';
-    tlHtml += '</div>';
-    window._pdfTimelineHTML = tlHtml;
-  })();
-  const timelineHTML = window._pdfTimelineHTML || '';
+    h += '</tr>';
 
-  // ── 偏差値ギャップHTML（左列：バー、右列：グラフ）──
-  const gapBarsHTML = (function() {
-    const gap = s.univInfo.dev - s.devVal;
+    // ── 科目行（フェーズごとにcolspan結合セル） ──
+    subjects.forEach(function(sub) {
+      h += '<tr>';
+      h += '<td style="padding:0 4px;background:#fafaf8;font-size:12px;font-weight:700;color:'+sub.color+';text-align:center;border:1px solid #ccc;white-space:nowrap;vertical-align:middle;height:36px;">'+sub.label+'</td>';
+      phaseDef.forEach(function(ph, pi) {
+        h += '<td colspan="'+ph.span+'" style="'
+          + 'padding:8px 10px;'
+          + 'background:'+sub.bg+';'
+          + 'border-top:2px solid '+ph.border+';'
+          + 'border-bottom:2px solid '+ph.border+';'
+          + 'border-left:2px solid '+sub.color+';'
+          + 'border-right:2px solid '+ph.border+';'
+          + 'font-size:11px;font-weight:700;color:'+sub.color+';'
+          + 'white-space:nowrap;vertical-align:middle;'
+          + '-webkit-print-color-adjust:exact;print-color-adjust:exact;'
+          + '">'
+          + sub.phases[pi]
+          + '</td>';
+      });
+      h += '</tr>';
+    });
+
+    // ── 確認テスト行 ──
+    h += '<tr>';
+    h += '<td style="padding:4px 2px;background:#f5f0e8;font-size:9px;font-weight:700;color:#6b6b80;text-align:center;border:1px solid #ccc;white-space:nowrap;vertical-align:middle;">確認<br>テスト</td>';
+    monthLabels.forEach(function() {
+      h += '<td style="padding:3px 1px;background:white;border:1px solid #ddd;text-align:center;vertical-align:middle;">'
+        + '<div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:center;">'
+        + '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>'
+        + '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>'
+        + '<div style="width:15px;height:15px;border-radius:50%;background:#c84b31;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">月</div>'
+        + '</div></td>';
+    });
+    h += '</tr>';
+
+    h += '</table>';
+
+    // 凡例
+    h += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding:7px 12px;background:#f9f7f4;border-radius:6px;">';
+    phaseDef.forEach(function(p) {
+      h += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;">'
+        + '<div style="width:28px;height:11px;border-radius:3px;background:'+p.headerBg+';border:2px solid '+p.border+';-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + p.label + '</div>';
+    });
+    h += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;"><div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>週次テスト</div>';
+    h += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;"><div style="width:13px;height:13px;border-radius:50%;background:#c84b31;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>月次テスト</div>';
+    h += '</div>';
+    return h;
+  })();
+
+  // ━━━━━ 偏差値ギャップ（全幅・大型） ━━━━━
+  const gapHTML = (function() {
     const subjects = s.stream === 'rikei'
       ? [ {name:'英語',current:s.devVal-3,target:s.univInfo.dev-2}, {name:'数学',current:s.devVal+2,target:s.univInfo.dev+1}, {name:'国語',current:s.devVal-5,target:s.univInfo.dev-5}, {name:'物理',current:s.devVal-1,target:s.univInfo.dev-2} ]
       : [ {name:'英語',current:s.devVal-2,target:s.univInfo.dev-1}, {name:'国語',current:s.devVal-3,target:s.univInfo.dev-3}, {name:'数学',current:s.devVal+1,target:s.univInfo.dev}, {name:'社会',current:s.devVal-4,target:s.univInfo.dev-4} ];
-    const SCALE_MIN=35, SCALE_MAX=80;
-    const toP = function(v){ return Math.max(0,Math.min(100,(v-SCALE_MIN)/(SCALE_MAX-SCALE_MIN)*100)); };
-    let html = '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:12px;">科目別：現状 vs 目標偏差値</div>';
-    subjects.forEach(function(sub) {
+    const SCALE_MIN = 35, SCALE_MAX = 80;
+    const toP = function(v) { return Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100)); };
+    const barColors = ['#c84b31','#c9a84c','#4a6fa5','#2a7f6f'];
+
+    // 上段：総合サマリー（3列）
+    const gapColor = gap > 10 ? '#c84b31' : gap > 5 ? '#c9a84c' : '#2a7f6f';
+    let h = '<div style="display:table;width:100%;border-collapse:separate;border-spacing:0;margin-bottom:18px;">';
+    // 総合ギャップ
+    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#fdf8f0,#f0e8d8);border-radius:10px 0 0 10px;border:1px solid #e0d4c0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">総合ギャップ</div>'
+      + '<div style="font-size:42px;font-weight:700;color:'+gapColor+';line-height:1;font-family:\'DM Mono\',monospace;">+'+ gap +'</div>'
+      + '<div style="font-size:12px;color:#666;margin-top:4px;">偏差値</div>'
+      + '</div>';
+    // 現状→目標
+    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border:1px solid #1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">現状 → 目標</div>'
+      + '<div style="display:flex;align-items:baseline;gap:8px;">'
+      + '<span style="font-size:36px;font-weight:700;color:white;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.devVal +'</span>'
+      + '<span style="font-size:18px;color:#c9a84c;font-weight:700;">→</span>'
+      + '<span style="font-size:36px;font-weight:700;color:#c9a84c;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.univInfo.dev +'</span>'
+      + '</div>'
+      + '<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;">（'+ s.univName +'）</div>'
+      + '</div>';
+    // 残り期間
+    h += '<div style="display:table-cell;width:33%;vertical-align:middle;padding:16px 20px;background:linear-gradient(135deg,#eef5f3,#d8eee8);border-radius:0 10px 10px 0;border:1px solid #b0d8d0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.07em;margin-bottom:6px;text-transform:uppercase;">残り期間</div>'
+      + '<div style="font-size:42px;font-weight:700;color:#2a7f6f;line-height:1;font-family:\'DM Mono\',monospace;">'+ s.months +'</div>'
+      + '<div style="font-size:12px;color:#666;margin-top:4px;">ヶ月</div>'
+      + '</div>';
+    h += '</div>';
+
+    // 科目別バー（横幅いっぱい）
+    h += '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:14px;text-transform:uppercase;">科目別：現状 vs 目標偏差値</div>';
+    subjects.forEach(function(sub, si) {
       const diff = sub.target - sub.current;
-      const barColor = diff>8?'#c84b31':diff>3?'#c9a84c':'#2a7f6f';
-      const diffColor = diff>8?'#c84b31':diff>3?'#b8922a':'#2a7f6f';
+      const col = barColors[si % barColors.length];
       const curP = toP(sub.current), tarP = toP(sub.target);
-      const gapLeft = Math.min(curP,tarP), gapWidth = Math.abs(tarP-curP);
-      const ticks = [40,50,60,70].map(function(v){ return '<div style="position:absolute;bottom:-13px;left:'+toP(v)+'%;transform:translateX(-50%);font-size:8px;color:#999;">'+v+'</div>'; }).join('');
-      html += '<div style="margin-bottom:20px;">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
-        + '<span style="font-size:12px;font-weight:700;color:#1a1a2e;width:36px;">'+sub.name+'</span>'
-        + '<div style="display:flex;align-items:baseline;gap:5px;">'
-        + '<span style="font-size:18px;font-weight:700;color:#1a1a2e;line-height:1;">'+sub.current+'</span>'
-        + '<span style="font-size:11px;color:#888;">→</span>'
-        + '<span style="font-size:14px;font-weight:700;color:'+barColor+';">'+sub.target+'</span>'
-        + '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;background:'+barColor+'22;color:'+diffColor+';border:1px solid '+barColor+'44;">'+(diff>0?'+':'')+diff+'</span>'
-        + '</div></div>'
-        + '<div style="position:relative;height:10px;background:#f0ebe0;border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="position:absolute;top:0;left:'+gapLeft+'%;width:'+gapWidth+'%;height:100%;background:'+barColor+'33;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:0;left:0;width:'+curP+'%;height:100%;background:'+barColor+';border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<div style="position:absolute;top:-3px;left:'+tarP+'%;width:2px;height:16px;background:'+barColor+';transform:translateX(-50%);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + ticks + '</div><div style="height:16px;"></div></div>';
+      const gapLeft = Math.min(curP, tarP), gapW = Math.abs(tarP - curP);
+      h += '<div style="margin-bottom:16px;">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        + '<span style="font-size:14px;font-weight:700;color:#1a1a2e;min-width:44px;">'+ sub.name +'</span>'
+        + '<div style="display:flex;align-items:baseline;gap:6px;">'
+        + '<span style="font-size:22px;font-weight:700;color:#1a1a2e;font-family:\'DM Mono\',monospace;line-height:1;">'+ sub.current +'</span>'
+        + '<span style="font-size:14px;color:#888;">→</span>'
+        + '<span style="font-size:22px;font-weight:700;color:'+col+';font-family:\'DM Mono\',monospace;line-height:1;">'+ sub.target +'</span>'
+        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:'+col+'20;color:'+col+';border:1px solid '+col+'50;">+'+ diff +'</span>'
+        + '</div>'
+        + '</div>';
+      // バー本体（太め・目盛付き）
+      const ticks = [40, 50, 60, 70];
+      h += '<div style="position:relative;padding-bottom:18px;">';
+      h += '<div style="height:12px;background:#f0ebe0;border-radius:6px;position:relative;overflow:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="position:absolute;top:0;left:'+gapLeft+'%;width:'+gapW+'%;height:100%;background:'+col+'30;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + '<div style="position:absolute;top:0;left:0;width:'+curP+'%;height:100%;background:'+col+';border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + '<div style="position:absolute;top:-3px;left:'+tarP+'%;width:3px;height:18px;background:'+col+';transform:translateX(-50%);border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + ticks.map(function(v) {
+            return '<div style="position:absolute;bottom:-16px;left:'+toP(v)+'%;transform:translateX(-50%);font-size:8px;color:#aaa;">'+ v +'</div>';
+          }).join('')
+        + '</div>';
+      h += '</div>';
+      h += '</div>';
     });
-    html += '<div style="padding:10px 12px;background:#f9f7f4;border-radius:8px;border:1px solid #e0d8c8;">'
-      + '<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">'
-      + '<div><div style="font-size:10px;color:#888;margin-bottom:2px;">総合ギャップ</div>'
-      + '<div style="font-size:24px;font-weight:700;color:'+(gap>10?'#c84b31':'#2a7f6f')+';line-height:1;">'+(gap>0?'+':'')+gap+'<span style="font-size:12px;font-weight:400;color:#666;"> 偏差値</span></div></div>'
-      + '<div style="border-left:2px solid #e0d8c8;padding-left:12px;">'
-      + '<div style="font-size:10px;color:#888;margin-bottom:2px;">現状 → 目標</div>'
-      + '<div style="font-size:15px;font-weight:700;color:#1a1a2e;">'+s.devVal+' → '+s.univInfo.dev+'</div>'
-      + '<div style="font-size:9px;color:#888;">（'+s.univName+'）</div>'
-      + '</div></div></div>';
-    return html;
+
+    return h;
   })();
 
+  // ━━━━━ グラフ ━━━━━
   const chartCanvas = document.getElementById('deviation-chart');
-  let chartImgHTML = '<div style="height:160px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px;">グラフを生成してください</div>';
+  let chartImgHTML = '<div style="height:140px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px;">グラフを生成してください</div>';
   if (chartCanvas) { try { chartImgHTML = '<img src="'+chartCanvas.toDataURL('image/png')+'" style="width:100%;height:auto;border-radius:6px;">'; } catch(e){} }
 
-  // ── 参考書ルート：月別タイムライン形式 ──
-  const booksTimelineHTML = (function() {
+  // ━━━━━ 参考書ルート ━━━━━
+  const booksHTML = (function() {
     const books = window._roadmapBooksAll || [];
     if (!books.length) return '<p style="color:#999;font-size:11px;padding:12px;">参考書データがありません</p>';
     const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
@@ -3299,8 +3350,6 @@ function printRoadmapPDF() {
     const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     const now = new Date();
     const startMonthAbs = now.getFullYear()*12 + now.getMonth();
-
-    // 月ごとにグループ化
     const byMonth = {};
     books.forEach(function(b) {
       const key = b.startY + '-' + String(b.startM).padStart(2,'0');
@@ -3308,7 +3357,6 @@ function printRoadmapPDF() {
       byMonth[key].books.push(b);
     });
     const monthKeys = Object.keys(byMonth).sort();
-
     let html = '';
     let lastYear = null;
     monthKeys.forEach(function(key) {
@@ -3317,18 +3365,18 @@ function printRoadmapPDF() {
         if (lastYear !== null) html += '</div>';
         html += '<div style="display:flex;align-items:center;gap:10px;margin:14px 0 8px;">'
           + '<div style="flex:1;height:1px;background:#d8d0c0;"></div>'
-          + '<span style="font-size:11px;font-weight:700;color:#6b6b80;white-space:nowrap;">'+mg.year+'年</span>'
+          + '<span style="font-size:11px;font-weight:700;color:#6b6b80;white-space:nowrap;padding:0 8px;">'+mg.year+'年</span>'
           + '<div style="flex:1;height:1px;background:#d8d0c0;"></div>'
           + '</div><div>';
         lastYear = mg.year;
       }
       const abs = mg.year*12 + mg.month;
-      const isCurrentMonth = abs === startMonthAbs;
-      const dotColor = isCurrentMonth ? '#c84b31' : '#1a1a2e';
+      const isCurrent = abs === startMonthAbs;
+      const dotColor = isCurrent ? '#c84b31' : '#1a1a2e';
       html += '<div style="margin-bottom:12px;">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
         + '<div style="width:10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
-        + '<span style="font-size:12px;font-weight:700;color:#1a1a2e;">'+JAmonths[mg.month]+(isCurrentMonth?' 今月':'')+' </span>'
+        + '<span style="font-size:12px;font-weight:700;color:#1a1a2e;">'+JAmonths[mg.month]+(isCurrent?' 今月':'')+' </span>'
         + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-left:18px;">';
       mg.books.forEach(function(b) {
@@ -3338,7 +3386,7 @@ function printRoadmapPDF() {
         const endAbs = b.endY*12+b.endM;
         const isUrgent = (endAbs - startMonthAbs) <= 2;
         const dc = isUrgent ? '#c84b31' : '#2a7f6f';
-        html += '<div style="background:white;border:1px solid #e0d8c8;border-radius:6px;padding:8px 10px;position:relative;">'
+        html += '<div style="background:white;border:1px solid #e0d8c8;border-radius:6px;padding:8px 10px;">'
           + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">'
           + '<div style="font-size:11px;font-weight:600;color:#1a1a2e;line-height:1.4;flex:1;padding-right:6px;">'+b.name+'</div>'
           + '<span style="font-size:9px;background:'+col+'18;color:'+col+';padding:2px 6px;border-radius:4px;font-weight:700;white-space:nowrap;border:1px solid '+col+'33;">'+lbl+'</span>'
@@ -3353,8 +3401,6 @@ function printRoadmapPDF() {
       html += '</div></div>';
     });
     if (lastYear !== null) html += '</div>';
-
-    // 合計
     const totalPrice = books.reduce(function(sum,b){ return sum+(b.price||1600); }, 0);
     html += '<div style="margin-top:10px;padding:8px 12px;background:#f9f7f4;border-radius:6px;border:1px solid #e0d8c8;display:flex;justify-content:space-between;align-items:center;">'
       + '<span style="font-size:9px;color:#888;">※ ⚠は直近2ヶ月以内に終了すべき書籍</span>'
@@ -3363,7 +3409,7 @@ function printRoadmapPDF() {
     return html;
   })();
 
-  // ── アドバイスHTML ──
+  // ━━━━━ アドバイス ━━━━━
   const adviceHTML = (function() {
     var advSumEl = document.getElementById('advice-summary');
     var summaryTxt = advSumEl ? (advSumEl.innerText||'').trim() : '';
@@ -3417,28 +3463,36 @@ function printRoadmapPDF() {
     return r;
   })();
 
-  // ── HTML組み立て ──
+  // ━━━━━ セクションタイトル共通スタイル ━━━━━
+  const secTitle = function(icon, text) {
+    return '<div style="display:flex;align-items:center;gap:10px;margin:22px 0 12px;">'
+      + '<div style="width:4px;height:28px;background:linear-gradient(180deg,#c9a84c,#c84b31);border-radius:2px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+      + '<span style="font-family:\'Noto Serif JP\',serif;font-size:15px;font-weight:700;color:#1a1a2e;letter-spacing:.04em;">'+ icon +' '+ text +'</span>'
+      + '<div style="flex:1;height:1px;background:linear-gradient(90deg,#d8d0c0,transparent);margin-left:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+      + '</div>';
+  };
+
+  // ━━━━━ HTML組み立て ━━━━━
   const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
     + '<title>合格ロードマップ｜' + s.name + '</title>'
-    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
-    + 'body{font-family:"Noto Sans JP",sans-serif;color:#2c2c3e;background:white;font-size:12px;}'
-    + '.sec{font-family:"Noto Serif JP",serif;font-size:14px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:10px;margin:20px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.card{background:white;border-radius:8px;padding:14px 16px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;}'
+    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:12px;}'
+    + '.card{background:white;border-radius:10px;padding:16px 18px;border:1px solid #d8d0c0;margin-bottom:14px;page-break-inside:avoid;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:10mm 12mm;size:A4;}}'
     + '</style></head><body>'
 
-    // ヘッダー
-    + '<div style="background:#1a1a2e;color:white;padding:14px 28px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-    + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
-    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:18px;font-weight:700;color:white;margin-top:3px;">合格ロードマップ</div></div>'
-    + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.6);">'
+    // ── ヘッダー
+    + '<div style="background-color:#1a1a2e;color:white;padding:14px 28px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;">PLATON EXAM STRATEGY MANAGEMENT</div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:20px;font-weight:700;color:white;margin-top:3px;letter-spacing:.04em;">合格ロードマップ</div></div>'
+    + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.65);">'
     + '<div style="font-size:14px;font-weight:700;color:white;">' + s.name + ' さん</div>'
     + '<div>第一志望：' + s.univName + '　目標偏差値：' + s.univInfo.dev + '</div>'
     + '<div>発行日：' + today + '</div></div></div>'
 
-    // 生徒情報バンド
+    // ── 生徒情報バンド
     + '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:12px 28px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div style="display:table-cell;width:25%;padding-right:12px;vertical-align:top;">'
     + '<div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-bottom:3px;">生徒氏名</div>'
@@ -3451,7 +3505,7 @@ function printRoadmapPDF() {
     + '<div style="display:table-cell;width:22%;vertical-align:top;">'
     + '<div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-bottom:3px;">目標偏差値</div>'
     + '<div style="font-size:22px;font-weight:700;color:white;font-family:\'Noto Serif JP\',serif;line-height:1;">' + s.univInfo.dev + '</div>'
-    + '<div style="font-size:9px;color:#c9a84c;margin-top:3px;">現状 ' + s.devVal + '（偏差値ギャップ +' + (s.univInfo.dev - s.devVal) + '）</div></div>'
+    + '<div style="font-size:9px;color:#c9a84c;margin-top:3px;">現状 ' + s.devVal + '（偏差値ギャップ +' + gap + '）</div></div>'
     + '<div style="display:table-cell;width:23%;vertical-align:top;">'
     + '<div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-bottom:3px;">残り期間</div>'
     + '<div style="font-size:22px;font-weight:700;color:white;font-family:\'Noto Serif JP\',serif;line-height:1;">' + s.months + 'ヶ月</div>'
@@ -3460,29 +3514,23 @@ function printRoadmapPDF() {
 
     + '<div style="max-width:960px;margin:0 auto;padding:18px 24px;">'
 
-    // タイムライン
-    + '<div class="sec">📅 月別ロードマップ（タイムライン）</div>'
+    + secTitle('📅', '月別ロードマップ（タイムライン）')
     + '<div class="card">' + timelineHTML + '</div>'
 
-    // 偏差値ギャップ（2カラム）
-    + '<div class="sec">📊 偏差値ギャップ分析</div>'
-    + '<div class="card">'
-    + '<div style="display:table;width:100%;">'
-    + '<div style="display:table-cell;width:52%;vertical-align:top;padding-right:20px;">' + gapBarsHTML + '</div>'
-    + '<div style="display:table-cell;width:48%;vertical-align:top;">'
-    + '<div style="font-size:11px;font-weight:700;color:#6b6b80;letter-spacing:.05em;margin-bottom:10px;">偏差値推移予測</div>'
-    + chartImgHTML + '</div></div></div>'
+    + secTitle('📊', '偏差値ギャップ分析')
+    + '<div class="card">' + gapHTML + '</div>'
 
-    // 参考書ルート
-    + '<div class="sec">📚 参考書ルート</div>'
-    + '<div class="card">' + booksTimelineHTML + '</div>'
+    + secTitle('📈', '偏差値推移予測')
+    + '<div class="card">' + chartImgHTML + '</div>'
 
-    // 塾長アドバイス
-    + '<div class="sec">💬 塾長からの戦略アドバイス</div>'
+    + secTitle('📚', '参考書ルート')
+    + '<div class="card">' + booksHTML + '</div>'
+
+    + secTitle('💬', '塾長からの戦略アドバイス')
     + '<div class="card">' + adviceHTML + '</div>'
 
     + '<div style="margin-top:16px;padding-top:10px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:9px;color:#bbb;">'
-    + '<div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
+    + '<div>プラトン 大学受験 戦略管理システム</div>'
     + '<div>' + s.name + ' 様専用</div></div>'
     + '</div></body></html>';
 
