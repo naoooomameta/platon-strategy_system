@@ -3882,6 +3882,41 @@ function buildReportHTML(s) {
              accent:'#c84b31',gold:'#c9a84c',teal:'#2a7f6f',muted:'#6b6b80',
              border:'#d8d0c0',text:'#2c2c3e',blue:'#4a6fa5'};
 
+  /* ── 3ヶ月プラン HTML ───────────────────────────── */
+  const _gap  = s.univInfo.dev - s.devVal;
+  const _subs = (s.targetSubjectKeys && s.targetSubjectKeys.length > 0)
+    ? s.targetSubjectKeys.map(k => {
+        const o = ALL_SUBJECT_OPTIONS.find(x => x.key === k);
+        if (o) return o.label;
+        const leg = {'eng':'英語リーディング','jpn':'現代文','soc':'日本史','math':'数学1A・2BC','sci':'理科基礎','etc':'情報'};
+        return leg[k] || k;
+      })
+    : (s.stream === 'rikei'
+        ? ['英語リーディング','数学1A・2BC','理科基礎']
+        : ['英語リーディング','現代文','日本史']);
+  const _p1 = buildPhase1Text(s, _gap, _subs);
+  const _p2 = buildPhase2Text(s, _gap, _subs);
+  const _p3 = buildPhase3Text(s, s.univName || '志望校', _subs);
+
+  const phaseColors = [C.accent, C.gold, C.teal];
+  const phaseData   = [_p1, _p2, _p3];
+  const phaseWeeks  = ['Week 1〜4', 'Week 5〜8', 'Week 9〜12'];
+
+  let phaseHtml = '<table style="width:100%;border-collapse:collapse;table-layout:fixed;" cellpadding="0" cellspacing="0"><tr>';
+  phaseData.forEach(function(ph, i) {
+    const col  = phaseColors[i];
+    const bgMap= [C.paper, '#fef9e8', '#eef5f3'];
+    const bg   = bgMap[i] || C.paper;
+    phaseHtml +=
+      '<td style="width:33.3%;padding:0 '+(i===1?'6px':'0')+';vertical-align:top;">'
+      + '<div style="border-top:3px solid '+col+';border-radius:6px;padding:12px 14px;background:'+bg+';height:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="font-size:9px;font-weight:700;color:'+col+';letter-spacing:.06em;margin-bottom:5px;">'+(i+1)+'ヶ月目 / '+phaseWeeks[i]+'</div>'
+      + '<div style="font-size:13px;font-weight:700;color:'+C.ink+';margin-bottom:7px;line-height:1.4;">'+ph.title+'</div>'
+      + '<div style="font-size:10px;color:'+C.text+';line-height:1.7;">'+ph.desc+'</div>'
+      + '</div></td>';
+  });
+  phaseHtml += '</tr></table>';
+
   /* ── TIMELINE HTML ─────────────────────────────── */
   const monthLabels = [];
   for (let i = 0; i < months; i++) {
@@ -4200,6 +4235,9 @@ function buildReportHTML(s) {
 
 <!-- BODY -->
 <div style="padding:12px 20px;">
+
+  ${sh('🎯','3ヶ月集中ロードマップ')}
+  ${card(phaseHtml)}
 
   ${sh('📅','月別ロードマップ（タイムライン）')}
   ${card(tlHtml)}
