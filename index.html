@@ -3306,9 +3306,10 @@ function renderTimeline() {
   monthLabels.forEach(() => {
     html += '<td style="padding:3px 2px;background:white;border:1px solid var(--border);text-align:center;vertical-align:middle;">';
     html += '<div style="display:flex;gap:2px;justify-content:center;align-items:center;flex-wrap:wrap;">';
-    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
-    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
-    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#c84b31;font-size:7px;font-weight:700;color:white;">月</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a1a2e;font-size:7px;font-weight:700;color:white;">週</span>`;
+    html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#c84b31;font-size:7px;font-weight:700;color:white;">月</span>`;
     html += '</div></td>';
   });
   html += '</tr>';
@@ -3881,7 +3882,7 @@ function buildReportHTML(s) {
   tlHtml += '<tr><td style="'+tdBase+'background:'+C.paper+';font-size:8px;font-weight:700;color:'+C.muted+';text-align:center;">確認<br>テスト</td>';
   monthLabels.forEach(() => {
     const dot = (bg,t) => '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:'+bg+';font-size:6px;font-weight:700;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+t+'</span>';
-    tlHtml += '<td style="'+tdBase+'text-align:center;vertical-align:middle;background:white;">'+dot(C.ink,'週')+' '+dot(C.ink,'週')+' '+dot(C.accent,'月')+'</td>';
+    tlHtml += '<td style="'+tdBase+'text-align:center;vertical-align:middle;background:white;">'+dot(C.ink,'週')+' '+dot(C.ink,'週')+' '+dot(C.ink,'週')+' '+dot(C.accent,'月')+'</td>';
   });
   tlHtml += '</tr></tbody></table>';
   tlHtml += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding:6px 10px;background:'+C.paper+';border-radius:6px;">';
@@ -3939,22 +3940,68 @@ function buildReportHTML(s) {
   /* ── BOOKS HTML ───────────────────────────────── */
   const booksData = window._roadmapBooksAll || [];
   const JAm=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  const subCol={eng:C.teal,math:C.accent,jpn:'#9a7a20',sci:C.blue,soc:'#2e7d32',etc:'#6a1b9a'};
+  const subCol ={eng:C.teal, math:C.accent, jpn:'#9a7a20', sci:C.blue, soc:'#2e7d32', etc:'#6a1b9a'};
+  const subBg  ={eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa'};
+  const subName={eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他'};
   const lvlLabel=['','入門','基礎','標準','応用','発展'];
   const nowM = now.getFullYear()*12+now.getMonth();
-  let booksHtml = '';
-  booksData.forEach((b,i) => {
-    const col = subCol[b.sub]||'#555';
-    const eAbs = b.endY*12+b.endM;
-    const urgent = (eAbs-nowM)<=2;
-    booksHtml += '<tr style="background:'+(i%2?'#fafaf8':'white')+';">';
-    booksHtml += '<td style="padding:5px 8px;"><span style="background:'+col+'1a;color:'+col+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.subLabel+'</span></td>';
-    booksHtml += '<td style="padding:5px 8px;font-size:11px;font-weight:500;">'+b.name+'</td>';
-    booksHtml += '<td style="padding:5px 8px;font-size:10px;color:#666;">'+b.category+'</td>';
-    booksHtml += '<td style="padding:5px 8px;font-size:10px;color:#666;">'+(lvlLabel[b.level]||'')+'</td>';
-    booksHtml += '<td style="padding:5px 8px;font-size:10px;color:#888;white-space:nowrap;">'+b.startY+'年'+JAm[b.startM]+'〜</td>';
-    booksHtml += '<td style="padding:5px 8px;white-space:nowrap;"><span style="font-size:10px;font-weight:700;color:'+(urgent?C.accent:C.teal)+';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+(urgent?'🔴 ':'📅 ')+b.endY+'年'+JAm[b.endM]+'まで</span></td>';
-    booksHtml += '</tr>';
+
+  // 月グループ化（画面と同じ構造）
+  const subOrder=['eng','math','jpn','sci','soc','etc'];
+  const sortedBooks=[...booksData].sort((a,b)=>{
+    const aM=a.startY*12+a.startM, bM=b.startY*12+b.startM;
+    return aM!==bM ? aM-bM : subOrder.indexOf(a.sub)-subOrder.indexOf(b.sub);
+  });
+  const byMonth=new Map();
+  sortedBooks.forEach(b=>{
+    const key=b.startY+'-'+b.startM;
+    if(!byMonth.has(key)) byMonth.set(key,{year:b.startY,month:b.startM,books:[]});
+    byMonth.get(key).books.push(b);
+  });
+
+  let booksHtml='';
+  let prevYear=null;
+  byMonth.forEach(({year,month,books:mBooks})=>{
+    const absM=year*12+month;
+    const isCurrent=absM===nowM;
+    const isPast=absM<nowM;
+    if(year!==prevYear){
+      prevYear=year;
+      booksHtml+='<div style="font-size:12px;font-weight:700;color:'+C.ink+';font-family:'Noto Serif JP',serif;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid '+C.border+';">── '+year+'年 ──</div>';
+    }
+    // 月行
+    booksHtml+='<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">';
+    // 月ラベル＋縦線
+    booksHtml+='<div style="width:36px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding-top:8px;">';
+    booksHtml+='<div style="font-size:'+(isCurrent?'12':'10')+'px;font-weight:'+(isCurrent?'700':'500')+';color:'+(isCurrent?C.gold:isPast?C.muted:C.ink)+';white-space:nowrap;text-align:center;">'+JAm[month]+'</div>';
+    if(isCurrent) booksHtml+='<div style="font-size:8px;color:'+C.gold+';font-weight:700;">今月</div>';
+    booksHtml+='<div style="width:'+(isCurrent?'10':'7')+'px;height:'+(isCurrent?'10':'7')+'px;border-radius:50%;background:'+(isCurrent?C.gold:isPast?'#ccc':C.ink)+';margin-top:4px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
+    booksHtml+='<div style="width:2px;flex:1;min-height:16px;background:'+C.border+';margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
+    booksHtml+='</div>';
+    // カードグリッド
+    booksHtml+='<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:4px;">';
+    mBooks.forEach(b=>{
+      const col=subCol[b.sub]||'#555';
+      const bg=subBg[b.sub]||'#f5f5f5';
+      const eAbs=b.endY*12+b.endM;
+      const isUrgent=(eAbs-nowM)<=2&&!isPast;
+      const isDone=eAbs<nowM;
+      const lv=lvlLabel[b.level]||'';
+      const cardBg=isDone?'#f4f4f4':isUrgent?'#fff5f4':bg;
+      const borderCol=isDone?'#bbb':isUrgent?C.accent:col;
+      const deadline=b.endY+'年'+JAm[b.endM]+'まで';
+      booksHtml+='<div style="background:'+cardBg+';border:1px solid '+borderCol+'88;border-left:4px solid '+borderCol+';border-radius:8px;padding:8px 10px;opacity:'+(isDone?'.6':'1')+';page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+      booksHtml+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:5px;margin-bottom:4px;">';
+      booksHtml+='<div style="font-size:11px;font-weight:700;color:'+(isDone?'#888':C.ink)+';line-height:1.4;flex:1;">'+(isUrgent?'🔴 ':isDone?'✓ ':'')+b.name+'</div>';
+      booksHtml+='<span style="font-size:8px;font-weight:700;background:'+col+'18;color:'+col+';padding:2px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+subName[b.sub]+'</span>';
+      booksHtml+='</div>';
+      booksHtml+='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">';
+      booksHtml+='<span style="font-size:9px;color:'+col+';background:'+col+'12;padding:1px 6px;border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.category+'</span>';
+      if(lv) booksHtml+='<span style="font-size:9px;color:'+C.muted+';">'+lv+'</span>';
+      booksHtml+='<span style="font-size:9px;color:'+(isUrgent&&!isDone?C.accent:C.muted)+';margin-left:auto;white-space:nowrap;">'+(isUrgent&&!isDone?'⚠️ ':'')+deadline+'</span>';
+      booksHtml+='</div></div>';
+    });
+    booksHtml+='</div></div>';
   });
 
   /* ── ADVICE HTML ──────────────────────────────── */
@@ -4074,20 +4121,7 @@ function buildReportHTML(s) {
     </div>
   `)}
 
-  ${booksData.length ? sh('📚','参考書ルート') + card(`
-    <table style="width:100%;border-collapse:collapse;">
-      <thead><tr style="background:${C.paper};-webkit-print-color-adjust:exact;print-color-adjust:exact;">
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">科目</th>
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">参考書名</th>
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">カテゴリ</th>
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">レベル</th>
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">着手</th>
-        <th style="padding:6px 8px;font-size:9px;font-weight:700;color:${C.muted};text-align:left;border-bottom:2px solid ${C.border};">完了期限</th>
-      </tr></thead>
-      <tbody>${booksHtml}</tbody>
-    </table>
-    <div style="margin-top:8px;font-size:9px;color:#aaa;">※ 🔴赤は直近2ヶ月以内に終了すべき書籍です</div>
-  `) : ''}
+  ${booksData.length ? sh('📚','参考書ルート') + card(booksHtml + '<div style="margin-top:6px;font-size:9px;color:#aaa;">※ 🔴赤は直近2ヶ月以内に終了すべき書籍です</div>') : ''}
 
   ${adviceSummary ? sh('💡','塾長からの戦略アドバイス') + `
   <div style="background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid ${C.gold};border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:14px;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
