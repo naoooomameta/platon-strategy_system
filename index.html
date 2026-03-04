@@ -5176,51 +5176,91 @@ function printWeeklyPlanPDF() {
   const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
   const subs = getWpSubs();
   const phaseColors = ['#c84b31','#c9a84c','#2a7f6f'];
-  const phaseBg = ['#fdf0ee','#fdf8ee','#eef5f3'];
+  const phaseBg    = ['#fef0ee','#fdf8ee','#eef5f3'];
+  const phaseBorder = ['#f0c0b8','#f0e0a0','#b0d8d0'];
   const now = new Date();
   const day = now.getDay();
+  const DAYS = ['月','火','水','木','金','土','日'];
 
-  // 全科目プランHTML：2カラムグリッドで科目を並べる
+  // ── 3ヶ月集中ロードマップ（概要カード） ──
+  // 生徒の弱点科目 = 最初の科目を使ってメッセージ生成
+  const mainSub = subs[0] || '英語';
+  const subList = subs.slice(0, 3).join('・');
+  const roadmapCards = [
+    {
+      n: 1, week: 'Week 1〜4',
+      title: '苦手単元を一掃する1ヶ月',
+      body: '現状の弱点科目（' + subList + '）の基礎レベル参考書を完走。インプットよりアウトプットを意識し、毎日の課題で確認を積み重ねる。',
+      color: phaseColors[0], bg: phaseBg[0], border: phaseBorder[0],
+    },
+    {
+      n: 2, week: 'Week 5〜8',
+      title: '模試で結果が出始める1ヶ月',
+      body: subList + 'の演習量を一気に増やし、得点力を実戦レベルへ。週1回の確認テストで「できる」を数値で確認しながら自信をつける。',
+      color: phaseColors[1], bg: phaseBg[1], border: phaseBorder[1],
+    },
+    {
+      n: 3, week: 'Week 9〜12',
+      title: (univName || '志望校') + '合格へ向けた最終調整',
+      body: '共通テスト＋二次試験の過去問・模試レベルで' + subList + 'を仕上げる。弱点を集中補強しながら、本番で最高のパフォーマンスが出せる状態を完成させる。',
+      color: phaseColors[2], bg: phaseBg[2], border: phaseBorder[2],
+    },
+  ];
+  const roadmapHTML = '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:20px;">'
+    + roadmapCards.map(function(c) {
+      return '<div style="display:table-cell;vertical-align:top;width:33.33%;padding:0 6px 0 0;">'
+        + '<div style="border:1px solid ' + c.border + ';border-top:3px solid ' + c.color + ';border-radius:0 0 6px 6px;padding:12px 14px;background:' + c.bg + ';height:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:9px;font-weight:700;color:' + c.color + ';letter-spacing:.06em;margin-bottom:3px;">' + c.n + 'ヶ月目 / ' + c.week + '</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px;line-height:1.4;">' + c.title + '</div>'
+        + '<div style="font-size:10px;color:#444;line-height:1.7;">' + c.body + '</div>'
+        + '</div></div>';
+    }).join('')
+    + '</div>';
+
+  // ── 科目別プランHTML ──
   const allSubjectsHTML = subs.map(function(sub) {
     var plans = WP_PLANS[sub] || WP_PLANS['英語'];
     var subColor = DAY_COLORS[sub] || '#1a1a2e';
-    var monthCards = plans.map(function(m, i) {
-      return '<div style="display:table-cell;width:33.33%;vertical-align:top;background:' + phaseBg[i] + ';padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';border-left:' + (i>0?'1px solid #e0d8c8':'none') + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="font-size:8px;font-weight:700;color:' + phaseColors[i] + ';letter-spacing:.07em;margin-bottom:3px;">' + (i+1) + 'ヶ月目</div>'
-        + '<div style="font-size:11px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">' + m.phase + '</div>'
-        + '<div style="font-size:9px;color:#6b6b80;margin-bottom:5px;">🎯 ' + m.goal + '</div>'
-        + '<div style="border-top:1px solid #d8d0c0;padding-top:5px;margin-bottom:5px;">'
-        + m.books.map(function(b){ return '<div style="font-size:9px;padding:1px 0;"><span style="color:' + phaseColors[i] + ';">▸</span> ' + b + '</div>'; }).join('')
+    var cols = plans.map(function(m, i) {
+      return '<div style="display:table-cell;width:33.33%;vertical-align:top;padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';border-left:' + (i > 0 ? '1px solid ' + phaseBorder[i] : 'none') + ';background:' + phaseBg[i] + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:8px;font-weight:700;color:' + phaseColors[i] + ';letter-spacing:.07em;margin-bottom:2px;">' + (i+1) + 'ヶ月目</div>'
+        + '<div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">' + m.phase + '</div>'
+        + '<div style="font-size:9px;color:#555;margin-bottom:6px;display:flex;align-items:flex-start;gap:3px;"><span style="color:' + phaseColors[i] + ';">🎯</span> ' + m.goal + '</div>'
+        + '<div style="border-top:1px solid ' + phaseBorder[i] + ';padding-top:5px;margin-bottom:6px;">'
+        + m.books.map(function(b) { return '<div style="font-size:9px;padding:1px 0;color:#333;"><span style="color:' + phaseColors[i] + ';font-weight:700;">▸</span> ' + b + '</div>'; }).join('')
         + '</div>'
-        + '<div style="background:white;border-radius:4px;padding:3px 6px;font-size:9px;color:#1a1a2e;margin-bottom:3px;"><b>週課題：</b>' + m.weekly + '</div>'
+        + '<div style="background:rgba(255,255,255,.75);border-radius:4px;padding:3px 6px;font-size:9px;color:#1a1a2e;margin-bottom:4px;"><b>週課題：</b>' + m.weekly + '</div>'
         + '<div style="background:' + phaseColors[i] + '22;border-radius:4px;padding:2px 6px;font-size:8px;color:' + phaseColors[i] + ';font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📝 ' + m.test + '</div>'
         + '</div>';
     }).join('');
-    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:14px;border:1px solid #e0d8c8;border-radius:8px;overflow:hidden;">'
-      + '<div style="background:' + subColor + ';padding:6px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><span style="font-size:12px;font-weight:700;color:white;">' + sub + '</span></div>'
-      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;">' + monthCards + '</div>'
+    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:16px;border:1px solid #e0d8c8;border-radius:8px;overflow:hidden;">'
+      + '<div style="background:' + subColor + ';padding:6px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<span style="font-size:12px;font-weight:700;color:white;">' + sub + '</span>'
+      + '</div>'
+      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;">' + cols + '</div>'
       + '</div>';
   }).join('');
 
-  // 12週間スケジュール：コンパクトに
+  // ── 12週間スケジュール ──
   var monday0 = new Date(now);
   monday0.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
 
-  var allWeeksHTML = Array.from({length:12}, function(_,wi) {
+  var allWeeksHTML = Array.from({length: 12}, function(_, wi) {
     var monday = new Date(monday0);
     monday.setDate(monday0.getDate() + wi * 7);
     var monthN = Math.floor(wi / 4) + 1;
     var weekInM = (wi % 4) + 1;
     var phaseIdx = Math.min(Math.floor(wi / 4), 2);
-    var phaseLabel = ['基礎','標準','演習'][phaseIdx];
+    var phaseLabel = ['基礎期','標準期','演習期'][phaseIdx];
     var phaseColor = phaseColors[phaseIdx];
     var phaseBgC = phaseBg[phaseIdx];
+    // 曜日ごと割当
     var assign = [
       [subs[0], subs[1]],
-      [subs[2]||subs[1], subs[0]],
-      [subs[1], subs[3]||subs[2]||subs[1]],
-      [subs[0], subs[2]||subs[1]],
-      [subs[1], subs[4]||subs[3]||subs[2]],
+      [subs[2] || subs[1], subs[0]],
+      [subs[1], subs[3] || subs[2] || subs[1]],
+      [subs[0], subs[2] || subs[1]],
+      [subs[1], subs[4] || subs[3] || subs[2]],
       ['復習・弱点補強'],
       ['📝 確認テスト'],
     ];
@@ -5230,62 +5270,74 @@ function printWeeklyPlanPDF() {
       var isWknd = di >= 5;
       var tasks = assign[di] || [];
       var taskHTML = tasks.map(function(t) {
-        if (t === '復習・弱点補強') return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;background:#e8e4dc;color:#1a1a2e;font-weight:600;">📚 復習</div>';
+        if (t === '復習・弱点補強') return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;background:#e8e4dc;color:#1a1a2e;font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📚 復習</div>';
         if (t.indexOf('📝') === 0) return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;background:#1a1a2e;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + t + '</div>';
         var clr = DAY_COLORS[t] || '#1a1a2e';
         var plan = WP_PLANS[t] ? WP_PLANS[t][phaseIdx] : null;
         var task = plan ? plan.weekly.split('＋')[0].trim() : t;
         return '<div style="font-size:8px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:' + clr + '18;color:' + clr + ';font-weight:600;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><b>' + t + '</b><br>' + task + '</div>';
       }).join('');
-      return '<div style="display:table-cell;width:14.28%;vertical-align:top;background:' + (isWknd ? '#fdf8f0' : 'white') + ';border:1px solid #d8d0c0;border-radius:4px;padding:4px 5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'
-        + '<span style="font-size:9px;font-weight:700;color:' + (isWknd?'#c84b31':'#6b6b80') + ';">' + dayName + '</span>'
-        + '<span style="font-size:8px;color:#6b6b80;">' + (d.getMonth()+1) + '/' + d.getDate() + '</span>'
+      return '<div style="display:table-cell;width:14.28%;vertical-align:top;background:' + (isWknd ? '#fdf8f0' : 'white') + ';border:1px solid #d8d0c0;padding:4px 5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+        + '<span style="font-size:9px;font-weight:700;color:' + (isWknd ? '#c84b31' : '#444') + ';">' + dayName + '</span>'
+        + '<span style="font-size:8px;color:#888;">' + (d.getMonth()+1) + '/' + d.getDate() + '</span>'
         + '</div>' + taskHTML + '</div>';
     }).join('');
 
     return '<div style="margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;background:' + phaseBgC + ';padding:4px 10px;border-radius:6px;border-left:3px solid ' + phaseColor + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;background:' + phaseBgC + ';padding:5px 10px;border-radius:6px;border-left:3px solid ' + phaseColor + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
       + '<span style="font-size:10px;font-weight:700;color:#1a1a2e;">Week' + (wi+1) + '（' + monthN + 'ヶ月目 第' + weekInM + '週）</span>'
-      + '<span style="font-size:8px;background:' + phaseColor + ';color:white;border-radius:8px;padding:1px 7px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + phaseLabel + '期</span>'
-      + '<span style="font-size:9px;color:#6b6b80;">' + (monday.getMonth()+1) + '月' + monday.getDate() + '日〜</span>'
+      + '<span style="font-size:8px;background:' + phaseColor + ';color:white;border-radius:8px;padding:1px 8px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + phaseLabel + '</span>'
+      + '<span style="font-size:9px;color:#555;">' + (monday.getMonth()+1) + '月' + monday.getDate() + '日〜</span>'
       + '</div>'
-      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;">' + daysCells + '</div>'
+      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:separate;border-spacing:2px;">' + daysCells + '</div>'
       + '</div>';
   }).join('');
 
-  var headerBg = 'background:#1a1a2e';
-  var studentBandHTML = studentName
-    ? '<div style="' + headerBg + ';color:white;padding:10px 20px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<div style="display:table-cell;width:33%;padding-right:12px;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">生徒氏名</div><div style="font-size:14px;font-weight:700;color:white;margin-top:2px;">' + studentName + ' さん</div></div>'
-      + (univName ? '<div style="display:table-cell;width:33%;padding-right:12px;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">第一志望</div><div style="font-size:12px;font-weight:700;color:white;margin-top:2px;">' + univName + '</div></div>' : '<div style="display:table-cell;"></div>')
-      + (targetDev ? '<div style="display:table-cell;width:33%;"><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.08em;">偏差値目標</div><div style="font-size:14px;font-weight:700;color:#c9a84c;margin-top:2px;">' + targetDev + '</div></div>' : '<div style="display:table-cell;"></div>')
-      + '</div>'
-    : '';
-
+  // ── HTML組み立て ──
   var html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
     + '<title>3ヶ月学習プラン｜' + studentName + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Noto Sans JP",sans-serif;color:#2c2c3e;background:white;font-size:11px;width:100%;overflow-x:hidden;}'
-    + '.top-hd{background:#1a1a2e;color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.wrap{width:100%;max-width:100%;padding:12px 16px;}'
-    + '.sec{font-size:12px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:14px 0 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.ft{margin-top:14px;padding-top:8px;border-top:1px solid #d8d0c0;display:flex;justify-content:space-between;font-size:8px;color:#bbb;}'
-    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 8mm;size:A4;}}</style></head><body>'
-    + '<div class="top-hd">'
-    + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">PLATON EXAM STRATEGY MANAGEMENT</div>'
-    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:16px;font-weight:700;color:white;margin-top:2px;">3ヶ月学習プラン</div></div>'
-    + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.6);">'
-    + (studentName ? '<div style="font-size:12px;font-weight:700;color:white;">' + studentName + ' さん</div>' : '')
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:11px;width:100%;overflow-x:hidden;}'
+    + '.sec{font-size:13px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:18px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.wrap{width:100%;max-width:100%;padding:14px 18px;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 8mm;size:A4;}}'
+    + '</style></head><body>'
+
+    // ── ヘッダー（背景色を確実に印刷するためinline styleで完結） ──
+    + '<div style="background-color:#1a1a2e;color:white;padding:13px 22px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div>'
+    + '<div style="font-size:8px;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;">PLATON EXAM STRATEGY MANAGEMENT</div>'
+    + '<div style="font-family:\'Noto Serif JP\',serif;font-size:17px;font-weight:700;color:white;margin-top:3px;">3ヶ月学習プラン</div>'
+    + '</div>'
+    + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.7);">'
+    + (studentName ? '<div style="font-size:13px;font-weight:700;color:white;">' + studentName + ' さん</div>' : '')
     + (univName ? '<div>第一志望：' + univName + (targetDev ? '　偏差値目標：' + targetDev : '') + '</div>' : '')
-    + '<div>発行日：' + today + '</div></div></div>'
+    + '<div>発行日：' + today + '</div>'
+    + '</div>'
+    + '</div>'
+
     + '<div class="wrap">'
+
+    // ── 3ヶ月集中ロードマップ ──
+    + '<div class="sec">3ヶ月集中ロードマップ</div>'
+    + roadmapHTML
+
+    // ── 科目別学習プラン ──
     + '<div class="sec">科目別 学習プラン（参考書×週次課題）</div>'
     + allSubjectsHTML
-    + '<div class="sec" style="margin-top:20px;">週間スケジュール詳細（全12週）</div>'
+
+    // ── 週間スケジュール ──
+    + '<div class="sec" style="margin-top:22px;">週間スケジュール詳細（全12週）</div>'
     + allWeeksHTML
-    + '<div class="ft"><div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>'
-    + (studentName ? '<div>' + studentName + ' 様専用</div>' : '') + '</div>'
+
+    // ── フッター（生徒名のみ） ──
+    + '<div style="margin-top:12px;padding-top:8px;border-top:1px solid #d8d0c0;display:flex;justify-content:flex-end;font-size:8px;color:#999;">'
+    + (studentName ? '<div>' + studentName + ' 様専用</div>' : '')
+    + '</div>'
+
     + '</div></body></html>';
 
   var existing = document.getElementById('pdf-modal');
