@@ -802,8 +802,8 @@
     <button class="nav-btn" onclick="showPage('tests')">確認テスト</button>
     <button class="nav-btn" onclick="showPage('monthly')">実力診断</button>
     <div style="display:flex;align-items:center;gap:6px;padding-right:12px;">
-    <span style="font-size:11px;color:#999;">🔑 API Key</span>
-    <input type="password" id="platon-api-key-input" placeholder="sk-ant-..."
+    <span style="font-size:11px;color:#999;">🔑 Gemini Key</span>
+    <input type="password" id="platon-api-key-input" placeholder="AIza..."
       style="width:160px;padding:4px 8px;font-size:11px;border:1px solid #ddd;border-radius:6px;"
       oninput="localStorage.setItem('platon_api_key', this.value)" />
   </div>
@@ -1564,27 +1564,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div id="bim-step1">
           <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:12px;">STEP 1 ／ 参考書を選択</div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">科目</label>
-              <select id="bim-subject" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">
-                <option value="英語">英語（英単語帳・文法）</option>
-                <option value="数学">数学（チャート・問題集）</option>
-                <option value="国語">国語（現代文・古文）</option>
-                <option value="物理">物理（教科書・問題集）</option>
-                <option value="化学">化学（教科書・問題集）</option>
-                <option value="社会">社会（一問一答・資料集）</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">参考書タイプ</label>
-              <select id="bim-type" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">
-                <option value="vocab">単語帳・一問一答</option>
-                <option value="textbook">教科書・参考書</option>
-                <option value="workbook">問題集・チャート</option>
-              </select>
-            </div>
-          </div>
+
 
           <!-- ソース切り替えタブ -->
           <div style="display:flex;gap:0;margin-bottom:12px;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
@@ -4198,17 +4178,7 @@ ${subjectStr}
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
+    const text = await callGemini(prompt);
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     renderAdvice(parsed, subjects);
@@ -4326,18 +4296,7 @@ async function processExamFile(file) {
     imgReader.onload = async ev => {
       try {
         const base64 = ev.target.result.split(',')[1];
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method:'POST', headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body: JSON.stringify({
-            model:'claude-sonnet-4-20250514', max_tokens:800,
-            messages:[{role:'user', content:[
-              {type:'image', source:{type:'base64', media_type:file.type, data:base64}},
-              {type:'text', text:'日本の大学受験模試の成績表です。各科目の偏差値・点数・全国順位を読み取り、次のJSON形式だけで回答してください（説明不要）：{"overallDeviation":数値,"subjects":[{"name":"科目名","deviation":数値,"score":数値,"rank":"順位"}],"examName":"模試名","examDate":"受験日"}'}
-            ]}]
-          })
-        });
-        const data = await resp.json();
-        const text = data.content?.[0]?.text || '';
+        const text = await callGeminiWithImage(base64, file.type, '日本の大学受験模試の成績表です。各科目の偏差値・点数・全国順位を読み取り、次のJSON形式だけで回答してください（説明不要）：{"overallDeviation":数値,"subjects":[{"name":"科目名","deviation":数値,"score":数値,"rank":"順位"}],"examName":"模試名","examDate":"受験日"}');
         const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
         showExamResult(parsed);
       } catch(err) {
@@ -5026,6 +4985,31 @@ function extractDriveFileId(url) {
 function getApiKey() {
   return localStorage.getItem('platon_api_key') || '';
 }
+async function callGemini(prompt) {
+  const key = getApiKey();
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+async function callGeminiWithImage(base64, mimeType, prompt) {
+  const key = getApiKey();
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [
+      { inline_data: { mime_type: mimeType, data: base64 } },
+      { text: prompt }
+    ]}]})
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
 
 async function fetchDriveViaGas(fileId) {
   const gasUrl = (document.getElementById('bim-gas-url')?.value || '').trim().replace(/\/+$/, '');
@@ -5119,8 +5103,8 @@ async function runBookImport() {
   if (bimSource === 'local' && !bimFileData) { showToast('ファイルを選択してください'); return; }
   if (bimSource === 'drive' && !bimDriveFileId) { showToast('Google ドライブの共有URLを入力してください'); return; }
 
-  const subject = document.getElementById('bim-subject').value;
-  const type    = document.getElementById('bim-type').value;
+  const subject = '参考書';
+  const type    = 'textbook';
   const range   = document.getElementById('bim-range').value;
 
   document.getElementById('bim-step1').style.display = 'none';
@@ -5169,36 +5153,17 @@ async function runBookImport() {
       msgContent = [docContent, { type:'text', text:extractPrompt }];
     }
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({
-        model:'claude-haiku-4-5-20251001', max_tokens:4000, stream:true,
-        messages:[{ role:'user', content: msgContent }]
-      })
-    });
+    progDesc.textContent = '解析中...';
+    raw = await callGemini(bimExtractedText
+      ? `以下は参考書から抽出したテキストです：
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let chars = 0;
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      for (const line of decoder.decode(value).split('\n')) {
-        if (!line.startsWith('data:')) continue;
-        const d = line.slice(5).trim();
-        if (d === '[DONE]') break;
-        try {
-          const ev = JSON.parse(d);
-          if (ev.type === 'content_block_delta' && ev.delta?.text) {
-            raw += ev.delta.text;
-            chars += ev.delta.text.length;
-            logEl.textContent = raw.slice(-400);
-            logEl.scrollTop = logEl.scrollHeight;
-            progDesc.textContent = `抽出中... ${chars} 文字`;
-          }
-        } catch {}
-      }
-    }
+${bimExtractedText}
+
+${extractPrompt}`
+      : extractPrompt);
+    logEl.textContent = raw.slice(-400);
+    logEl.scrollTop = logEl.scrollHeight;
+    progDesc.textContent = `完了 ${raw.length} 文字`;
 
     bimImportedData = JSON.parse(raw.replace(/```json|```/g,'').trim());
     showBimResult(subject, type);
