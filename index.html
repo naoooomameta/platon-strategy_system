@@ -1595,9 +1595,8 @@ document.addEventListener('keydown', function(e) {
         <div class="section-desc">3ヶ月分（12週）の週次ロードマップと毎日課題を管理します</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="wp-student-sel" onchange="wpInit()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
-          <option>田中 悠斗（高3・理系）</option>
-          <option>佐藤 美咲（高2・文系）</option>
+        <select id="wp-student-sel" onchange="wpSelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);min-width:200px;">
+          <option value="">-- 生徒を選択 --</option>
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('weekly-plan')" id="edit-toggle-weekly-plan" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printWeeklyPlanPDF()" style="font-size:13px;">📄 PDF保存</button>
@@ -1611,22 +1610,8 @@ document.addEventListener('keydown', function(e) {
         <div class="card-title" style="margin-bottom:0;">3ヶ月集中ロードマップ</div>
         <div id="wp-goal-badge" style="font-size:12px;padding:4px 14px;background:var(--ink);color:var(--gold);border-radius:20px;font-weight:700;"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--accent);">
-          <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.08em;margin-bottom:6px;">1ヶ月目 / Week 1〜4</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">基礎固め期</div>
-          <div style="font-size:11px;color:var(--text-muted);">弱点科目の土台を構築。参考書基礎レベルを完走する。</div>
-        </div>
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--gold);">
-          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.08em;margin-bottom:6px;">2ヶ月目 / Week 5〜8</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">標準演習期</div>
-          <div style="font-size:11px;color:var(--text-muted);">問題演習を積み、得点力を実戦レベルへ引き上げる。</div>
-        </div>
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--teal);">
-          <div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.08em;margin-bottom:6px;">3ヶ月目 / Week 9〜12</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">実戦演習期</div>
-          <div style="font-size:11px;color:var(--text-muted);">過去問・模試レベルで仕上げ。弱点を集中補強する。</div>
-        </div>
+      <div id="wp-phase-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        <!-- JS で動的生成 -->
       </div>
     </div>
 
@@ -2527,6 +2512,7 @@ function showPage(name) {
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
   if (name === 'dashboard') renderStudentList();
+  if (name === 'weekly-plan') wpRefreshStudentDropdown();
   if (name === 'new-student') {
     setTimeout(() => {
       resetRegistrationForm();
@@ -5632,11 +5618,11 @@ function getDayColor(label) {
 function getWpSubs() {
   const s = currentStudent;
   if (!s) return ['英語リーディング','英語リスニング','現代文','日本史'];
-  // targetSubjectKeys（ロードマップで選択された12科目キー）をラベルに変換して返す
+  // targetSubjectKeys（ロードマップで選択された12科目キー）をlabelに変換して返す
   if (s.targetSubjectKeys && s.targetSubjectKeys.length > 0) {
     return s.targetSubjectKeys.map(k => {
       const opt = ALL_SUBJECT_OPTIONS.find(o => o.key === k);
-      return opt ? opt.label : k;
+      return opt ? opt.label : k; // 必ず日本語ラベルを返す
     });
   }
   // フォールバック：stream別
@@ -5645,19 +5631,143 @@ function getWpSubs() {
     : ['英語リーディング','英語リスニング','現代文','古文','漢文','日本史'];
 }
 
-function wpInit() {
-  const s = currentStudent;
-  if (!s) { showToast('先にロードマップを生成してください'); return; }
+// ===== 3ヶ月プラン：生徒ドロップダウン更新 =====
+function wpRefreshStudentDropdown() {
+  const sel = document.getElementById('wp-student-sel');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">-- 生徒を選択 --</option>'
+    + _allStudents.map(s => {
+        const grade = {high1:'高1',high2:'高2',high3:'高3',ronin:'浪人'}[s.grade] || '';
+        const stream = s.stream === 'rikei' ? '理系' : '文系';
+        return `<option value="${s.name}">${s.name}（${grade}・${stream}）</option>`;
+      }).join('');
+  // 現在の currentStudent が存在するなら選択状態にする
+  if (currentStudent) sel.value = currentStudent.name;
+  else if (prev) sel.value = prev;
+}
 
-  // window._roadmapBooksAll からscheduledBooksを最新化
-  if (window._roadmapBooksAll && window._roadmapBooksAll.length > 0) {
+function wpSelectStudent(name) {
+  if (!name) return;
+  const s = _allStudents.find(x => x.name === name);
+  if (!s) return;
+  currentStudent = s;
+  // scheduledBooks がない場合は _roadmapBooksAll から補完
+  if ((!s.scheduledBooks || s.scheduledBooks.length === 0) && window._roadmapBooksAll && window._roadmapBooksAll.length > 0) {
+    s.scheduledBooks = window._roadmapBooksAll;
+  }
+  wpInit();
+}
+
+function wpInit() {
+  // ドロップダウンを最新生徒リストで更新
+  wpRefreshStudentDropdown();
+
+  const s = currentStudent;
+  if (!s) {
+    const sel = document.getElementById('wp-student-sel');
+    if (_allStudents.length > 0 && sel) {
+      // 生徒がいれば最初の1人を自動選択
+      currentStudent = _allStudents[0];
+      sel.value = _allStudents[0].name;
+      wpInit();
+    }
+    return;
+  }
+
+  // scheduledBooks 最新化
+  if (window._roadmapBooksAll && window._roadmapBooksAll.length > 0
+      && currentStudent.name === s.name) {
     s.scheduledBooks = window._roadmapBooksAll;
   }
 
+  // 目標バッジ
   const badge = document.getElementById('wp-goal-badge');
   if (badge) badge.textContent = `目標：${s.univName || '東京大学'} 偏差値${s.univInfo?.dev || 72}`;
+
+  // 3ヶ月フェーズカード（生徒情報から動的生成）
+  renderWpPhaseCards(s);
   buildWpSubjectTabs();
   renderWpWeekGrid();
+}
+
+function renderWpPhaseCards(s) {
+  const el = document.getElementById('wp-phase-cards');
+  if (!el) return;
+
+  const gap    = (s.univInfo?.dev || 70) - (s.devVal || 55);
+  const months = s.months || 12;
+  const name   = s.name || '生徒';
+  const univ   = s.univName || '志望校';
+  const subs   = getWpSubs();
+
+  // 生徒状況から3フェーズのタイトル・説明を動的に決定
+  const phase1 = buildPhase1Text(s, gap, subs);
+  const phase2 = buildPhase2Text(s, gap, subs);
+  const phase3 = buildPhase3Text(s, univ, subs);
+
+  const cards = [
+    { week:'1〜4', color:'var(--accent)', label: phase1.label, title: phase1.title, desc: phase1.desc },
+    { week:'5〜8', color:'var(--gold)',   label: phase2.label, title: phase2.title, desc: phase2.desc },
+    { week:'9〜12',color:'var(--teal)',   label: phase3.label, title: phase3.title, desc: phase3.desc },
+  ];
+
+  el.innerHTML = cards.map((c, i) => `
+    <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid ${c.color};">
+      <div style="font-size:10px;font-weight:700;color:${c.color};letter-spacing:.08em;margin-bottom:6px;">
+        ${i+1}ヶ月目 / Week ${c.week}
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;line-height:1.4;">${c.title}</div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.6;">${c.desc}</div>
+    </div>`).join('');
+}
+
+function buildPhase1Text(s, gap, subs) {
+  const subNames = subs.slice(0,3).join('・');
+  if (gap >= 15) return {
+    label: '土台構築期',
+    title: '「わからない」をなくす3週間',
+    desc: `偏差値ギャップが${gap}ある今、まず${subNames}の基礎を徹底的に固める。問題が解けない理由を潰し、「なぜ」がわかる状態を目指す。`
+  };
+  if (gap >= 8) return {
+    label: '基礎完成期',
+    title: '苦手単元を一掃する1ヶ月',
+    desc: `現状の弱点科目（${subNames}）の基礎レベル参考書を完走。インプットよりアウトプットを意識し、毎日の課題で確認を積み重ねる。`
+  };
+  return {
+    label: '強化準備期',
+    title: '得点源を作る準備の1ヶ月',
+    desc: `すでにある基礎力を土台に、${subNames}の標準レベルへ橋渡しする。弱点の発見と修正を繰り返し、演習量を増やす準備をする。`
+  };
+}
+
+function buildPhase2Text(s, gap, subs) {
+  const subNames = subs.slice(0,3).join('・');
+  if (gap >= 15) return {
+    label: '演習定着期',
+    title: '解法パターンを体に染み込ませる',
+    desc: `基礎で固めた知識を問題演習に変換する。${subNames}の標準問題を反復し、「見た瞬間に解き方が浮かぶ」状態へ引き上げていく。`
+  };
+  if (gap >= 8) return {
+    label: '得点力強化期',
+    title: '模試で結果が出始める1ヶ月',
+    desc: `${subNames}の演習量を一気に増やし、得点力を実戦レベルへ。週1回の確認テストで「できる」を数値で確認しながら自信をつける。`
+  };
+  return {
+    label: '実戦移行期',
+    title: '志望校レベルへ近づく1ヶ月',
+    desc: `標準〜応用問題に取り組み、${s.univName || '志望校'}の出題形式に慣れる。記述・論述のある科目は採点基準を意識した練習を始める。`
+  };
+}
+
+function buildPhase3Text(s, univ, subs) {
+  const subNames = subs.slice(0,3).join('・');
+  const examLabel = s.univInfo?.cat === 'national' ? '共通テスト＋二次試験' : '一般入試';
+  return {
+    label: '仕上げ・総仕上げ期',
+    title: `${univ}合格へ向けた最終調整`,
+    desc: `${examLabel}の過去問・模試レベルで${subNames}を仕上げる。弱点を集中補強しながら、本番で最高のパフォーマンスが出せる状態を完成させる。`
+  };
 }
 
 function buildWpSubjectTabs() {
@@ -5668,23 +5778,26 @@ function buildWpSubjectTabs() {
   // ロードマップ生成状況バナー
   const s = currentStudent;
   const hasRoadmap = s && s.scheduledBooks && s.scheduledBooks.length > 0;
-  const bannerEl = document.getElementById('wp-roadmap-banner');
+  let bannerEl = document.getElementById('wp-roadmap-banner');
   if (!bannerEl) {
-    const banner = document.createElement('div');
-    banner.id = 'wp-roadmap-banner';
-    el.parentElement.insertBefore(banner, el);
+    bannerEl = document.createElement('div');
+    bannerEl.id = 'wp-roadmap-banner';
+    el.parentElement.insertBefore(bannerEl, el);
   }
-  document.getElementById('wp-roadmap-banner').innerHTML = hasRoadmap
+  bannerEl.innerHTML = hasRoadmap
     ? `<div style="font-size:11px;color:var(--teal);background:#eef5f3;border:1px solid var(--teal);border-radius:8px;padding:7px 14px;margin-bottom:10px;">
         ✅ ロードマップ（${s.scheduledBooks.length}冊）のデータをもとに学習プランを生成しています
       </div>`
-    : `<div style="font-size:11px;color:var(--gold);background:#fef9e8;border:1px solid var(--gold);border-radius:8px;padding:7px 14px;margin-bottom:10px;">
-        ⚠️ ロードマップがまだ生成されていません。先に「ロードマップ」画面で生成すると、実際の参考書スケジュールをもとにプランが作成されます。
+    : `<div style="font-size:11px;color:var(--gold);background:#fef9e8;border:1px solid #c9a84c;border-radius:8px;padding:7px 14px;margin-bottom:10px;">
+        ⚠️ この生徒のロードマップがまだ生成されていません。先に「ロードマップ」画面で生成すると、実際の参考書スケジュールをもとにプランが更新されます。
       </div>`;
 
-  el.innerHTML = subs.map((sub,i) =>
-    `<button class="tab ${i===0?'active':''}" onclick="selectWpSub('${sub}',this)" style="font-size:12px;">${sub}</button>`
-  ).join('');
+  el.innerHTML = subs.map((sub, i) => {
+    const opt = ALL_SUBJECT_OPTIONS.find(o => o.label === sub);
+    const tabLabel = opt ? opt.short : sub; // shortがあれば使う（英R/現文など）
+    return `<button class="tab ${i===0?'active':''}" onclick="selectWpSub('${sub}',this)"
+      style="font-size:12px;" title="${sub}">${tabLabel}</button>`;
+  }).join('');
   renderWpSubjectPlan(subs[0]);
 }
 
@@ -5768,11 +5881,7 @@ function renderWpSubjectPlan(sub) {
   const plans = roadmapPlans || WP_PLANS[sub] || WP_PLANS['英語リーディング'];
   const cols  = ['var(--accent)', 'var(--gold)', 'var(--teal)'];
   const bgs   = ['var(--paper)', 'var(--paper)', 'var(--paper)'];
-  const sourceNote = roadmapPlans
-    ? '<div style="font-size:10px;color:var(--teal);margin-bottom:10px;">📌 ロードマップの参考書スケジュールをもとに生成しています</div>'
-    : '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;">※ ロードマップを先に生成すると実際の参考書データで表示されます</div>';
-
-  el.innerHTML = sourceNote + `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
     ${plans.map((m, i) => {
       const col = m._color || cols[i];
       const bg  = m._bg   || bgs[i];
