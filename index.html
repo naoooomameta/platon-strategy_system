@@ -3321,16 +3321,19 @@ function renderTimeline() {
   html += '</tr>';
   html += '</thead>';
 
-  // 科目行
+  // 科目行（フェーズをcolspanで統合 → テキスト全文表示）
   html += '<tbody>';
   tlSubjects.forEach(sub => {
     html += '<tr>';
     html += `<td style="padding:7px 6px;background:var(--paper);font-size:11px;font-weight:700;color:${sub.color};text-align:center;border:1px solid var(--border);white-space:nowrap;">${sub.label}</td>`;
-    monthLabels.forEach((m, i) => {
-      const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
-      const isStart = (i === 0 || i === p1end || i === p2end);
-      const lbl = isStart ? sub.phases[ph] : '';
-      html += `<td style="padding:8px 5px;background:${sub.bg};border-top:2px solid ${phDef[ph].border};border-bottom:1px solid var(--border);border-left:${isStart ? '2px solid ' + sub.color : '1px solid ' + sub.bg};border-right:1px solid ${sub.bg};font-size:10px;font-weight:${isStart ? '700' : '400'};color:${sub.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl}</td>`;
+    // 3フェーズをそれぞれcolspanで1セルに
+    spans.forEach((sp, pi) => {
+      const ph = pi;
+      const lbl  = sub.phases[ph];
+      // フォントサイズ：期間が短いほど小さく（最小8px）
+      const fs   = sp >= 5 ? 11 : sp >= 3 ? 10 : sp >= 2 ? 9 : 8;
+      const pad  = sp >= 3 ? '8px 8px' : '6px 4px';
+      html += `<td colspan="${sp}" style="padding:${pad};background:${sub.bg};border-top:2px solid ${phDef[ph].border};border-bottom:1px solid var(--border);border-left:2px solid ${sub.color};border-right:2px solid ${phDef[ph].border};font-size:${fs}px;font-weight:700;color:${sub.color};white-space:normal;word-break:keep-all;line-height:1.5;vertical-align:middle;">${lbl}</td>`;
     });
     html += '</tr>';
   });
@@ -3918,14 +3921,16 @@ function buildReportHTML(s) {
     tlHtml += '<th style="'+thBase+'background:'+(isLast?'#f8d4cd':C.paper)+';color:'+(isLast?C.accent:'#444')+';">'+m+'</th>';
   });
   tlHtml += '</tr></thead><tbody>';
-  // subject rows
+  // subject rows（フェーズをcolspanで統合 → テキスト全文表示）
   tlSubjects.forEach(sub => {
     tlHtml += '<tr><td style="'+tdBase+'background:#fafaf8;font-weight:700;color:'+sub.color+';text-align:center;width:48px;">'+sub.label+'</td>';
-    monthLabels.forEach((m,i) => {
-      const ph = i<p1end?0:i<p2end?1:2;
-      const isStart = (i===0||i===p1end||i===p2end);
-      const lbl = isStart ? sub.phases[ph] : '';
-      tlHtml += '<td style="'+tdBase+'background:'+sub.bg+';color:'+sub.color+';font-weight:'+(isStart?'700':'400')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:2px solid '+phDef[ph].border+';border-left:'+(isStart?'2px solid '+sub.color:'1px solid '+sub.bg)+';">'+lbl+'</td>';
+    spans.forEach(function(sp, pi) {
+      var ph  = pi;
+      var lbl = sub.phases[ph];
+      // フォントサイズ：期間が短いほど小さく（最小7px）
+      var fs  = sp >= 5 ? 10 : sp >= 3 ? 9 : sp >= 2 ? 8 : 7;
+      var pad = sp >= 3 ? '6px 6px' : '4px 3px';
+      tlHtml += '<td colspan="'+sp+'" style="padding:'+pad+';background:'+sub.bg+';color:'+sub.color+';font-size:'+fs+'px;font-weight:700;white-space:normal;word-break:keep-all;line-height:1.5;vertical-align:middle;border-top:2px solid '+phDef[ph].border+';border-left:2px solid '+sub.color+';border-right:2px solid '+phDef[ph].border+';border-bottom:1px solid #ddd;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+lbl+'</td>';
     });
     tlHtml += '</tr>';
   });
