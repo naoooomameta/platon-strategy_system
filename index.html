@@ -811,6 +811,7 @@
 </header>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+  renderStudentList();
   var el = document.getElementById('platon-api-key-input');
   var k = localStorage.getItem('platon_api_key');
   if (el && k) el.value = k;
@@ -840,40 +841,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;">
       <div class="card fade-in">
         <div class="card-title">生徒一覧</div>
-        <div class="student-list">
-          <div class="student-row" onclick="loadStudentRoadmap('田中 悠斗')">
-            <div class="student-avatar">田</div>
-            <div class="student-info">
-              <div class="student-name">田中 悠斗</div>
-              <div class="student-meta">高校3年 / 理系 / 入塾：2024年4月</div>
-            </div>
-            <div>
-              <div class="badge badge-national" style="margin-bottom:4px;">第一志望：東京大学 理科一類</div>
-              <div style="text-align:right;">
-                <span class="student-status active">ロードマップ稼働中</span>
-              </div>
-            </div>
-          </div>
-          <div class="student-row" onclick="loadStudentRoadmap('佐藤 美咲')">
-            <div class="student-avatar">佐</div>
-            <div class="student-info">
-              <div class="student-name">佐藤 美咲</div>
-              <div class="student-meta">高校2年 / 文系 / 入塾：2024年9月</div>
-            </div>
-            <div>
-              <div class="badge badge-private" style="margin-bottom:4px;">第一志望：早稲田大学 法学部</div>
-              <div style="text-align:right;">
-                <span class="student-status active">ロードマップ稼働中</span>
-              </div>
-            </div>
-          </div>
-          <div class="student-row" onclick="showPage('new-student')">
-            <div class="student-avatar" style="background:var(--border);color:var(--text-muted);">+</div>
-            <div class="student-info">
-              <div class="student-name" style="color:var(--text-muted);">新規生徒を登録する</div>
-              <div class="student-meta">クリックして登録フォームへ</div>
-            </div>
-          </div>
+        <div class="student-list" id="student-list-dynamic">
         </div>
       </div>
 
@@ -2313,10 +2281,69 @@ let currentStudent = null;
 let deviationChart = null;
 
 // ===== NAVIGATION =====
+// ===== 生徒リスト管理 =====
+let _allStudents = [];
+
+function saveStudentToList(s) {
+  const exists = _allStudents.find(x => x.name === s.name);
+  if (!exists) _allStudents.push(s);
+  renderStudentList();
+}
+
+function loadStudentFromList(name) {
+  const s = _allStudents.find(x => x.name === name);
+  if (!s) { showToast('生徒データが見つかりません'); return; }
+  currentStudent = s;
+  renderRoadmap();
+  showPage('roadmap');
+}
+
+function renderStudentList() {
+  var el = document.getElementById('student-list-dynamic');
+  if (!el) return;
+  var gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' };
+  var defaults = [
+    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12, enrolled:'2024-04' },
+    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23, enrolled:'2024-09' },
+  ];
+  var allSorted = defaults.filter(function(d){ return !_allStudents.find(function(s){ return s.name === d.name; }); }).concat(_allStudents);
+  var html = allSorted.map(function(s) {
+    var gl = gradeLabel[s.grade] || '';
+    var sl = s.stream === 'rikei' ? '理系' : '文系';
+    var catBadge = (s.univInfo && s.univInfo.cat === 'national') ? 'badge-national' : 'badge-private';
+    var diff = ((s.univInfo && s.univInfo.dev) || 0) - (s.devVal || 0);
+    var diffColor = diff > 10 ? '#c84b31' : diff > 5 ? '#c9a84c' : '#2a7f6f';
+    var av = s.name.charAt(0);
+    var enrolled = s.enrolled ? s.enrolled.replace('-', '年') + '月' : '—';
+    var dn = s.name.replace(/'/g, "\\'");
+    return '<div class="student-row" onclick="loadStudentFromList(\'' + dn + '\')">'
+      + '<div class="student-avatar">' + av + '</div>'
+      + '<div class="student-info">'
+      + '<div class="student-name">' + s.name + '</div>'
+      + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;">'
+      + '<div class="badge ' + catBadge + '" style="margin-bottom:4px;">' + s.univName + (s.dept1 ? ' ' + s.dept1 : '') + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:' + diffColor + ';">偏差値 ' + (s.devVal || '—') + ' → ' + ((s.univInfo && s.univInfo.dev) || '—') + '（差' + (diff > 0 ? '+' : '') + diff + '）</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  html += '<div class="student-row" onclick="showPage(\'new-student\')">'
+    + '<div class="student-avatar" style="background:var(--border);color:var(--text-muted);">+</div>'
+    + '<div class="student-info">'
+    + '<div class="student-name" style="color:var(--text-muted);">新規生徒を登録する</div>'
+    + '<div class="student-meta">クリックして登録フォームへ</div>'
+    + '</div></div>';
+  el.innerHTML = html;
+}
+
+
+
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
+  if (name === 'dashboard') renderStudentList();
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
@@ -2542,6 +2569,9 @@ function generateRoadmap() {
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3 };
 
+  // ダッシュボードに追加
+  saveStudentToList(currentStudent);
+
   const loading = document.getElementById('loading');
   loading.classList.add('show');
   setTimeout(() => {
@@ -2549,6 +2579,7 @@ function generateRoadmap() {
     renderRoadmap();
     showPage('roadmap');
     updateStepIndicator();
+    renderStudentList();
     showToast('ロードマップを生成しました ✓');
   }, 1800);
 }
@@ -4698,10 +4729,30 @@ function applyExamDev(dev) {
 let wpWeekIdx = 0;
 
 const WP_PLANS = {
+  '英語リーディング': [
+    {phase:'単語・文法 基礎固め', goal:'英単語1200語・基本文法全範囲完成', books:['システム英単語Basic','英文法レベル別1・2'], weekly:'単語30語/日 ＋ 文法30問/日', test:'単語小テスト50語'},
+    {phase:'読解力 強化期', goal:'英文解釈・長文読解の基礎確立', books:['入門英文解釈の技術70','英語長文レベル別1・2'], weekly:'長文2題/日 ＋ 単語復習20語/日', test:'長文読解テスト2題'},
+    {phase:'実戦演習 仕上げ', goal:'共通テスト〜志望校レベルを安定攻略', books:['英語長文レベル別3','速読英単語必修編'], weekly:'長文3題/日 ＋ 過去問1年分/週', test:'時間制限付き長文3題'},
+  ],
+  '英語リスニング': [
+    {phase:'基礎音声 定着期', goal:'英語の音とリズムに慣れ聞き取りの土台完成', books:['キムタツの共通テストリスニング基礎編','英語リスニングのトレーニング入門'], weekly:'シャドーイング20分/日 ＋ 音読10分/日', test:'短文ディクテーション20問'},
+    {phase:'演習量 積上げ期', goal:'共通テスト形式で安定7割', books:['キムタツの共通テストリスニング実戦編'], weekly:'共通テスト大問2〜3題/日 ＋ 速度1.2倍練習', test:'大問形式テスト3題'},
+    {phase:'実戦仕上げ', goal:'共通テスト本番形式で9割安定', books:['共通テスト過去問（リスニング）'], weekly:'本番形式1回/週 ＋ 弱点分析', test:'本番想定テスト（40分）'},
+  ],
   '英語': [
     {phase:'単語・文法 基礎固め', goal:'英単語1200語・基本文法全範囲完成', books:['システム英単語Basic','英文法レベル別1・2'], weekly:'単語30語/日 ＋ 文法30問/日', test:'単語小テスト50語'},
     {phase:'読解力 強化期', goal:'英文解釈・長文読解の基礎確立', books:['入門英文解釈の技術70','英語長文レベル別1・2'], weekly:'長文2題/日 ＋ 単語復習20語/日', test:'長文読解テスト2題'},
     {phase:'実戦演習 仕上げ', goal:'共通テスト〜志望校レベルを安定攻略', books:['英語長文レベル別3','速読英単語必修編'], weekly:'長文3題/日 ＋ 過去問1年分/週', test:'時間制限付き長文3題'},
+  ],
+  '数学1A': [
+    {phase:'基礎問題 全範囲網羅', goal:'数学ⅠA教科書レベルを完全定着', books:['白チャート数学ⅠA','基礎問題精講 数学ⅠA'], weekly:'例題10問/日 ＋ 類題5問/日', test:'基礎計算テスト10問'},
+    {phase:'標準問題 演習期', goal:'ⅠA入試標準問題を自力で完答', books:['青チャート数学ⅠA（例題）','1対1対応の演習ⅠA'], weekly:'例題8問/日 ＋ 復習3問/日', test:'標準問題テスト8問'},
+    {phase:'応用・記述 仕上げ', goal:'共通テストⅠA満点・二次7割以上', books:['文系の数学 重要事項完全習得編'], weekly:'応用5問/日 ＋ 過去問1年分/週', test:'記述問題テスト5問'},
+  ],
+  '数学2BC': [
+    {phase:'基礎問題 全範囲網羅', goal:'数学ⅡBC教科書レベルを完全定着', books:['白チャート数学ⅡB','基礎問題精講 数学ⅡBC'], weekly:'例題10問/日 ＋ 類題5問/日', test:'基礎計算テスト10問'},
+    {phase:'標準問題 演習期', goal:'ⅡBC入試標準問題を自力で完答', books:['青チャート数学ⅡB（例題）','1対1対応の演習ⅡBC'], weekly:'例題8問/日 ＋ 復習3問/日', test:'標準問題テスト8問'},
+    {phase:'応用・記述 仕上げ', goal:'共通テストⅡBC満点・二次7割以上', books:['理系数学の良問プラチカ'], weekly:'応用5問/日 ＋ 過去問1年分/週', test:'記述問題テスト5問'},
   ],
   '数学': [
     {phase:'基礎問題 全範囲網羅', goal:'教科書レベルを完全定着', books:['白チャート数学ⅠA','白チャート数学ⅡB'], weekly:'例題10問/日 ＋ 類題5問/日', test:'基礎計算テスト10問'},
@@ -4718,6 +4769,21 @@ const WP_PLANS = {
     {phase:'有機・無機 習得期', goal:'有機・無機の全範囲網羅', books:['鎌田の有機化学','福間の無機化学'], weekly:'暗記10項目/日 ＋ 問題5問/日', test:'有機・無機識別テスト'},
     {phase:'実戦演習 仕上げ', goal:'志望校で高得点安定', books:['全レベル問題集化学2'], weekly:'問題10問/日 ＋ 過去問1年分/週', test:'総合化学テスト10問'},
   ],
+  '現代文': [
+    {phase:'読解基礎 文章把握', goal:'論説・評論の読み方習得', books:['全レベル問題集現代文1','全レベル問題集現代文2'], weekly:'2題/日 ＋ 語彙15分/日', test:'200字要約テスト2題'},
+    {phase:'演習量 積み上げ期', goal:'共通テストで安定8割', books:['全レベル問題集現代文3（私大）'], weekly:'3題/日 ＋ 記述1本/週', test:'選択肢問題テスト3題'},
+    {phase:'記述・過去問 演習', goal:'志望校で安定得点', books:['全レベル問題集現代文6（国公立）'], weekly:'記述 ＋ 過去問1年分/週', test:'記述採点テスト2題'},
+  ],
+  '古文': [
+    {phase:'文法・単語 基礎', goal:'古文文法全活用・単語315語習得', books:['古典文法ドリル','重要古文単語315'], weekly:'単語20語/日 ＋ 文法1章/日', test:'単語・活用形テスト30問'},
+    {phase:'読解演習 初〜標準', goal:'共通テストを自力で解く', books:['古文レベル別2・3','マドンナ古文'], weekly:'古文1題/日 ＋ 文法復習', test:'古文読解テスト1題'},
+    {phase:'応用・実戦 演習', goal:'私大〜国公立に対応', books:['古文レベル別4・5','得点奪取古文'], weekly:'古文2題/日 ＋ 過去問1年分/週', test:'古文総合テスト'},
+  ],
+  '漢文': [
+    {phase:'句法・頻出語 習得', goal:'漢文句法全48型・頻出語200語完成', books:['漢文ヤマのヤマ','宮下典男の漢文ミラクルアイランド'], weekly:'句法3型/日 ＋ 例文音読', test:'句法確認テスト20問'},
+    {phase:'読解演習 強化期', goal:'共通テストを安定8割', books:['漢文全レベル問題集2・3'], weekly:'1題/日 ＋ 句法復習', test:'読解テスト2題'},
+    {phase:'実戦・仕上げ', goal:'私大〜国公立に対応', books:['漢文全レベル問題集4・5'], weekly:'2題/日 ＋ 過去問1年分/週', test:'漢文総合テスト'},
+  ],
   '国語': [
     {phase:'読解基礎 文章把握', goal:'論説・評論の読み方習得', books:['全レベル問題集現代文1','全レベル問題集現代文2'], weekly:'2題/日 ＋ 語彙15分/日', test:'200字要約テスト2題'},
     {phase:'演習量 積み上げ期', goal:'共通テストで安定8割', books:['全レベル問題集現代文3（私大）'], weekly:'3題/日 ＋ 記述1本/週', test:'選択肢問題テスト3題'},
@@ -4728,6 +4794,36 @@ const WP_PLANS = {
     {phase:'読解演習 初〜標準', goal:'共通テストを自力で解く', books:['古文レベル別2・3','漢文全レベル2'], weekly:'古文1題/日 ＋ 漢文1題/2日', test:'古文読解テスト1題'},
     {phase:'応用・実戦 演習', goal:'私大〜国公立に対応', books:['古文レベル別4・5','漢文全レベル3'], weekly:'古文2題/日 ＋ 漢文1題/日', test:'古文・漢文総合テスト'},
   ],
+  '日本史': [
+    {phase:'通史・流れ 把握期', goal:'原始〜現代の大きな流れを理解', books:['金谷の日本史「なぜ」と「流れ」①②','日本史B講義の実況中継①'], weekly:'30P精読/日 ＋ 年表整理', test:'年代・流れ確認20問'},
+    {phase:'知識 体系化期', goal:'共通テストで安定8割', books:['日本史B一問一答（完全版）','共通テスト日本史対策問題集'], weekly:'一問一答50問/日 ＋ 問題1章/日', test:'一問一答テスト50問'},
+    {phase:'論述・実戦 演習', goal:'論述・記述に対応', books:['日本史B論述練習帳','大学入試日本史論述問題集'], weekly:'論述1本/週 ＋ 過去問1年分/週', test:'論述テスト400字'},
+  ],
+  '世界史': [
+    {phase:'通史・流れ 把握期', goal:'全地域・全時代の大きな流れを理解', books:['ナビゲーター世界史①②','タテから見る世界史'], weekly:'30P精読/日 ＋ 年表整理', test:'年代・流れ確認20問'},
+    {phase:'知識 体系化期', goal:'共通テストで安定8割', books:['世界史B一問一答（完全版）','ヨコから見る世界史'], weekly:'一問一答50問/日 ＋ 問題1章/日', test:'一問一答テスト50問'},
+    {phase:'論述・実戦 演習', goal:'論述・記述に対応', books:['実力をつける世界史100題'], weekly:'論述1本/週 ＋ 過去問1年分/週', test:'論述テスト400字'},
+  ],
+  '地理': [
+    {phase:'系統地理 基礎固め', goal:'自然・人文・産業地理の基礎完成', books:['村瀬の地理Bをはじめからていねいに','地理B講義の実況中継'], weekly:'1章精読/日 ＋ 地図確認', test:'系統地理確認20問'},
+    {phase:'地誌・演習期', goal:'共通テストで安定8割', books:['地理B一問一答','共通テスト地理B集中講義'], weekly:'一問一答30問/日 ＋ 地誌1地域/日', test:'地域別テスト20問'},
+    {phase:'実戦・仕上げ', goal:'志望校レベルに対応', books:['地理B論述・短答演習'], weekly:'演習2題/日 ＋ 過去問1年分/週', test:'論述・地図テスト'},
+  ],
+  '公民': [
+    {phase:'基礎概念 理解期', goal:'政治・経済・倫理の基本概念完成', books:['蔭山の共通テスト政治・経済','倫理の点数が面白いほどとれる本'], weekly:'1章精読/日 ＋ キーワード整理', test:'基本概念確認20問'},
+    {phase:'演習・体系化期', goal:'共通テストで安定8割', books:['政治・経済一問一答','倫理・政経共通テスト対策'], weekly:'一問一答40問/日 ＋ 問題演習', test:'分野別テスト30問'},
+    {phase:'実戦・仕上げ', goal:'時事問題含め安定得点', books:['共通テスト過去問（公民）'], weekly:'過去問1年分/週 ＋ 時事チェック', test:'本番形式テスト'},
+  ],
+  '情報': [
+    {phase:'基礎知識 習得期', goal:'情報の基本概念・プログラミング基礎完成', books:['共通テスト情報Iをひとつひとつわかりやすく'], weekly:'1章/日 ＋ Python基礎練習', test:'基本概念確認テスト'},
+    {phase:'演習・応用期', goal:'共通テスト形式問題で安定7割', books:['共通テスト情報I集中講義'], weekly:'演習問題2題/日 ＋ コード練習', test:'演習テスト10問'},
+    {phase:'実戦・仕上げ', goal:'共通テスト本番で高得点', books:['共通テスト過去問・予想問題（情報）'], weekly:'過去問1年分/週 ＋ 弱点補強', test:'本番形式テスト'},
+  ],
+  '理科基礎': [
+    {phase:'基礎知識 習得期', goal:'物理基礎・化学基礎・生物基礎・地学基礎の基本完成', books:['橋元の物理基礎をはじめから','鎌田の化学基礎をはじめから'], weekly:'1章/日 ＋ 例題演習', test:'基本公式確認テスト'},
+    {phase:'演習・体系化期', goal:'共通テスト形式で安定7割', books:['共通テスト理科基礎集中講義'], weekly:'演習2題/日 ＋ 計算練習', test:'分野別演習テスト'},
+    {phase:'実戦・仕上げ', goal:'共通テスト本番で高得点', books:['共通テスト過去問（理科基礎2科目）'], weekly:'過去問1年分/週 ＋ 弱点補強', test:'本番形式テスト（2科目）'},
+  ],
   '社会': [
     {phase:'通史・流れ 把握期', goal:'全時代の大きな流れを理解', books:['ものがたり世界史①②','金谷の日本史①②'], weekly:'30P精読/日 ＋ 年表整理', test:'年代・流れ確認20問'},
     {phase:'知識 体系化期', goal:'共通テストで安定8割', books:['一問一答（日・世・地）','共通テスト対策問題集'], weekly:'一問一答50問/日 ＋ 問題1章/日', test:'一問一答テスト50問'},
@@ -4737,16 +4833,21 @@ const WP_PLANS = {
 
 const DAYS = ['月','火','水','木','金','土','日'];
 const DAY_COLORS = {
-  '英語':'#2a7f6f','数学':'#c84b31','物理':'#7b4fa6','化学':'#4a6fa5',
-  '国語':'#9a7a20','古文・漢文':'#7a4f20','社会':'#2e7d32',
+  '英語':'#2a7f6f','英語リーディング':'#2a7f6f','英語リスニング':'#1a6b5f',
+  '数学':'#c84b31','数学1A':'#c84b31','数学2BC':'#a83520',
+  '物理':'#7b4fa6','化学':'#4a6fa5','理科基礎':'#5a5fa6',
+  '現代文':'#9a7a20','古文':'#7a5c20','漢文':'#5c4a1a',
+  '国語':'#9a7a20','古文・漢文':'#7a4f20',
+  '日本史':'#2e7d32','世界史':'#1b5e20','地理':'#388e3c',
+  '公民':'#4e7c32','情報':'#006064','社会':'#2e7d32',
 };
 
 function getWpSubs() {
   const s = currentStudent;
   if (s) return s.stream === 'rikei'
-    ? ['英語','数学','物理','化学','国語']
-    : ['英語','数学','国語','古文・漢文','社会'];
-  return ['英語','数学','物理','化学','国語'];
+    ? ['英語リーディング','英語リスニング','数学1A','数学2BC','物理','化学']
+    : ['英語リーディング','英語リスニング','数学1A','現代文','古文','漢文','日本史'];
+  return ['英語リーディング','英語リスニング','数学1A','数学2BC','物理','化学'];
 }
 
 function wpInit() {
