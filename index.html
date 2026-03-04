@@ -4581,49 +4581,60 @@ function downloadDynPDF() {
   const modal = document.getElementById('pdf-modal-dyn');
   if (!modal) return;
   const iframe = modal.querySelector('iframe');
-  const titleEl = modal.querySelector('span');
-  const filename = (titleEl ? titleEl.textContent.replace('📄 ','').trim() : 'test') + '.pdf';
-  const body = iframe.contentDocument ? iframe.contentDocument.body : null;
-  if (!body) return;
-  const noprint = body.querySelector('.no-print');
+  if (!iframe) return;
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  if (!iframeDoc) return;
+  const noprint = iframeDoc.body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+  const printWin = window.open('', '_blank');
+  printWin.document.write(iframeDoc.documentElement.outerHTML);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => {
+    printWin.print();
+    printWin.close();
+    if (noprint) noprint.style.display = '';
+  }, 800);
 }
 
 function downloadReportPDF() {
   const modal = document.getElementById('pdf-modal');
   if (!modal) return;
   const iframe = modal.querySelector('iframe');
-  const titleEl = modal.querySelector('span');
-  const filename = (titleEl ? titleEl.textContent.replace('📄 ','').trim() : 'report') + '.pdf';
-  const body = iframe ? (iframe.contentDocument ? iframe.contentDocument.body : null) : null;
-  if (!body) return;
-  const noprint = body.querySelector('.no-print');
+  if (!iframe) return;
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  if (!iframeDoc) return;
+  const noprint = iframeDoc.body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+  const printWin = window.open('', '_blank');
+  printWin.document.write(iframeDoc.documentElement.outerHTML);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => {
+    printWin.print();
+    printWin.close();
+    if (noprint) noprint.style.display = '';
+  }, 800);
 }
 
 function downloadAsPDF() {
   const iframe = document.getElementById('pdf-print-frame');
   if (!iframe) return;
-  const titleEl = document.querySelector('#pdf-modal span');
-  const filename = (titleEl ? titleEl.textContent.replace('🖨️ ', '').trim() : 'platon') + '.pdf';
-  const body = iframe.contentDocument ? iframe.contentDocument.body : null;
-  if (!body) return;
-  const opt = {
-    margin: [10, 12, 10, 12],
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css'] }
-  };
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  if (!iframeDoc) return;
   // no-printバーを一時非表示
-  const noprint = body.querySelector('.no-print');
+  const noprint = iframeDoc.body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set(opt).from(body).save().then(() => {
+  // 新しいウィンドウで印刷（html2canvasの座標ズレを回避）
+  const printWin = window.open('', '_blank');
+  printWin.document.write(iframeDoc.documentElement.outerHTML);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => {
+    printWin.print();
+    printWin.close();
     if (noprint) noprint.style.display = '';
-  });
+  }, 800);
 }
 
 function printPage(pageId, title) {
