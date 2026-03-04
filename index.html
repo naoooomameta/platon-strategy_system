@@ -495,15 +495,14 @@
 
   /* ===== GAP GRAPH ===== */
   .gap-panel {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    align-items: start;
-  }
-  .gap-stats {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 2rem;
+  }
+  .gap-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
   }
   .gap-stat-row {
     display: flex;
@@ -545,7 +544,7 @@
   }
   .chart-container {
     position: relative;
-    height: 200px;
+    height: 260px;
   }
 
   /* ===== BADGE / TAG ===== */
@@ -1389,16 +1388,17 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="card-title" style="margin:0;">偏差値ギャップ分析</div>
         </div>
 
-        <div class="card-title">偏差値ギャップ分析</div>
         <div class="gap-panel">
+          <!-- 科目別バー -->
           <div>
-            <div style="margin-bottom:1rem;">
-              <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;">科目別：現状 vs 目標偏差値</div>
-              <div class="gap-stats" id="gap-stats">
-                <!-- generated dynamically -->
-              </div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;">科目別：現状 vs 目標偏差値</div>
+            <div class="gap-stats" id="gap-stats">
+              <!-- generated dynamically -->
             </div>
           </div>
+          <!-- 総合ギャップ -->
+          <div id="gap-summary-block"></div>
+          <!-- 折れ線グラフ -->
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;">偏差値推移予測</div>
             <div class="chart-container">
@@ -3253,17 +3253,29 @@ function renderGapStats() {
     </div>`;
   });
 
-  html += `<div style="margin-top:12px;padding:12px;background:var(--paper);border-radius:8px;border:1px solid var(--border);">
-    <div style="font-size:12px;color:var(--text-muted);">総合ギャップ</div>
-    <div style="font-size:24px;font-weight:700;color:${gap > 10 ? 'var(--accent)' : 'var(--teal)'};font-family:'DM Mono',monospace;margin-top:4px;">
-      ${gap > 0 ? '+' : ''}${gap} <span style="font-size:13px;font-weight:400;">偏差値</span>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-      現状 ${s.devVal} → 目標 ${s.univInfo.dev}（${s.univName}）
-    </div>
-  </div>`;
-
   document.getElementById('gap-stats').innerHTML = html;
+
+  // 総合ギャップを別ブロックへ
+  const summaryEl = document.getElementById('gap-summary-block');
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+    <div style="padding:16px 20px;background:var(--paper);border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.06em;">総合ギャップ</div>
+        <div style="font-size:28px;font-weight:700;color:${gap > 10 ? 'var(--accent)' : 'var(--teal)'};font-family:'DM Mono',monospace;line-height:1;">
+          ${gap > 0 ? '+' : ''}${gap}
+          <span style="font-size:14px;font-weight:400;color:var(--text-muted);"> 偏差値</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">現状 → 目標</div>
+        <div style="font-size:15px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;">
+          ${s.devVal} <span style="color:var(--text-muted);font-weight:400;">→</span> ${s.univInfo.dev}
+          <span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:4px;">（${s.univName}）</span>
+        </div>
+      </div>
+    </div>`;
+  }
 }
 
 // ===== CHART =====
