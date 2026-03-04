@@ -778,6 +778,36 @@
   }
   .student-status.active { background: #e0f4f0; color: var(--teal); }
 
+  /* ===== PDFプレビューモーダル ===== */
+  #pdf-preview-modal {
+    /* ESCキー対応のためtabindex=-1も付与可 */
+  }
+  #pdf-preview-a4 {
+    transform-origin: top center;
+  }
+  /* 210mm = 794px 相当。画面幅が狭い場合にスケールダウン */
+  @media (max-width: 900px) {
+    #pdf-preview-a4 {
+      transform: scale(0.75);
+      margin-bottom: -15%;
+    }
+  }
+  @media (max-width: 650px) {
+    #pdf-preview-a4 {
+      transform: scale(0.5);
+      margin-bottom: -35%;
+    }
+  }
+  /* プレビュー内のタイムライン制御 */
+  #pdf-preview-a4 .timeline-wrapper {
+    overflow: visible !important;
+    overflow-x: visible !important;
+  }
+  #pdf-preview-a4 .timeline {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
   /* ===== PDF出力用スタイル（html2pdf.js用） =====
      page-roadmap に .pdf-mode クラスが付いているとき適用 */
   #page-roadmap.pdf-mode .timeline-wrapper {
@@ -879,6 +909,12 @@ document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('platon-api-key-input');
   var k = localStorage.getItem('platon_api_key');
   if (el && k) el.value = k;
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('pdf-preview-modal');
+    if (m) m.remove();
+  }
 });
 </script>
 
@@ -4024,94 +4060,169 @@ function printRoadmapPDF() {
 
 
 // ===== PDF レポート出力 =====
+// ===== PDF プレビュー & ダウンロード =====
 function exportPDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
+  openPDFPreview();
+}
 
-  showPage('roadmap');
-  window.scrollTo({ top: 0, behavior: 'instant' });
+function openPDFPreview() {
+  const s = currentStudent;
+  const el = document.getElementById('page-roadmap');
+  if (!el) return;
 
-  setTimeout(() => {
-    const el = document.getElementById('page-roadmap');
-    if (!el) { showToast('ロードマップが見つかりません'); return; }
+  // ── 既存モーダルを除去
+  const old = document.getElementById('pdf-preview-modal');
+  if (old) old.remove();
 
-    const name = s.name || '生徒';
-    const filename = name + '_合格ロードマップ.pdf';
+  // ── プレビュー用クローンを作成
+  const clone = el.cloneNode(true);
+  // クローン内のボタン・フィルター・チャートcanvasラベル等を除去
+  clone.querySelectorAll('button, #roadmap-books-filter, .no-print').forEach(n => n.remove());
+  // canvasをimgに差し替え（Chart.jsグラフを静止画で保持）
+  el.querySelectorAll('canvas').forEach(cv => {
+    const cloneCanvas = clone.querySelector('#' + cv.id);
+    if (!cloneCanvas) return;
+    try {
+      const img = document.createElement('img');
+      img.src = cv.toDataURL('image/png');
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+      cloneCanvas.replaceWith(img);
+    } catch(e) {}
+  });
+  // タイムライン横スクロール解除
+  clone.querySelectorAll('.timeline-wrapper').forEach(w => {
+    w.style.overflow = 'visible';
+    w.style.overflowX = 'visible';
+  });
+  clone.querySelectorAll('.timeline').forEach(t => {
+    t.style.minWidth = '0';
+    t.style.width = '100%';
+  });
+  // ページ分割防止
+  clone.querySelectorAll('.card, .fade-in, .timeline-row, .test-row').forEach(c => {
+    c.style.pageBreakInside = 'avoid';
+    c.style.breakInside = 'avoid';
+  });
+  clone.style.cssText = 'display:block;position:static;overflow:visible;padding:0;background:#faf9f5;';
 
-    // ===== 一時的なスタイル適用 =====
-    const restore = [];
+  // ── モーダル組み立て
+  const modal = document.createElement('div');
+  modal.id = 'pdf-preview-modal';
+  modal.style.cssText = [
+    'position:fixed;inset:0;z-index:9999;',
+    'display:flex;flex-direction:column;',
+    'background:rgba(10,10,20,.82);',
+    'font-family:"Noto Sans JP",sans-serif;'
+  ].join('');
 
-    // ① ボタン類・フィルターを非表示
-    el.querySelectorAll('button').forEach(b => {
-      restore.push([b, 'display', b.style.display]);
-      b.style.display = 'none';
-    });
-    const filter = document.getElementById('roadmap-books-filter');
-    if (filter) { restore.push([filter, 'display', filter.style.display]); filter.style.display = 'none'; }
+  // トップバー
+  const bar = document.createElement('div');
+  bar.style.cssText = [
+    'background:#1a1a2e;padding:12px 20px;',
+    'display:flex;justify-content:space-between;align-items:center;',
+    'flex-shrink:0;border-bottom:2px solid #c9a84c;'
+  ].join('');
+  bar.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="color:#c9a84c;font-size:18px;">📄</span>
+      <div>
+        <div style="color:white;font-size:14px;font-weight:700;font-family:'Noto Serif JP',serif;">
+          合格ロードマップ｜${s.name} さん
+        </div>
+        <div style="color:#8888aa;font-size:11px;margin-top:1px;">
+          プレビュー確認後、PDFダウンロードしてください
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button id="pdf-dl-btn" onclick="downloadRoadmapPDF()"
+        style="padding:9px 22px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:8px;
+               font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+               display:flex;align-items:center;gap:6px;">
+        📥 PDFダウンロード
+      </button>
+      <button onclick="document.getElementById('pdf-preview-modal').remove()"
+        style="padding:9px 14px;background:rgba(255,255,255,.12);color:white;border:none;
+               border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
+        ✕ 閉じる
+      </button>
+    </div>`;
 
-    // ② タイムラインのoverflow:auto を解除（切れ防止）
-    const tlWrapper = el.querySelector('.timeline-wrapper');
-    if (tlWrapper) {
-      restore.push([tlWrapper, 'overflow', tlWrapper.style.overflow]);
-      restore.push([tlWrapper, 'overflowX', tlWrapper.style.overflowX]);
-      tlWrapper.style.overflow = 'visible';
-      tlWrapper.style.overflowX = 'visible';
+  // スクロールエリア（A4枠内にプレビュー）
+  const scroll = document.createElement('div');
+  scroll.style.cssText = [
+    'flex:1;overflow-y:auto;overflow-x:hidden;',
+    'display:flex;justify-content:center;',
+    'padding:24px 16px;gap:0;',
+    'background:#44444e;'
+  ].join('');
+
+  // A4ページ風コンテナ
+  const a4 = document.createElement('div');
+  a4.id = 'pdf-preview-a4';
+  a4.style.cssText = [
+    'background:#faf9f5;',
+    'width:210mm;min-height:297mm;',
+    'padding:12mm 10mm;',
+    'box-shadow:0 8px 40px rgba(0,0,0,.5);',
+    'flex-shrink:0;',
+    'overflow:visible;'
+  ].join('');
+  a4.appendChild(clone);
+
+  scroll.appendChild(a4);
+  modal.appendChild(bar);
+  modal.appendChild(scroll);
+  document.body.appendChild(modal);
+}
+
+function downloadRoadmapPDF() {
+  const s = currentStudent;
+  if (!s) return;
+
+  const btn = document.getElementById('pdf-dl-btn');
+  if (btn) { btn.textContent = '⏳ 生成中...'; btn.disabled = true; }
+
+  const a4 = document.getElementById('pdf-preview-a4');
+  if (!a4) return;
+
+  const name = s.name || '生徒';
+  const filename = name + '_合格ロードマップ.pdf';
+
+  const opt = {
+    margin: [0, 0, 0, 0],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#faf9f5',
+      scrollX: 0,
+      scrollY: 0,
+      width: a4.scrollWidth,
+      windowWidth: a4.scrollWidth
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: {
+      mode: ['avoid-all', 'css', 'legacy'],
+      avoid: ['.card', '.timeline-row', '.test-row', '.chart-container', '.info-box']
     }
-    // タイムライン本体のmin-widthを解除
-    const tlInner = el.querySelector('.timeline');
-    if (tlInner) {
-      restore.push([tlInner, 'minWidth', tlInner.style.minWidth]);
-      tlInner.style.minWidth = '0';
-    }
+  };
 
-    // ③ .card に page-break-inside: avoid を付与
-    el.querySelectorAll('.card, .fade-in').forEach(c => {
-      restore.push([c, 'pageBreakInside', c.style.pageBreakInside]);
-      restore.push([c, 'breakInside', c.style.breakInside]);
-      c.style.pageBreakInside = 'avoid';
-      c.style.breakInside = 'avoid';
+  html2pdf().set(opt).from(a4).save()
+    .then(() => {
+      if (btn) { btn.innerHTML = '✅ 保存しました'; btn.style.background = '#2a7f6f'; btn.style.color = 'white'; }
+      setTimeout(() => {
+        if (btn) { btn.innerHTML = '📥 PDFダウンロード'; btn.style.background = '#c9a84c'; btn.style.color = '#1a1a2e'; btn.disabled = false; }
+      }, 2500);
+    })
+    .catch(err => {
+      if (btn) { btn.innerHTML = '❌ 失敗'; btn.disabled = false; }
+      console.error(err);
     });
-
-    // ④ タイムライン各行に page-break-inside: avoid
-    el.querySelectorAll('.timeline-row, .test-row').forEach(r => {
-      restore.push([r, 'pageBreakInside', r.style.pageBreakInside]);
-      restore.push([r, 'breakInside', r.style.breakInside]);
-      r.style.pageBreakInside = 'avoid';
-      r.style.breakInside = 'avoid';
-    });
-
-    const opt = {
-      margin: [10, 8, 10, 8],
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#faf9f5',
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: document.documentElement.scrollWidth
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: {
-        mode: ['avoid-all', 'css', 'legacy'],
-        avoid: ['.card', '.timeline-row', '.test-row', '.chart-container', '.info-box', '.gap-panel']
-      }
-    };
-
-    const doRestore = () => {
-      restore.forEach(([node, prop, val]) => { node.style[prop] = val; });
-      el.classList.remove('pdf-mode');
-    };
-
-    // pdf-mode クラスを付けてCSSで制御
-    el.classList.add('pdf-mode');
-
-    html2pdf().set(opt).from(el).save()
-      .then(() => { doRestore(); showToast('PDFを保存しました'); })
-      .catch(err => { doRestore(); showToast('PDF保存に失敗しました'); console.error(err); });
-  }, 500);
 }
 
 function printReport() {
