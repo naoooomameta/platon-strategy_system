@@ -3085,15 +3085,15 @@ function exportAdvicePDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
 
-  // テキストをHTML安全にエスケープするユーティリティ
   function escHtml(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+  function nl2br(str) {
+    return escHtml(str).replace(/\n/g,'<br>');
+  }
 
   const summaryEl  = document.getElementById('advice-summary');
-  // innerHTML優先（要素内にタグがない前提でtextContentも確認）
-  const summaryRaw = summaryEl ? (summaryEl.textContent || summaryEl.innerText || '').trim() : '';
-  const summary    = escHtml(summaryRaw);
+  const summaryRaw = summaryEl ? (summaryEl.textContent || '').trim() : '';
   if (!summaryRaw) { showToast('先に戦略アドバイスを生成してください'); return; }
 
   const today       = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
@@ -3104,16 +3104,19 @@ function exportAdvicePDF() {
   // 科目別アドバイス
   let subjectsHtml = '';
   document.querySelectorAll('#advice-subjects > div').forEach(card => {
-    const name   = escHtml(card.querySelector('[style*="font-weight:700"]')?.textContent || '');
-    const badge  = escHtml(card.querySelector('span')?.textContent || '');
-    const badgeColor = card.querySelector('span')?.style.color || '#666';
-    const text   = escHtml(card.querySelector('[data-subject-advice]')?.textContent || card.querySelectorAll('div')[2]?.textContent || '');
+    const nameEl  = card.querySelector('[style*="font-weight:700"]');
+    const badgeEl = card.querySelector('span');
+    const advEl   = card.querySelector('[data-subject-advice]');
+    const name      = escHtml((nameEl?.textContent || '').trim());
+    const badge     = escHtml((badgeEl?.textContent || '').trim());
+    const badgeColor = badgeEl?.style.color || '#666';
+    const text      = nl2br((advEl?.textContent || '').trim());
     if (!name) return;
     subjectsHtml += `
-    <div style="border:1.5px solid #e8e0d0;border-radius:8px;padding:12px 14px;">
+    <div style="border:1.5px solid #e8e0d0;border-radius:8px;padding:12px 14px;break-inside:avoid;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div style="font-size:13px;font-weight:700;color:#1a1a2e;">${name}</div>
-        <span style="font-size:10px;font-weight:700;color:${badgeColor};background:${badgeColor}18;padding:2px 8px;border-radius:10px;">${badge}</span>
+        <span style="font-size:10px;font-weight:700;color:${badgeColor};background:${badgeColor}18;padding:2px 8px;border-radius:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${badge}</span>
       </div>
       <div style="font-size:12px;line-height:1.8;color:#444;">${text}</div>
     </div>`;
@@ -3122,7 +3125,9 @@ function exportAdvicePDF() {
   // 今月の最優先タスク
   let tasksHtml = '';
   document.querySelectorAll('#advice-tasks > div').forEach((el, i) => {
-    const text = escHtml(el.querySelector('div:last-child')?.textContent || '');
+    // 2番目のdiv（テキスト部分）を直接取得
+    const divs = el.querySelectorAll(':scope > div');
+    const text = escHtml(((divs[1] || divs[0])?.textContent || '').trim());
     if (!text) return;
     tasksHtml += `
     <tr>
@@ -3184,7 +3189,7 @@ body{font-family:'Noto Sans JP',sans-serif;color:#2c2c3e;background:#fff;font-si
   <!-- 総合戦略コメント -->
   <div style="margin-bottom:24px;">
     <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;">📋 総合戦略コメント</div>
-    <div style="background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:16px 20px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${summary}</div>
+    <div style="background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:16px 20px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:pre-wrap;">${nl2br(summaryRaw)}</div>
   </div>
 
   ${subjectsHtml ? `
@@ -3548,7 +3553,9 @@ function exportPDF() {
 
   // アドバイスコンテンツ取得
   const summaryEl = document.getElementById('advice-summary');
-  const adviceSummary = summaryEl ? (summaryEl.textContent || summaryEl.innerText || '').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || '（戦略アドバイスを生成してください）' : '（戦略アドバイスを生成してください）';
+  const _sumRaw = summaryEl ? (summaryEl.textContent || '').trim() : '';
+  const adviceSummary = (_sumRaw || '（戦略アドバイスを生成してください）')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 
   const taskItems = document.querySelectorAll('#advice-tasks > div');
   let tasksHtml = '';
@@ -3681,7 +3688,7 @@ function exportPDF() {
   .s-sub{font-size:10px;color:#c9a84c;margin-top:2px;}
   .section{margin-bottom:24px;}
   .section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;}
-  .advice-box{background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:14px 18px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;}
+  .advice-box{background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:14px 18px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;white-space:pre-wrap;}
   .task-table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:10px;overflow:hidden;}
   .subjects-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .book-table{width:100%;border-collapse:collapse;}
