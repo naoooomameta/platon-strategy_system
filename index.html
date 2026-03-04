@@ -3051,9 +3051,118 @@ function printRoadmapPDF() {
   const gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || '';
   const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
 
-  // タイムライン内容取得
-  const timelineEl = document.getElementById('timeline-content');
-  const timelineHTML = timelineEl ? timelineEl.innerHTML : '<p style="color:#999;">データなし</p>';
+  // タイムライン：PDF専用グリッド形式で再生成
+  (function() {
+    const months = Math.min(s.months, 12);
+    const now2 = new Date();
+    const monthLabels = [];
+    for (let i = 0; i < months; i++) {
+      const d = new Date(now2.getFullYear(), now2.getMonth() + i, 1);
+      monthLabels.push((d.getMonth() + 1) + '月');
+    }
+    const isRikei = s.stream === 'rikei';
+
+    // フェーズ境界
+    const p1end = Math.round(months * 0.38);
+    const p2end = Math.round(months * 0.72);
+
+    const subjects = isRikei
+      ? [
+          { label: '英語',  color: '#2a7f6f', bg: '#e8f4f1', phases: ['英単語・文法 基礎固め', '長文読解 強化期', '実戦演習 仕上げ'] },
+          { label: '数学',  color: '#c84b31', bg: '#fce8e5', phases: ['基礎問題 全範囲網羅', '標準問題 演習期', '応用・記述 仕上げ'] },
+          { label: '国語',  color: '#c9a84c', bg: '#fdf8f0', phases: ['現代文 読解基礎', '演習量 積み上げ', '記述・過去問 演習'] },
+          { label: '理科',  color: '#4a6fa5', bg: '#eef2f9', phases: ['概念・公式 理解期', '標準問題 演習期', '実戦・難問 演習'] },
+        ]
+      : [
+          { label: '英語',  color: '#2a7f6f', bg: '#e8f4f1', phases: ['英単語・文法 基礎固め', '長文読解 強化期', '実戦演習 仕上げ'] },
+          { label: '数学',  color: '#c84b31', bg: '#fce8e5', phases: ['基礎問題 全範囲網羅', '標準問題 演習期', '応用・記述 仕上げ'] },
+          { label: '国語',  color: '#c9a84c', bg: '#fdf8f0', phases: ['現代文＋古文 基礎', '演習量 積み上げ', '記述・過去問 演習'] },
+          { label: '社会',  color: '#4a6fa5', bg: '#eef2f9', phases: ['通史・流れ 把握期', '知識 体系化期', '論述・実戦 演習'] },
+        ];
+
+    // フェーズ定義
+    const phaseDef = [
+      { label: '基礎期', border: '#2a7f6f', headerBg: '#c8eae4' },
+      { label: '標準期', border: '#c9a84c', headerBg: '#f9edcc' },
+      { label: '演習期', border: '#c84b31', headerBg: '#f8d4cd' },
+    ];
+
+    let tlHtml = '<div style="overflow-x:auto;">';
+    tlHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:600px;">';
+
+    // ===== フェーズヘッダー行 =====
+    tlHtml += '<thead>';
+    tlHtml += '<tr>';
+    tlHtml += '<th style="width:56px;border:1px solid #ccc;background:#f0ebe0;"></th>';
+    for (let i = 0; i < months; i++) {
+      const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
+      const isPhaseStart = (i === 0 || i === p1end || i === p2end);
+      const isPhaseEnd = (i === p1end - 1 || i === p2end - 1 || i === months - 1);
+      const phSpan = ph === 0 ? p1end : ph === 1 ? (p2end - p1end) : (months - p2end);
+      if (isPhaseStart) {
+        tlHtml += '<th colspan="' + phSpan + '" style="padding:5px 4px;background:' + phaseDef[ph].headerBg + ';border:2px solid ' + phaseDef[ph].border + ';font-size:10px;font-weight:700;color:' + phaseDef[ph].border + ';text-align:center;letter-spacing:.05em;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+          + phaseDef[ph].label + '（' + (ph === 0 ? months + 'ヶ月中 1〜' + p1end : ph === 1 ? (p1end+1) + '〜' + p2end : (p2end+1) + '〜' + months) + 'ヶ月目）'
+          + '</th>';
+        i += phSpan - 1;
+      }
+    }
+    tlHtml += '</tr>';
+
+    // ===== 月ラベル行 =====
+    tlHtml += '<tr>';
+    tlHtml += '<th style="padding:6px 4px;background:#f0ebe0;font-size:10px;color:#6b6b80;text-align:center;border:1px solid #ccc;font-weight:700;">科目</th>';
+    monthLabels.forEach(function(m, i) {
+      const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
+      const isLast = i === months - 1;
+      tlHtml += '<th style="padding:5px 2px;background:' + (isLast ? '#f8d4cd' : '#f5f0e8') + ';font-size:10px;font-weight:700;color:' + (isLast ? '#c84b31' : '#444') + ';text-align:center;border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + m + '</th>';
+    });
+    tlHtml += '</tr>';
+    tlHtml += '</thead>';
+
+    // ===== 科目行 =====
+    tlHtml += '<tbody>';
+    subjects.forEach(function(sub) {
+      tlHtml += '<tr>';
+      tlHtml += '<td style="padding:6px 8px;background:#fafaf8;font-size:11px;font-weight:700;color:' + sub.color + ';text-align:center;border:1px solid #ccc;white-space:nowrap;">' + sub.label + '</td>';
+      monthLabels.forEach(function(m, i) {
+        const ph = i < p1end ? 0 : i < p2end ? 1 : 2;
+        const isPhaseStart = (i === 0 || i === p1end || i === p2end);
+        const border = isPhaseStart ? '2px solid ' + sub.color : '1px solid ' + sub.bg;
+        const label = isPhaseStart ? sub.phases[ph] : '';
+        tlHtml += '<td style="padding:7px 5px;background:' + sub.bg + ';border-top:2px solid ' + phaseDef[ph].border + ';border-bottom:1px solid #ccc;border-left:' + border + ';border-right:1px solid ' + sub.bg + ';font-size:9px;color:' + sub.color + ';font-weight:' + (isPhaseStart ? '700' : '400') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' + label + '</td>';
+      });
+      tlHtml += '</tr>';
+    });
+
+    // ===== テスト行 =====
+    tlHtml += '<tr>';
+    tlHtml += '<td style="padding:5px 4px;background:#f5f0e8;font-size:9px;font-weight:700;color:#6b6b80;text-align:center;border:1px solid #ccc;">確認<br>テスト</td>';
+    monthLabels.forEach(function(m, i) {
+      tlHtml += '<td style="padding:3px 2px;background:white;border:1px solid #ddd;text-align:center;vertical-align:middle;">';
+      tlHtml += '<div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:center;">';
+      tlHtml += '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>';
+      tlHtml += '<div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">週</div>';
+      tlHtml += '<div style="width:15px;height:15px;border-radius:50%;background:#c84b31;display:flex;align-items:center;justify-content:center;font-size:6px;color:white;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">月</div>';
+      tlHtml += '</div></td>';
+    });
+    tlHtml += '</tr>';
+    tlHtml += '</tbody></table></div>';
+
+    // 凡例
+    tlHtml += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:#f9f7f4;border-radius:6px;">';
+    phaseDef.forEach(function(p) {
+      tlHtml += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;">'
+        + '<div style="width:24px;height:12px;border-radius:3px;background:' + p.headerBg + ';border:2px solid ' + p.border + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'
+        + p.label + '</div>';
+    });
+    tlHtml += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;"><div style="width:13px;height:13px;border-radius:50%;background:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>週次テスト</div>';
+    tlHtml += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#444;"><div style="width:13px;height:13px;border-radius:50%;background:#c84b31;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>月次テスト</div>';
+    tlHtml += '</div>';
+
+    window._pdfTimelineHTML = tlHtml;
+  })();
+  const timelineHTML = window._pdfTimelineHTML || '';
+
 
   // 参考書テーブル取得
   const booksTableEl = document.getElementById('roadmap-books-tbody');
