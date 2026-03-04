@@ -3085,9 +3085,16 @@ function exportAdvicePDF() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
 
+  // テキストをHTML安全にエスケープするユーティリティ
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   const summaryEl  = document.getElementById('advice-summary');
-  const summary    = summaryEl ? (summaryEl.innerText || '').trim() : '';
-  if (!summary) { showToast('先に戦略アドバイスを生成してください'); return; }
+  // innerHTML優先（要素内にタグがない前提でtextContentも確認）
+  const summaryRaw = summaryEl ? (summaryEl.textContent || summaryEl.innerText || '').trim() : '';
+  const summary    = escHtml(summaryRaw);
+  if (!summaryRaw) { showToast('先に戦略アドバイスを生成してください'); return; }
 
   const today       = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
   const gradeLabel  = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || '';
@@ -3097,10 +3104,10 @@ function exportAdvicePDF() {
   // 科目別アドバイス
   let subjectsHtml = '';
   document.querySelectorAll('#advice-subjects > div').forEach(card => {
-    const name   = card.querySelector('[style*="font-weight:700"]')?.innerText || '';
-    const badge  = card.querySelector('span')?.innerText || '';
+    const name   = escHtml(card.querySelector('[style*="font-weight:700"]')?.textContent || '');
+    const badge  = escHtml(card.querySelector('span')?.textContent || '');
     const badgeColor = card.querySelector('span')?.style.color || '#666';
-    const text   = card.querySelectorAll('div')[2]?.innerText || '';
+    const text   = escHtml(card.querySelector('[data-subject-advice]')?.textContent || card.querySelectorAll('div')[2]?.textContent || '');
     if (!name) return;
     subjectsHtml += `
     <div style="border:1.5px solid #e8e0d0;border-radius:8px;padding:12px 14px;">
@@ -3115,7 +3122,7 @@ function exportAdvicePDF() {
   // 今月の最優先タスク
   let tasksHtml = '';
   document.querySelectorAll('#advice-tasks > div').forEach((el, i) => {
-    const text = el.querySelector('div:last-child')?.innerText || '';
+    const text = escHtml(el.querySelector('div:last-child')?.textContent || '');
     if (!text) return;
     tasksHtml += `
     <tr>
@@ -3541,7 +3548,7 @@ function exportPDF() {
 
   // アドバイスコンテンツ取得
   const summaryEl = document.getElementById('advice-summary');
-  const adviceSummary = summaryEl ? (summaryEl.innerText || '').trim() : '（戦略アドバイスを生成してください）';
+  const adviceSummary = summaryEl ? (summaryEl.textContent || summaryEl.innerText || '').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || '（戦略アドバイスを生成してください）' : '（戦略アドバイスを生成してください）';
 
   const taskItems = document.querySelectorAll('#advice-tasks > div');
   let tasksHtml = '';
