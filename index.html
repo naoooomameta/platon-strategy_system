@@ -1257,28 +1257,57 @@ document.addEventListener('keydown', function(e) {
         </div>
         <div class="form-group full">
           <label>科目別偏差値（模試から転記・任意）</label>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;" id="subject-dev-grid">
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px;">英語</div>
-              <input type="number" id="dev-eng" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:#2a7f6f;margin-bottom:4px;">英R</div>
+              <input type="number" id="dev-eng-r" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px;">数学</div>
-              <input type="number" id="dev-math" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:#1a6b5a;margin-bottom:4px;">英L</div>
+              <input type="number" id="dev-eng-l" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px;">国語</div>
-              <input type="number" id="dev-jpn" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:#c84b31;margin-bottom:4px;">数学</div>
+              <input type="number" id="dev-math" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:#4a6fa5;margin-bottom:4px;">理科</div>
-              <input type="number" id="dev-sci" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:#9a7a20;margin-bottom:4px;">現代文</div>
+              <input type="number" id="dev-jpn-r" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">社会</div>
-              <input type="number" id="dev-soc" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:#b89030;margin-bottom:4px;">古文</div>
+              <input type="number" id="dev-jpn-k" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#c8a030;margin-bottom:4px;">漢文</div>
+              <input type="number" id="dev-jpn-h" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#2e7d32;margin-bottom:4px;">日本史</div>
+              <input type="number" id="dev-hist-j" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#1b6b20;margin-bottom:4px;">世界史</div>
+              <input type="number" id="dev-hist-w" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#0d7a5f;margin-bottom:4px;">地理</div>
+              <input type="number" id="dev-geo" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#4a6fa5;margin-bottom:4px;">公民</div>
+              <input type="number" id="dev-civ" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#6a1b9a;margin-bottom:4px;">情報</div>
+              <input type="number" id="dev-info" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">理科基礎</div>
+              <input type="number" id="dev-sci-b" placeholder="—" min="20" max="80" style="text-align:center;padding:6px 2px;width:100%;">
             </div>
           </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">※ 入力した科目の偏差値がギャップ分析に反映されます</div>
         </div>
 
         <!-- 主要対策科目 -->
@@ -2666,30 +2695,38 @@ function autoFillExamMonth() {
 }
 
 // ===== 主要対策科目チェックボックス生成 =====
-const SUBJECT_OPTIONS = {
-  bunkei: [
-    { key: 'eng', label: '英語',  color: '#2a7f6f', bg: '#e8f5f2' },
-    { key: 'jpn', label: '国語',  color: '#9a7a20', bg: '#fdf8e8' },
-    { key: 'soc', label: '社会',  color: '#2e7d32', bg: '#eaf4ea' },
-    { key: 'math',label: '数学',  color: '#c84b31', bg: '#fdf0ee' },
-  ],
-  rikei: [
-    { key: 'eng', label: '英語',  color: '#2a7f6f', bg: '#e8f5f2' },
-    { key: 'math',label: '数学',  color: '#c84b31', bg: '#fdf0ee' },
-    { key: 'sci', label: '理科',  color: '#7b4fa6', bg: '#f3eefa' },
-    { key: 'jpn', label: '国語',  color: '#9a7a20', bg: '#fdf8e8' },
-    { key: 'soc', label: '社会',  color: '#2e7d32', bg: '#eaf4ea' },
-  ]
+// 12科目 共通定義（文理問わず任意選択）
+const ALL_SUBJECT_OPTIONS = [
+  { key: 'eng-r',  label: '英語ﾘｰﾃﾞｨﾝｸﾞ', short: '英R',  sub: 'eng',  color: '#2a7f6f', bg: '#e8f5f2' },
+  { key: 'eng-l',  label: '英語ﾘｽﾆﾝｸﾞ',   short: '英L',  sub: 'eng',  color: '#1a6b5a', bg: '#d8ede9' },
+  { key: 'math',   label: '数学1A・2BC',   short: '数学', sub: 'math', color: '#c84b31', bg: '#fdf0ee' },
+  { key: 'jpn-r',  label: '現代文',        short: '現文', sub: 'jpn',  color: '#9a7a20', bg: '#fdf8e8' },
+  { key: 'jpn-k',  label: '古文',          short: '古文', sub: 'jpn',  color: '#b89030', bg: '#fef9e8' },
+  { key: 'jpn-h',  label: '漢文',          short: '漢文', sub: 'jpn',  color: '#c8a030', bg: '#fffbec' },
+  { key: 'hist-j', label: '日本史',        short: '日史', sub: 'soc',  color: '#2e7d32', bg: '#eaf4ea' },
+  { key: 'hist-w', label: '世界史',        short: '世史', sub: 'soc',  color: '#1b6b20', bg: '#e0f0e0' },
+  { key: 'geo',    label: '地理',          short: '地理', sub: 'soc',  color: '#0d7a5f', bg: '#e0f2ee' },
+  { key: 'civ',    label: '公民・政経・倫理', short: '公民', sub: 'soc', color: '#4a6fa5', bg: '#eef2f9' },
+  { key: 'info',   label: '情報',          short: '情報', sub: 'etc',  color: '#6a1b9a', bg: '#f3e8fa' },
+  { key: 'sci-b',  label: '理科基礎',      short: '理基', sub: 'sci',  color: '#7b4fa6', bg: '#f3eefa' },
+];
+// subjectキー → 参考書サブカテゴリへのマッピング
+const SUB_KEY_TO_BOOK_SUB = {
+  'eng-r':'eng','eng-l':'eng','math':'math',
+  'jpn-r':'jpn','jpn-k':'jpn','jpn-h':'jpn',
+  'hist-j':'soc','hist-w':'soc','geo':'soc','civ':'soc',
+  'info':'etc','sci-b':'sci'
 };
+const SUBJECT_OPTIONS = { bunkei: ALL_SUBJECT_OPTIONS, rikei: ALL_SUBJECT_OPTIONS };
 
 function renderSubjectCheckboxes(preChecked) {
   const wrap   = document.getElementById('subject-checkboxes');
   if (!wrap) return;
-  const stream = document.getElementById('f-stream')?.value || 'bunkei';
-  const opts   = SUBJECT_OPTIONS[stream] || SUBJECT_OPTIONS.bunkei;
+  const opts   = ALL_SUBJECT_OPTIONS;
+  const defaultKeys = ['eng-r','eng-l','jpn-r','hist-j'];
 
   wrap.innerHTML = opts.map(o => {
-    const checked = preChecked ? preChecked.includes(o.key) : (stream === 'bunkei' ? ['eng','jpn','soc'].includes(o.key) : ['eng','math','sci'].includes(o.key));
+    const checked = preChecked ? preChecked.includes(o.key) : defaultKeys.includes(o.key);
     return `
     <label id="subj-lbl-${o.key}" onclick="toggleSubjectChip('${o.key}','${o.color}','${o.bg}')" style="
       display:flex;align-items:center;gap:7px;
@@ -2734,9 +2771,7 @@ function toggleSubjectChip(key, color, bg) {
 }
 
 function getCheckedSubjects() {
-  const stream = document.getElementById('f-stream')?.value || 'bunkei';
-  const opts   = SUBJECT_OPTIONS[stream] || SUBJECT_OPTIONS.bunkei;
-  return opts.map(o => o.key).filter(k => document.getElementById(`subj-${k}`)?.checked);
+  return ALL_SUBJECT_OPTIONS.map(o => o.key).filter(k => document.getElementById(`subj-${k}`)?.checked);
 }
 
 
@@ -2815,9 +2850,18 @@ function generateRoadmap() {
   // 主要対策科目（チェックあり優先、なければ大学DBに委ねる）
   const targetSubjectKeys = getCheckedSubjects();
 
+  // 科目別偏差値を収集
+  const subjectDevs = {};
+  ALL_SUBJECT_OPTIONS.forEach(o => {
+    const el = document.getElementById('dev-' + o.key);
+    const v = el ? parseInt(el.value) : NaN;
+    if (!isNaN(v) && v >= 20 && v <= 80) subjectDevs[o.key] = v;
+  });
+
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3,
-    targetSubjectKeys: targetSubjectKeys.length > 0 ? targetSubjectKeys : null };
+    targetSubjectKeys: targetSubjectKeys.length > 0 ? targetSubjectKeys : null,
+    subjectDevs };
 
   // ダッシュボードに追加
   saveStudentToList(currentStudent);
@@ -2877,12 +2921,25 @@ function renderRoadmapBooks() {
   if (!container) return;
 
   const subjectToSub = {
-    '英語':'eng','数学':'math','国語':'jpn',
-    '理科':'sci','理科2科目':'sci','社会':'soc',
-    '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
+    '英語':'eng-r','英語リーディング':'eng-r','英語リスニング':'eng-l',
+    '数学':'math','国語':'jpn-r','現代文':'jpn-r','古文':'jpn-k','漢文':'jpn-h',
+    '理科':'sci-b','理科2科目':'sci-b','理科基礎':'sci-b',
+    '社会':'hist-j','社会2科目':'hist-j','日本史':'hist-j','世界史':'hist-w',
+    '地理':'geo','政治経済':'civ','公民':'civ','倫理':'civ','情報':'info',
+    '小論文':'jpn-r','総合教養':'eng-r','実技':'info'
   };
-  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
-  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const subLabelMap = {
+    'eng-r':'英語R','eng-l':'英語L','math':'数学',
+    'jpn-r':'現代文','jpn-k':'古文','jpn-h':'漢文',
+    'hist-j':'日本史','hist-w':'世界史','geo':'地理','civ':'公民',
+    'info':'情報','sci-b':'理科基礎'
+  };
+  const subColorMap = {
+    'eng-r':'#2a7f6f','eng-l':'#1a6b5a','math':'#c84b31',
+    'jpn-r':'#9a7a20','jpn-k':'#b89030','jpn-h':'#c8a030',
+    'hist-j':'#2e7d32','hist-w':'#1b6b20','geo':'#0d7a5f','civ':'#4a6fa5',
+    'info':'#6a1b9a','sci-b':'#7b4fa6'
+  };
 
   // 主要対策科目チェックがあればそれ優先、なければ大学DBの入試科目から生成
   const targetSubs = s.targetSubjectKeys && s.targetSubjectKeys.length > 0
@@ -2897,9 +2954,10 @@ function renderRoadmapBooks() {
     const source = s.targetSubjectKeys && s.targetSubjectKeys.length > 0 ? '手動設定' : '志望校DBから自動設定';
     badgeWrap.innerHTML =
       `<span style="font-size:10px;color:var(--text-muted);margin-right:4px;align-self:center;">対策科目：</span>` +
-      targetSubs.map(sub => {
-        const col = subColorMap[sub] || '#666';
-        const lbl = subLabelMap[sub] || sub;
+      targetSubs.map(key => {
+        const opt = ALL_SUBJECT_OPTIONS.find(o => o.key === key);
+        const col = opt ? opt.color : (subColorMap[key] || '#666');
+        const lbl = opt ? opt.short : (subLabelMap[key] || key);
         return `<span style="font-size:10px;font-weight:700;color:${col};background:${col}18;border:1px solid ${col}44;padding:2px 10px;border-radius:12px;">${lbl}</span>`;
       }).join('') +
       `<span style="font-size:10px;color:var(--text-muted);background:var(--paper-dark);padding:2px 8px;border-radius:10px;margin-left:4px;">${source}</span>`;
@@ -2917,9 +2975,10 @@ function renderRoadmapBooks() {
   const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
   const scheduledBooks = [];
-  targetSubs.forEach(sub => {
+  targetSubs.forEach(subKey => {
+    const bookSub = SUB_KEY_TO_BOOK_SUB[subKey] || subKey; // 新キー→参考書subカテゴリ変換
     const candidates = ALL_TEXTBOOKS.filter(b =>
-      b.sub === sub &&
+      b.sub === bookSub &&
       (b.stream === 'both' || b.stream === s.stream) &&
       b.level >= minLv && b.level <= maxLv
     ).sort((a, b2) => a.level - b2.level);
@@ -3137,16 +3196,7 @@ function renderRoadmapBooksRows(books) {
 function openSubjectEditor() {
   const s = currentStudent;
   if (!s) { showToast('先にロードマップを生成してください'); return; }
-
-  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
-  const subBgMap    = { eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa' };
-  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
-  const allSubs = s.stream === 'rikei'
-    ? ['eng','math','sci','jpn','soc']
-    : ['eng','jpn','soc','math','sci'];
-
   const current = s.targetSubjectKeys || [];
-
   const existing = document.getElementById('subject-editor-modal');
   if (existing) existing.remove();
 
@@ -3154,37 +3204,30 @@ function openSubjectEditor() {
   modal.id = 'subject-editor-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
   modal.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:28px;width:460px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="background:white;border-radius:16px;padding:28px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
       <div style="font-family:'Noto Serif JP',serif;font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px;">✏️ 対策科目を変更</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">参考書ルートを生成する科目を選択してください</div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;" id="se-chips">
-        ${allSubs.map(sub => {
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px;">参考書ルートを生成する科目を選択（複数可）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;" id="se-chips">
+        ${ALL_SUBJECT_OPTIONS.map(o => {
           const checked = current.length === 0
-            ? (s.stream === 'rikei' ? ['eng','math','sci'].includes(sub) : ['eng','jpn','soc'].includes(sub))
-            : current.includes(sub);
-          const col = subColorMap[sub];
-          const bg  = subBgMap[sub];
+            ? ['eng-r','eng-l','jpn-r','hist-j'].includes(o.key)
+            : current.includes(o.key);
           return `
-          <label id="se-lbl-${sub}" onclick="seToggle('${sub}','${col}','${bg}')" style="
-            display:flex;align-items:center;gap:8px;
-            padding:10px 18px;border-radius:20px;cursor:pointer;
-            border:2px solid ${checked ? col : 'var(--border)'};
-            background:${checked ? bg : 'white'};
-            transition:all .15s;user-select:none;">
-            <input type="checkbox" id="se-cb-${sub}" value="${sub}" ${checked?'checked':''} style="display:none;">
-            <span id="se-box-${sub}" style="width:14px;height:14px;border-radius:4px;background:${checked?col:'#ddd'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;">
-              ${checked ? '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+          <label id="se-lbl-${o.key}" onclick="seToggle('${o.key}','${o.color}','${o.bg}')" style="
+            display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:18px;cursor:pointer;
+            border:2px solid ${checked ? o.color : 'var(--border)'};
+            background:${checked ? o.bg : 'white'};transition:all .15s;user-select:none;">
+            <input type="checkbox" id="se-cb-${o.key}" value="${o.key}" ${checked?'checked':''} style="display:none;">
+            <span id="se-box-${o.key}" style="width:13px;height:13px;border-radius:3px;background:${checked?o.color:'#ddd'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${checked ? '<svg width="8" height="6" viewBox="0 0 9 7" fill="none"><path d="M1 3l2.5 2.5L8 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
             </span>
-            <span id="se-txt-${sub}" style="font-size:13px;font-weight:700;color:${checked?col:'var(--text-muted)'};transition:color .15s;">${subLabelMap[sub]}</span>
+            <span id="se-txt-${o.key}" style="font-size:12px;font-weight:700;color:${checked?o.color:'var(--text-muted)'};">${o.label}</span>
           </label>`;
         }).join('')}
       </div>
-
       <div style="font-size:11px;color:var(--text-muted);background:var(--paper-dark);border-radius:8px;padding:10px 14px;margin-bottom:20px;">
-        💡 科目を変更すると参考書ルートが即時更新されます。未選択の場合は志望校の入試科目から自動設定します。
+        💡 選択した科目の参考書ルートが即時更新されます
       </div>
-
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button onclick="document.getElementById('subject-editor-modal').remove()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:white;color:var(--text-muted);font-size:13px;cursor:pointer;font-family:inherit;">キャンセル</button>
         <button onclick="applySubjectEditorChanges()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--ink);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ 反映してルートを再生成</button>
@@ -3213,7 +3256,7 @@ function seToggle(sub, color, bg) {
 }
 
 function applySubjectEditorChanges() {
-  const allSubs = ['eng','math','jpn','sci','soc','etc'];
+  const allSubs = ALL_SUBJECT_OPTIONS.map(o => o.key);
   const selected = allSubs.filter(sub => document.getElementById(`se-cb-${sub}`)?.checked);
   if (currentStudent) {
     currentStudent.targetSubjectKeys = selected.length > 0 ? selected : null;
@@ -3357,19 +3400,35 @@ function makeBlocks(startOffset, total, relStart, relEnd, label) {
 function renderGapStats() {
   const s = currentStudent;
   const gap = s.univInfo.dev - s.devVal;
-  const subjects = s.stream === 'rikei'
-    ? [
-        { name: '英語', current: s.devVal - 3, target: s.univInfo.dev - 2 },
-        { name: '数学', current: s.devVal + 2, target: s.univInfo.dev + 1 },
-        { name: '国語', current: s.devVal - 5, target: s.univInfo.dev - 5 },
-        { name: '物理', current: s.devVal - 1, target: s.univInfo.dev - 2 },
-      ]
-    : [
-        { name: '英語', current: s.devVal - 2, target: s.univInfo.dev - 1 },
-        { name: '国語', current: s.devVal - 3, target: s.univInfo.dev - 3 },
-        { name: '数学', current: s.devVal + 1, target: s.univInfo.dev + 0 },
-        { name: '社会', current: s.devVal - 4, target: s.univInfo.dev - 4 },
-      ];
+  // 対策科目を科目別偏差値入力値 or 総合偏差値ベースで表示
+  const devs = s.subjectDevs || {};
+  const targetKeys = s.targetSubjectKeys && s.targetSubjectKeys.length > 0
+    ? s.targetSubjectKeys
+    : ['eng-r','jpn-r','hist-j'];
+  // 科目別目標偏差値オフセット（科目特性による補正）
+  const targetOffset = {
+    'eng-r': -1,'eng-l': -2,'math': +1,
+    'jpn-r': -3,'jpn-k': -4,'jpn-h': -4,
+    'hist-j': -3,'hist-w': -3,'geo': -2,'civ': -2,
+    'info': -2,'sci-b': -2
+  };
+  const currentOffset = {
+    'eng-r': -2,'eng-l': -3,'math': +1,
+    'jpn-r': -4,'jpn-k': -5,'jpn-h': -5,
+    'hist-j': -4,'hist-w': -4,'geo': -3,'civ': -3,
+    'info': -2,'sci-b': -2
+  };
+  const keyLabelMap = {
+    'eng-r':'英語R','eng-l':'英語L','math':'数学',
+    'jpn-r':'現代文','jpn-k':'古文','jpn-h':'漢文',
+    'hist-j':'日本史','hist-w':'世界史','geo':'地理','civ':'公民',
+    'info':'情報','sci-b':'理科基礎'
+  };
+  const subjects = targetKeys.map(key => ({
+    name: keyLabelMap[key] || key,
+    current: devs[key] !== undefined ? devs[key] : s.devVal + (currentOffset[key] || -2),
+    target:  s.univInfo.dev + (targetOffset[key] || -2)
+  }));
 
   // スケール：偏差値35〜80の範囲を100%に
   const SCALE_MIN = 35, SCALE_MAX = 80;
@@ -3947,7 +4006,7 @@ function buildReportHTML(s) {
   const JAm=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const subCol ={eng:C.teal, math:C.accent, jpn:'#9a7a20', sci:C.blue, soc:'#2e7d32', etc:'#6a1b9a'};
   const subBg  ={eng:'#e8f5f2', math:'#fdf0ee', jpn:'#fdf8e8', sci:'#f3eefa', soc:'#eaf4ea', etc:'#f3e8fa'};
-  const subName={eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他'};
+  const subName={eng:'英語', math:'数学', jpn:'国語', sci:'理科基礎', soc:'社会', etc:'情報'};
   const lvlLabel=['','入門','基礎','標準','応用','発展'];
   const nowM = now.getFullYear()*12+now.getMonth();
 
