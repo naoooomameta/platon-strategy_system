@@ -2299,9 +2299,10 @@ function saveStudentToList(s) {
 }
 
 function loadStudentFromList(name) {
+  const now = new Date();
   const _defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12, enrolled:'2024-04' },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23, enrolled:'2024-09' },
+    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national',subjects:['英語','数学','理科2科目','国語']}, devVal:68, months:12, enrolled:'2024-04', levelVal:3, goalYear: now.getMonth()>=3 ? now.getFullYear()+1 : now.getFullYear(), goalMonth:1 },
+    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private',subjects:['英語','国語','社会']}, devVal:56, months:23, enrolled:'2024-09', levelVal:2, goalYear: now.getFullYear()+2, goalMonth:1 },
   ];
   const s = _allStudents.find(x => x.name === name) || _defaults.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
@@ -2640,8 +2641,9 @@ function renderRoadmapBooks() {
     (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
   )];
 
-  const minLv = Math.max(1, s.levelVal - 1);
-  const maxLv = Math.min(5, s.levelVal + 2);
+  const lv = s.levelVal || (s.devVal >= 65 ? 4 : s.devVal >= 55 ? 3 : 2);
+  const minLv = Math.max(1, lv - 1);
+  const maxLv = Math.min(5, lv + 2);
 
   const now = new Date();
   const startMonth = now.getFullYear() * 12 + now.getMonth();
@@ -3394,8 +3396,9 @@ function exportPDF() {
   )];
 
   // レベル幅：levelVal-1 〜 levelVal+1 の範囲（ただし1〜5内）
-  const minLv = Math.max(1, s.levelVal - 1);
-  const maxLv = Math.min(5, s.levelVal + 2);
+  const _lv2 = s.levelVal || (s.devVal >= 65 ? 4 : s.devVal >= 55 ? 3 : 2);
+  const minLv = Math.max(1, _lv2 - 1);
+  const maxLv = Math.min(5, _lv2 + 2);
 
   // 科目ごとに全候補取得（levelとstreamで絞り、levelの昇順で並べる）
   const booksBySub = {};
@@ -3494,7 +3497,11 @@ function exportPDF() {
   .book-table th{background:#f5f0e8;font-size:10px;font-weight:700;letter-spacing:.05em;color:#6b6b80;padding:5px 7px;text-align:left;}
   .gap-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
   .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e8e0d0;display:flex;justify-content:space-between;}
-  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none!important;}}
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .no-print{display:none!important;}
+    @page{margin:10mm 12mm;size:A4;}
+  }
 </style></head><body>
 
 <div class="header-band">
@@ -3622,6 +3629,7 @@ ${(s.univName2 || s.univName3) ? `
   bar.innerHTML = `
     <span style="color:white;font-size:13px;font-weight:700;">📄 生徒レポートプレビュー｜${s.name} さん</span>
     <div style="display:flex;gap:8px;">
+      <button onclick="printReportWindow()" style="padding:7px 18px;background:#2a7f6f;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">🖨️ 印刷・PDF保存</button>
       <button onclick="downloadReportPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>
       <button onclick="document.getElementById('pdf-modal').remove()" style="padding:7px 14px;background:rgba(255,255,255,0.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>
     </div>`;
@@ -4305,17 +4313,41 @@ function downloadDynPDF() {
   html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
 }
 
+function printReportWindow() {
+  const modal = document.getElementById('pdf-modal');
+  if (!modal) return;
+  const iframe = modal.querySelector('iframe');
+  if (!iframe || !iframe.contentWindow) return;
+  // フォント読み込み待機後に印刷
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 300);
+}
+
 function downloadReportPDF() {
   const modal = document.getElementById('pdf-modal');
   if (!modal) return;
   const iframe = modal.querySelector('iframe');
-  const titleEl = modal.querySelector('span');
-  const filename = (titleEl ? titleEl.textContent.replace('📄 ','').trim() : 'report') + '.pdf';
-  const body = iframe ? (iframe.contentDocument ? iframe.contentDocument.body : null) : null;
-  if (!body) return;
+  if (!iframe) return;
+  const s = currentStudent;
+  const filename = s ? `合格戦略レポート_${s.name}.pdf` : 'report.pdf';
+  const body = iframe.contentDocument ? iframe.contentDocument.body : null;
+  if (!body) { showToast('レポートを先にプレビューしてください'); return; }
   const noprint = body.querySelector('.no-print');
   if (noprint) noprint.style.display = 'none';
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'}}).from(body).save().then(()=>{ if(noprint) noprint.style.display=''; });
+  showToast('PDF生成中...');
+  html2pdf().set({
+    margin: [10, 12, 10, 12],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css'] }
+  }).from(body).save().then(() => {
+    if (noprint) noprint.style.display = '';
+    showToast('PDFをダウンロードしました');
+  });
 }
 
 function downloadAsPDF() {
