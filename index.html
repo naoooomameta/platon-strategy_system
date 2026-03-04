@@ -1478,7 +1478,6 @@ document.addEventListener('keydown', function(e) {
               display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--gold);font-weight:700;font-family:'Noto Serif JP',serif;">塾</div>
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;">塾長からの戦略アドバイス</div>
-              <div style="font-size:11px;color:var(--text-muted);">データをもとに自動作成・塾長が自由に編集できます</div>
             </div>
           </div>
           <button class="btn btn-secondary" onclick="generateAdvice()" id="advice-gen-btn" style="font-size:12px;padding:8px 16px;">
@@ -2867,6 +2866,8 @@ function renderRoadmap() {
   renderGapStats();
   renderGapChart();
   renderRoadmapBooks();
+  // 戦略アドバイスを自動生成
+  setTimeout(() => generateAdvice(), 200);
 }
 
 function renderRoadmapBooks() {
