@@ -1428,6 +1428,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--border);">
             <div style="font-size:12px;color:var(--text-muted);">各セクションの「編集」ボタンで直接書き換えができます</div>
             <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary" style="font-size:12px;padding:7px 14px;" onclick="exportAdvicePDF()">📄 PDF出力</button>
               <button class="btn btn-secondary" style="font-size:12px;padding:7px 14px;" onclick="generateAdvice()">🔄 再分析</button>
               <button class="btn btn-teal" style="font-size:12px;padding:7px 14px;" onclick="saveAdvice()">💾 保存する</button>
             </div>
@@ -3080,6 +3081,189 @@ function saveAdvice() {
   showToast('戦略アドバイスを保存しました');
 }
 
+function exportAdvicePDF() {
+  const s = currentStudent;
+  if (!s) { showToast('先にロードマップを生成してください'); return; }
+
+  const summaryEl  = document.getElementById('advice-summary');
+  const summary    = summaryEl ? (summaryEl.innerText || '').trim() : '';
+  if (!summary) { showToast('先に戦略アドバイスを生成してください'); return; }
+
+  const today       = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+  const gradeLabel  = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || '';
+  const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
+  const catLabel    = s.univInfo?.cat === 'national' ? '国公立' : '私立';
+
+  // 科目別アドバイス
+  let subjectsHtml = '';
+  document.querySelectorAll('#advice-subjects > div').forEach(card => {
+    const name   = card.querySelector('[style*="font-weight:700"]')?.innerText || '';
+    const badge  = card.querySelector('span')?.innerText || '';
+    const badgeColor = card.querySelector('span')?.style.color || '#666';
+    const text   = card.querySelectorAll('div')[2]?.innerText || '';
+    if (!name) return;
+    subjectsHtml += `
+    <div style="border:1.5px solid #e8e0d0;border-radius:8px;padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e;">${name}</div>
+        <span style="font-size:10px;font-weight:700;color:${badgeColor};background:${badgeColor}18;padding:2px 8px;border-radius:10px;">${badge}</span>
+      </div>
+      <div style="font-size:12px;line-height:1.8;color:#444;">${text}</div>
+    </div>`;
+  });
+
+  // 今月の最優先タスク
+  let tasksHtml = '';
+  document.querySelectorAll('#advice-tasks > div').forEach((el, i) => {
+    const text = el.querySelector('div:last-child')?.innerText || '';
+    if (!text) return;
+    tasksHtml += `
+    <tr>
+      <td style="padding:10px 14px;font-weight:700;color:#c9a84c;font-size:15px;width:32px;vertical-align:top;">${i+1}</td>
+      <td style="padding:10px 14px;font-size:12px;line-height:1.8;color:rgba(255,255,255,0.9);">${text}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<title>戦略アドバイスレポート｜${s.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;color:#2c2c3e;background:#fff;font-size:13px;}
+@media print{
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .no-print{display:none!important;}
+  @page{margin:10mm 12mm;size:A4;}
+}
+</style></head><body>
+
+<!-- ヘッダー帯 -->
+<div style="background:#1a1a2e;color:white;padding:20px 40px;display:flex;justify-content:space-between;align-items:flex-end;">
+  <div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:.1em;margin-bottom:3px;">PLATON EXAM STRATEGY MANAGEMENT</div>
+    <div style="font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;">塾長からの戦略アドバイス</div>
+  </div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.5);">発行日：${today}</div>
+</div>
+
+<!-- 生徒情報帯 -->
+<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:14px 40px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+  <div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:.08em;text-transform:uppercase;">生徒氏名</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Noto Serif JP',serif;margin-top:3px;">${s.name}</div>
+    <div style="font-size:10px;color:#c9a84c;margin-top:2px;">${gradeLabel}｜${streamLabel}</div>
+  </div>
+  <div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:.08em;text-transform:uppercase;">第一志望</div>
+    <div style="font-size:13px;font-weight:700;font-family:'Noto Serif JP',serif;margin-top:3px;">${s.univName || '—'}</div>
+    <div style="font-size:10px;color:#c9a84c;margin-top:2px;">${s.dept1 || catLabel}</div>
+  </div>
+  <div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:.08em;text-transform:uppercase;">目標偏差値</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Noto Serif JP',serif;margin-top:3px;">${s.univInfo?.dev || '—'}</div>
+    <div style="font-size:10px;color:#c9a84c;margin-top:2px;">現状 ${s.devVal}（模試）</div>
+  </div>
+  <div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:.08em;text-transform:uppercase;">残り期間</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Noto Serif JP',serif;margin-top:3px;">${s.months}ヶ月</div>
+    <div style="font-size:10px;color:#c9a84c;margin-top:2px;">受験まで</div>
+  </div>
+</div>
+
+<!-- 本文エリア -->
+<div style="max-width:760px;margin:0 auto;padding:28px 40px;">
+
+  <!-- 総合戦略コメント -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;">📋 総合戦略コメント</div>
+    <div style="background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 8px 8px 0;padding:16px 20px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:1.9;color:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${summary}</div>
+  </div>
+
+  ${subjectsHtml ? `
+  <!-- 科目別アドバイス -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;">📌 科目別 重点アドバイス</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${subjectsHtml}</div>
+  </div>` : ''}
+
+  ${tasksHtml ? `
+  <!-- 今月の最優先タスク -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6b80;border-bottom:2px solid #1a1a2e;padding-bottom:5px;margin-bottom:12px;">🎯 今月の最優先タスク</div>
+    <table style="width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:10px;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+      <tbody>${tasksHtml}</tbody>
+    </table>
+  </div>` : ''}
+
+  <!-- フッター -->
+  <div style="margin-top:28px;padding-top:12px;border-top:1px solid #e8e0d0;display:flex;justify-content:space-between;">
+    <div style="font-size:10px;color:#aaa;">プラトン 大学受験 戦略管理システム｜本資料は塾長指導用の内部資料です</div>
+    <div style="font-size:10px;color:#aaa;">${s.name} 様専用</div>
+  </div>
+</div>
+</body></html>`;
+
+  // モーダル表示
+  const existing = document.getElementById('advice-pdf-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'advice-pdf-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;flex-direction:column;';
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+  bar.innerHTML = `
+    <span style="color:white;font-size:13px;font-weight:700;">📄 戦略アドバイス PDF｜${s.name} さん</span>
+    <div style="display:flex;gap:8px;">
+      <button onclick="printAdviceWindow()" style="padding:7px 18px;background:#2a7f6f;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">🖨️ 印刷・PDF保存</button>
+      <button onclick="downloadAdvicePDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>
+      <button onclick="document.getElementById('advice-pdf-modal').remove()" style="padding:7px 14px;background:rgba(255,255,255,0.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>
+    </div>`;
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'advice-pdf-iframe';
+  iframe.style.cssText = 'flex:1;border:none;background:white;';
+
+  modal.appendChild(bar);
+  modal.appendChild(iframe);
+  document.body.appendChild(modal);
+
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+}
+
+function printAdviceWindow() {
+  const iframe = document.getElementById('advice-pdf-iframe');
+  if (!iframe || !iframe.contentWindow) return;
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 300);
+}
+
+function downloadAdvicePDF() {
+  const iframe = document.getElementById('advice-pdf-iframe');
+  if (!iframe) return;
+  const s = currentStudent;
+  const filename = s ? `戦略アドバイス_${s.name}.pdf` : 'advice.pdf';
+  const body = iframe.contentDocument ? iframe.contentDocument.body : null;
+  if (!body) return;
+  showToast('PDF生成中...');
+  html2pdf().set({
+    margin: [10, 12, 10, 12],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css'] }
+  }).from(body).save().then(() => {
+    showToast('PDFをダウンロードしました');
+  });
+}
 
 function printRoadmapPDF() {
   const s = currentStudent;
