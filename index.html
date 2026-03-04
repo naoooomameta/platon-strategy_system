@@ -4016,6 +4016,7 @@ function buildReportHTML(s) {
 
   // ── 参考書：完全フラットテーブル（flex/grid一切なし）──
   // 構造: 年ヘッダー行 → 月ラベル行 → カード行（1行=1冊、full-width）
+  let booksHtml = '';
   booksHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;" cellpadding="0" cellspacing="0">';
   let prevYear=null;
   byMonth.forEach(({year,month,books:mBooks})=>{
