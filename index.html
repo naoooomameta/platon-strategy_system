@@ -3978,9 +3978,8 @@ function buildReportHTML(s) {
     booksHtml+='<div style="width:'+(isCurrent?'10':'7')+'px;height:'+(isCurrent?'10':'7')+'px;border-radius:50%;background:'+(isCurrent?C.gold:isPast?'#ccc':C.ink)+';margin-top:4px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
     booksHtml+='<div style="width:2px;flex:1;min-height:16px;background:'+C.border+';margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';
     booksHtml+='</div>';
-    // カードグリッド
-    booksHtml+='<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:4px;">';
-    mBooks.forEach(b=>{
+    // カードテーブル（2列 - グリッドはPDF改ページで崩れるためtable使用）
+    const makeCard = b => {
       const col=subCol[b.sub]||'#555';
       const bg=subBg[b.sub]||'#f5f5f5';
       const eAbs=b.endY*12+b.endM;
@@ -3990,24 +3989,37 @@ function buildReportHTML(s) {
       const cardBg=isDone?'#f4f4f4':isUrgent?'#fff5f4':bg;
       const borderCol=isDone?'#bbb':isUrgent?C.accent:col;
       const deadline=b.endY+'年'+JAm[b.endM]+'まで';
-      booksHtml+='<div style="background:'+cardBg+';border:1px solid '+borderCol+'88;border-left:4px solid '+borderCol+';border-radius:8px;padding:8px 10px;opacity:'+(isDone?'.6':'1')+';page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-      booksHtml+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:5px;margin-bottom:4px;">';
-      booksHtml+='<div style="font-size:11px;font-weight:700;color:'+(isDone?'#888':C.ink)+';line-height:1.4;flex:1;">'+(isUrgent?'🔴 ':isDone?'✓ ':'')+b.name+'</div>';
-      booksHtml+='<span style="font-size:8px;font-weight:700;background:'+col+'18;color:'+col+';padding:2px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+subName[b.sub]+'</span>';
-      booksHtml+='</div>';
-      booksHtml+='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">';
-      booksHtml+='<span style="font-size:9px;color:'+col+';background:'+col+'12;padding:1px 6px;border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.category+'</span>';
-      if(lv) booksHtml+='<span style="font-size:9px;color:'+C.muted+';">'+lv+'</span>';
-      booksHtml+='<span style="font-size:9px;color:'+(isUrgent&&!isDone?C.accent:C.muted)+';margin-left:auto;white-space:nowrap;">'+(isUrgent&&!isDone?'⚠️ ':'')+deadline+'</span>';
-      booksHtml+='</div></div>';
-    });
-    booksHtml+='</div></div>';
+      return '<div style="background:'+cardBg+';border:1px solid '+borderCol+'55;border-left:4px solid '+borderCol+';border-radius:8px;padding:8px 10px;opacity:'+(isDone?'.6':'1')+';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:4px;">'
+        +'<div style="font-size:11px;font-weight:700;color:'+(isDone?'#888':C.ink)+';line-height:1.4;flex:1;">'+(isUrgent?'🔴 ':isDone?'✓ ':'')+b.name+'</div>'
+        +'<span style="font-size:8px;font-weight:700;background:'+col+'18;color:'+col+';padding:2px 5px;border-radius:7px;white-space:nowrap;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+subName[b.sub]+'</span>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
+        +'<span style="font-size:9px;color:'+col+';background:'+col+'12;padding:1px 5px;border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+b.category+'</span>'
+        +(lv?'<span style="font-size:9px;color:'+C.muted+';">'+lv+'</span>':'')
+        +'<span style="font-size:9px;color:'+(isUrgent&&!isDone?C.accent:C.muted)+';margin-left:auto;white-space:nowrap;">'+(isUrgent&&!isDone?'⚠️ ':'')+deadline+'</span>'
+        +'</div></div>';
+    };
+    // 2個ずつtable行にまとめる（改ページ崩れ防止）
+    booksHtml+='<table style="flex:1;width:100%;border-collapse:collapse;padding-top:4px;" cellspacing="0" cellpadding="0">';
+    for(let bi=0; bi<mBooks.length; bi+=2){
+      booksHtml+='<tr style="page-break-inside:avoid;break-inside:avoid;">';
+      booksHtml+='<td style="width:50%;padding:3px 3px 3px 0;vertical-align:top;">'+makeCard(mBooks[bi])+'</td>';
+      if(mBooks[bi+1]){
+        booksHtml+='<td style="width:50%;padding:3px 0 3px 3px;vertical-align:top;">'+makeCard(mBooks[bi+1])+'</td>';
+      } else {
+        booksHtml+='<td style="width:50%;padding:3px 0 3px 3px;vertical-align:top;"></td>';
+      }
+      booksHtml+='</tr>';
+    }
+    booksHtml+='</table></div>';
   });
 
   /* ── ADVICE HTML ──────────────────────────────── */
   const summaryEl  = document.getElementById('advice-summary');
   const adviceSummary = summaryEl ? summaryEl.textContent.trim() : '';
-  let subjectAdviceHtml = '';
+  // 科目別アドバイス: table2列（グリッドはPDF改ページで崩れるため）
+  const advCards = [];
   document.querySelectorAll('#advice-subjects > div').forEach(card => {
     const nameEl   = card.querySelector('[style*="font-size:13px"]');
     const badgeEl  = card.querySelector('[style*="border-radius:10px"]');
@@ -4017,13 +4029,22 @@ function buildReportHTML(s) {
     const badge    = badgeEl ? badgeEl.textContent.trim() : '';
     const adv      = advEl.textContent.trim();
     const badgeCol = badge==='要強化'?C.accent:badge==='維持・向上'?C.gold:C.teal;
-    subjectAdviceHtml += '<div style="background:'+C.paper+';border:1.5px solid '+C.border+';border-radius:8px;padding:10px;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-    subjectAdviceHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">';
-    subjectAdviceHtml += '<span style="font-size:12px;font-weight:700;color:'+C.ink+';">'+sName+'</span>';
-    subjectAdviceHtml += '<span style="font-size:9px;font-weight:700;color:'+badgeCol+';background:'+badgeCol+'1a;padding:2px 7px;border-radius:8px;">'+badge+'</span>';
-    subjectAdviceHtml += '</div>';
-    subjectAdviceHtml += '<div style="font-size:11px;line-height:1.7;color:'+C.text+';">'+adv+'</div></div>';
+    advCards.push(
+      '<div style="background:'+C.paper+';border:1.5px solid '+C.border+';border-radius:8px;padding:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+      +'<span style="font-size:12px;font-weight:700;color:'+C.ink+';">'+sName+'</span>'
+      +'<span style="font-size:9px;font-weight:700;color:'+badgeCol+';background:'+badgeCol+'1a;padding:2px 7px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+badge+'</span>'
+      +'</div>'
+      +'<div style="font-size:11px;line-height:1.7;color:'+C.text+';">'+adv+'</div></div>'
+    );
   });
+  let subjectAdviceHtml = '';
+  for(let ai=0; ai<advCards.length; ai+=2){
+    subjectAdviceHtml += '<tr style="page-break-inside:avoid;break-inside:avoid;">';
+    subjectAdviceHtml += '<td style="width:50%;padding:3px 3px 3px 0;vertical-align:top;">'+advCards[ai]+'</td>';
+    subjectAdviceHtml += '<td style="width:50%;padding:3px 0 3px 3px;vertical-align:top;">'+(advCards[ai+1]||'')+'</td>';
+    subjectAdviceHtml += '</tr>';
+  }
   let taskHtml = '';
   document.querySelectorAll('#advice-tasks > div').forEach((el,i) => {
     const txt = el.querySelector('div:last-child');
@@ -4128,7 +4149,7 @@ function buildReportHTML(s) {
     <div style="font-size:10px;font-weight:700;color:${C.gold};letter-spacing:.08em;margin-bottom:8px;">📋 総合戦略コメント</div>
     <div style="font-size:13px;line-height:1.9;color:${C.ink};font-family:'Noto Serif JP',serif;">${adviceSummary}</div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">${subjectAdviceHtml}</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;" cellspacing="0" cellpadding="0">${subjectAdviceHtml}</table>
   <div style="background:linear-gradient(135deg,${C.ink},${C.inkL});border-radius:10px;padding:14px 18px;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
     <div style="font-size:10px;font-weight:700;color:${C.gold};letter-spacing:.08em;margin-bottom:10px;">🎯 今月の最優先タスク</div>
     ${taskHtml}
@@ -4223,7 +4244,7 @@ function downloadRoadmapPDF() {
 
     const name = s.name || '生徒';
     const opt = {
-      margin: [8, 10, 8, 10],
+      margin: [8, 8, 8, 8],
       filename: name + '_合格ロードマップ.pdf',
       image: { type: 'jpeg', quality: 0.96 },
       html2canvas: {
@@ -4233,12 +4254,13 @@ function downloadRoadmapPDF() {
         backgroundColor: '#ffffff',
         scrollX: 0,
         scrollY: 0,
-        windowWidth: 794
+        windowWidth: 794,
+        width: 794
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: {
-        mode: ['css', 'legacy'],
-        avoid: ['.card', 'tr', 'thead', '[style*="page-break-inside:avoid"]']
+        mode: ['avoid-all', 'css', 'legacy'],
+        avoid: ['tr', 'thead', 'tbody', 'div', 'table']
       }
     };
 
@@ -6931,4 +6953,4 @@ function toggleMonthlyAns() {
 // ===== 月次実力診断 =====================================
 </script>
 </body>
-</html>
+</html>      
