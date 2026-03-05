@@ -3055,19 +3055,67 @@ function renderTimeline() {
     monthLabels.push((d.getMonth() + 1) + '月');
   }
 
-  const subjects = s.stream === 'rikei'
-    ? [
-        { label: '英語', cls: 'eng', blocks: makeBlocks(0, months, 0, 0.7, '英単語→文法→長読') },
-        { label: '数学', cls: 'math', blocks: makeBlocks(0, months, 0.05, 0.9, '基礎→標準→演習') },
-        { label: '国語', cls: 'jpn', blocks: makeBlocks(0, months, 0.3, 0.7, '現代文強化') },
-        { label: '理科', cls: 'hist', blocks: makeBlocks(0, months, 0.1, 0.85, '物理→化学') },
-      ]
-    : [
-        { label: '英語', cls: 'eng', blocks: makeBlocks(0, months, 0, 0.8, '英単語→文法→長読') },
-        { label: '数学', cls: 'math', blocks: makeBlocks(0, months, 0, 0.5, '基礎問題精講') },
-        { label: '国語', cls: 'jpn', blocks: makeBlocks(0, months, 0.1, 0.8, '現代文＋古文') },
-        { label: '社会', cls: 'hist', blocks: makeBlocks(0, months, 0.15, 0.9, '日本史通史→演習') },
-      ];
+  // 登録された対策科目を使用（mainSubjects優先、なければ志望校科目）
+  const subClsMap = {
+    '英語R':'eng','英語L':'eng','英語リーディング':'eng','英語リスニング':'eng',
+    '数学':'math','数学1A':'math','数学2BC':'math',
+    '現代文':'jpn','古文':'jpn','漢文':'jpn','国語':'jpn',
+    '日本史':'hist','世界史':'hist','地理':'hist','公民':'hist','社会':'hist',
+    '物理':'sci','化学':'sci','生物':'sci','理科':'sci','理科基礎':'sci',
+    '情報':'etc',
+  };
+  const subLabelMap = {
+    '英語R':'英語R','英語L':'英語L','英語リーディング':'英語R','英語リスニング':'英語L',
+    '数学':'数学','数学1A':'数学1A','数学2BC':'数学2BC',
+    '現代文':'現代文','古文':'古文','漢文':'漢文','国語':'国語',
+    '日本史':'日本史','世界史':'世界史','地理':'地理','公民':'公民','社会':'社会',
+    '物理':'物理','化学':'化学','生物':'生物','理科':'理科','理科基礎':'理科基礎',
+    '情報':'情報',
+  };
+  const subPhasesMap = {
+    '英語R':'英単語・文法 基礎固め→長文読解 強化期→実戦演習 仕上げ',
+    '英語L':'基礎音声 定着期→演習量 積上げ期→実戦仕上げ',
+    '英語リーディング':'英単語・文法 基礎固め→長文読解 強化期→実戦演習 仕上げ',
+    '英語リスニング':'基礎音声 定着期→演習量 積上げ期→実戦仕上げ',
+    '数学':'基礎問題 全範囲網羅→標準問題 演習期→応用・記述 仕上げ',
+    '数学1A':'基礎問題 全範囲網羅→標準問題 演習期→応用・記述 仕上げ',
+    '数学2BC':'基礎問題 全範囲網羅→標準問題 演習期→応用・記述 仕上げ',
+    '現代文':'読解基礎 文章把握→演習量 積み上げ期→記述・過去問 演習',
+    '古文':'文法・単語 基礎→読解演習 初〜標準→応用・実戦 演習',
+    '漢文':'句法・頻出語 習得→読解演習 強化期→実戦・仕上げ',
+    '国語':'読解基礎 文章把握→演習量 積み上げ期→記述・過去問 演習',
+    '日本史':'通史・流れ 把握期→知識 体系化期→論述・実戦 演習',
+    '世界史':'通史・流れ 把握期→知識 体系化期→論述・実戦 演習',
+    '地理':'地誌・系統 基礎期→統計・論述 演習期→実戦演習 仕上げ',
+    '公民':'基礎知識 習得期→演習 強化期→実戦演習 仕上げ',
+    '社会':'通史・流れ 把握期→知識 体系化期→論述・実戦 演習',
+    '物理':'概念・公式 理解期→標準問題 演習期→実戦・難問 演習',
+    '化学':'理論化学 基礎固め→有機・無機 習得期→実戦演習 仕上げ',
+    '理科':'概念・公式 理解期→標準問題 演習期→実戦・難問 演習',
+    '理科基礎':'基礎知識 習得期→演習 強化期→実戦演習 仕上げ',
+    '情報':'基礎概念 習得期→プログラミング 演習期→実戦演習 仕上げ',
+  };
+
+  // 登録科目を取得
+  const registeredSubs = (s.mainSubjects && s.mainSubjects.length > 0)
+    ? s.mainSubjects
+    : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
+
+  // タイムラインの科目ごとのstart/endを科目別偏差値ギャップから計算
+  const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
+  const subjects = registeredSubs.map(function(subName) {
+    const curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
+    const gap = Math.max(0, tgtDev - curDev);
+    // ギャップが大きいほど早めに開始・長めに取り組む
+    const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
+    const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
+    const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
+    return {
+      label: subLabelMap[subName] || subName,
+      cls: subClsMap[subName] || 'eng',
+      blocks: makeBlocks(0, months, relStart, relEnd, phases.join('→')),
+    };
+  });
 
   let html = '';
 
@@ -3131,19 +3179,17 @@ function makeBlocks(startOffset, total, relStart, relEnd, label) {
 function renderGapStats() {
   const s = currentStudent;
   const gap = s.univInfo.dev - s.devVal;
-  const subjects = s.stream === 'rikei'
-    ? [
-        { name: '英語', current: s.devVal - 3, target: s.univInfo.dev - 2 },
-        { name: '数学', current: s.devVal + 2, target: s.univInfo.dev + 1 },
-        { name: '国語', current: s.devVal - 5, target: s.univInfo.dev - 5 },
-        { name: '物理', current: s.devVal - 1, target: s.univInfo.dev - 2 },
-      ]
-    : [
-        { name: '英語', current: s.devVal - 2, target: s.univInfo.dev - 1 },
-        { name: '国語', current: s.devVal - 3, target: s.univInfo.dev - 3 },
-        { name: '数学', current: s.devVal + 1, target: s.univInfo.dev + 0 },
-        { name: '社会', current: s.devVal - 4, target: s.univInfo.dev - 4 },
-      ];
+  const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
+
+  // 登録された対策科目と科目別偏差値を使用
+  const registeredSubs = (s.mainSubjects && s.mainSubjects.length > 0)
+    ? s.mainSubjects
+    : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
+
+  const subjects = registeredSubs.map(function(name) {
+    const current = (s.subDevs && s.subDevs[name]) ? s.subDevs[name] : s.devVal;
+    return { name: name, current: current, target: tgtDev };
+  });
 
   // スケール：偏差値35〜80の範囲を100%に
   const SCALE_MIN = 35, SCALE_MAX = 80;
@@ -3159,17 +3205,17 @@ function renderGapStats() {
     const gapLeft  = Math.min(curP, tarP);
     const gapWidth = Math.abs(tarP - curP);
     const ticks = [40,50,60,70].map(v =>
-      `<div style="position:absolute;top:10px;left:${toP(v)}%;transform:translateX(-50%);font-size:8px;color:var(--text-muted);">${v}</div>`
+      `<div style="position:absolute;top:10px;left:${toP(v)}%;transform:translateX(-50%);font-size:10px;color:var(--text-muted);">${v}</div>`
     ).join('');
     html += `
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
-        <span style="font-size:12px;font-weight:700;color:var(--ink);width:36px;">${sub.name}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink);width:56px;">${sub.name}</span>
         <div style="display:flex;align-items:baseline;gap:6px;">
-          <span style="font-size:18px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;line-height:1;">${sub.current}</span>
-          <span style="font-size:11px;color:var(--text-muted);">→</span>
-          <span style="font-size:14px;font-weight:700;color:${barColor};font-family:'DM Mono',monospace;">${sub.target}</span>
-          <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;background:${diff>0?barColor+'22':'#e8f5e9'};color:${diffColor};">
+          <span style="font-size:26px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;line-height:1;">${sub.current}</span>
+          <span style="font-size:16px;color:var(--text-muted);">→</span>
+          <span style="font-size:22px;font-weight:700;color:${barColor};font-family:'DM Mono',monospace;">${sub.target}</span>
+          <span style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:${diff>0?barColor+'22':'#e8f5e9'};color:${diffColor};">
             ${diff > 0 ? '+' : ''}${diff}
           </span>
         </div>
@@ -3405,22 +3451,63 @@ function printRoadmapPDF() {
       const d = new Date(now2.getFullYear(), now2.getMonth() + i, 1);
       monthLabels.push((d.getMonth() + 1) + '月');
     }
-    const isRikei = s.stream === 'rikei';
     const p1end = Math.round(months * 0.38);
     const p2end = Math.round(months * 0.72);
-    const subjects = isRikei
-      ? [
-          { label:'英語',  color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
-          { label:'数学',  color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
-          { label:'国語',  color:'#c9a84c', bg:'#fdf8f0', phases:['現代文 読解基礎','演習量 積み上げ','記述・過去問 演習'] },
-          { label:'理科',  color:'#4a6fa5', bg:'#eef2f9', phases:['概念・公式 理解期','標準問題 演習期','実戦・難問 演習'] },
-        ]
-      : [
-          { label:'英語',  color:'#2a7f6f', bg:'#e8f4f1', phases:['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'] },
-          { label:'数学',  color:'#c84b31', bg:'#fce8e5', phases:['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'] },
-          { label:'国語',  color:'#c9a84c', bg:'#fdf8f0', phases:['現代文＋古文 基礎','演習量 積み上げ','記述・過去問 演習'] },
-          { label:'社会',  color:'#4a6fa5', bg:'#eef2f9', phases:['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'] },
-        ];
+
+    // 登録された対策科目を使用
+    var PDF_SUB_COLOR = {
+      '英語R':'#2a7f6f','英語L':'#2a7f6f','英語リーディング':'#2a7f6f','英語リスニング':'#2a7f6f',
+      '数学':'#c84b31','数学1A':'#c84b31','数学2BC':'#c84b31',
+      '現代文':'#c9a84c','古文':'#c9a84c','漢文':'#c9a84c','国語':'#c9a84c',
+      '日本史':'#7b4fa6','世界史':'#7b4fa6','地理':'#7b4fa6','公民':'#7b4fa6','社会':'#4a6fa5',
+      '物理':'#4a6fa5','化学':'#4a6fa5','生物':'#4a6fa5','理科':'#4a6fa5','理科基礎':'#4a6fa5',
+      '情報':'#6a1b9a',
+    };
+    var PDF_SUB_BG = {
+      '英語R':'#e8f4f1','英語L':'#e8f4f1','英語リーディング':'#e8f4f1','英語リスニング':'#e8f4f1',
+      '数学':'#fce8e5','数学1A':'#fce8e5','数学2BC':'#fce8e5',
+      '現代文':'#fdf8f0','古文':'#fdf8f0','漢文':'#fdf8f0','国語':'#fdf8f0',
+      '日本史':'#f4eef9','世界史':'#f4eef9','地理':'#f4eef9','公民':'#f4eef9','社会':'#eef2f9',
+      '物理':'#eef2f9','化学':'#eef2f9','生物':'#eef2f9','理科':'#eef2f9','理科基礎':'#eef2f9',
+      '情報':'#f3eef9',
+    };
+    var PDF_SUB_PHASES = {
+      '英語R':['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'],
+      '英語L':['基礎音声 定着期','演習量 積上げ期','実戦仕上げ'],
+      '英語リーディング':['英単語・文法 基礎固め','長文読解 強化期','実戦演習 仕上げ'],
+      '英語リスニング':['基礎音声 定着期','演習量 積上げ期','実戦仕上げ'],
+      '数学':['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'],
+      '数学1A':['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'],
+      '数学2BC':['基礎問題 全範囲網羅','標準問題 演習期','応用・記述 仕上げ'],
+      '現代文':['読解基礎 文章把握','演習量 積み上げ期','記述・過去問 演習'],
+      '古文':['文法・単語 基礎','読解演習 初〜標準','応用・実戦 演習'],
+      '漢文':['句法・頻出語 習得','読解演習 強化期','実戦・仕上げ'],
+      '国語':['現代文＋古文 基礎','演習量 積み上げ期','記述・過去問 演習'],
+      '日本史':['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'],
+      '世界史':['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'],
+      '地理':['地誌・系統 基礎期','統計・論述 演習期','実戦演習 仕上げ'],
+      '公民':['基礎知識 習得期','演習 強化期','実戦演習 仕上げ'],
+      '社会':['通史・流れ 把握期','知識 体系化期','論述・実戦 演習'],
+      '物理':['概念・公式 理解期','標準問題 演習期','実戦・難問 演習'],
+      '化学':['理論化学 基礎固め','有機・無機 習得期','実戦演習 仕上げ'],
+      '理科':['概念・公式 理解期','標準問題 演習期','実戦・難問 演習'],
+      '理科基礎':['基礎知識 習得期','演習 強化期','実戦演習 仕上げ'],
+      '情報':['基礎概念 習得期','プログラミング 演習期','実戦演習 仕上げ'],
+    };
+    var registeredSubs = (s.mainSubjects && s.mainSubjects.length > 0)
+      ? s.mainSubjects
+      : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
+    var tgtDevPdf = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
+    var subjects = registeredSubs.map(function(subName) {
+      var curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
+      var gap2 = Math.max(0, tgtDevPdf - curDev);
+      return {
+        label: subName,
+        color: PDF_SUB_COLOR[subName] || '#555',
+        bg:    PDF_SUB_BG[subName]    || '#f5f5f5',
+        phases: PDF_SUB_PHASES[subName] || ['基礎固め期','演習 強化期','実戦仕上げ'],
+      };
+    });
     const phaseDef = [
       { label:'基礎期',  border:'#2a7f6f', headerBg:'#c8eae4', span:p1end,          rangeStart:1,        rangeEnd:p1end },
       { label:'標準期',  border:'#c9a84c', headerBg:'#f9edcc', span:p2end-p1end,   rangeStart:p1end+1,  rangeEnd:p2end },
@@ -3501,9 +3588,14 @@ function printRoadmapPDF() {
 
   // ━━━━━ 偏差値ギャップ（全幅・大型） ━━━━━
   const gapHTML = (function() {
-    const subjects = s.stream === 'rikei'
-      ? [ {name:'英語',current:s.devVal-3,target:s.univInfo.dev-2}, {name:'数学',current:s.devVal+2,target:s.univInfo.dev+1}, {name:'国語',current:s.devVal-5,target:s.univInfo.dev-5}, {name:'物理',current:s.devVal-1,target:s.univInfo.dev-2} ]
-      : [ {name:'英語',current:s.devVal-2,target:s.univInfo.dev-1}, {name:'国語',current:s.devVal-3,target:s.univInfo.dev-3}, {name:'数学',current:s.devVal+1,target:s.univInfo.dev}, {name:'社会',current:s.devVal-4,target:s.univInfo.dev-4} ];
+    var regSubs2 = (s.mainSubjects && s.mainSubjects.length > 0)
+      ? s.mainSubjects
+      : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
+    var tgtDev2 = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
+    var subjects = regSubs2.map(function(name) {
+      var current = (s.subDevs && s.subDevs[name]) ? s.subDevs[name] : s.devVal;
+      return { name: name, current: current, target: tgtDev2 };
+    });
     const SCALE_MIN = 35, SCALE_MAX = 80;
     const toP = function(v) { return Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100)); };
     const barColors = ['#c84b31','#c9a84c','#4a6fa5','#2a7f6f'];
@@ -3626,10 +3718,8 @@ function printRoadmapPDF() {
       html += '</div></div>';
     });
     if (lastYear !== null) html += '</div>';
-    const totalPrice = books.reduce(function(sum,b){ return sum+(b.price||1600); }, 0);
-    html += '<div style="margin-top:10px;padding:8px 12px;background:#f9f7f4;border-radius:6px;border:1px solid #e0d8c8;display:flex;justify-content:space-between;align-items:center;">'
+    html += '<div style="margin-top:10px;padding:8px 12px;background:#f9f7f4;border-radius:6px;border:1px solid #e0d8c8;">'
       + '<span style="font-size:9px;color:#888;">※ ⚠は直近2ヶ月以内に終了すべき書籍</span>'
-      + '<span style="font-size:11px;font-weight:700;color:#1a1a2e;">'+books.length+'冊 合計（参考） <span style="color:#c84b31;font-size:13px;">¥'+totalPrice.toLocaleString()+'</span>（税込）</span>'
       + '</div>';
     return html;
   })();
@@ -5396,25 +5486,86 @@ function selectWpSub(sub, btn) {
 
 function renderWpSubjectPlan(sub) {
   const plans = WP_PLANS[sub] || WP_PLANS['英語'];
-  const col = 'var(--accent)';
   const el = document.getElementById('wp-subject-plan');
   if (!el) return;
-  // 1ヶ月プラン：1フェーズのみ表示
-  const m = plans[0];
-  el.innerHTML = `<div style="background:var(--paper);border-radius:10px;padding:1rem;border-top:3px solid ${col};">
-    <div style="font-size:10px;font-weight:700;color:${col};letter-spacing:.07em;margin-bottom:6px;">今月の学習フェーズ</div>
-    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">${m.phase}</div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">🎯 ${m.goal}</div>
-    <div style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:8px;">
-      ${m.books.map(b=>`<div style="font-size:11px;padding:2px 0;"><span style="color:${col};">▸</span> ${b}</div>`).join('')}
+  const m = plans[0]; // 1ヶ月目フェーズのデータを使用
+
+  // 週ごとのタスク自動生成（1ヶ月4週展開）
+  const books = m.books || [];
+  const weeklyParts = m.weekly.split('＋').map(s => s.trim());
+  const weeks = [
+    {
+      label: 'Week 1',
+      period: '1〜7日目',
+      theme: '導入・基礎固め',
+      books: books.slice(0, Math.ceil(books.length / 2)),
+      task: weeklyParts[0] || m.weekly,
+      note: 'まず教材を通読し、全体像をつかむ',
+      color: '#c84b31',
+      bg: '#fef0ee',
+      border: '#f0c0b8',
+    },
+    {
+      label: 'Week 2',
+      period: '8〜14日目',
+      theme: '反復・定着',
+      books: books.slice(0, Math.ceil(books.length / 2)),
+      task: weeklyParts[0] || m.weekly,
+      note: 'Week1の内容を反復し、ミスパターンを潰す',
+      color: '#c9a84c',
+      bg: '#fdf8ee',
+      border: '#f0e0a0',
+    },
+    {
+      label: 'Week 3',
+      period: '15〜21日目',
+      theme: '演習・強化',
+      books: books.length > 1 ? books.slice(Math.ceil(books.length / 2)) : books,
+      task: weeklyParts[1] || weeklyParts[0] || m.weekly,
+      note: '問題演習で得点力を高める',
+      color: '#2a7f6f',
+      bg: '#eef5f3',
+      border: '#b0d8d0',
+    },
+    {
+      label: 'Week 4',
+      period: '22〜月末',
+      theme: '総復習・確認テスト',
+      books: books.length > 1 ? books.slice(Math.ceil(books.length / 2)) : books,
+      task: weeklyParts[weeklyParts.length - 1] || m.weekly,
+      note: '月末確認テストで到達度を確認',
+      color: '#4a6fa5',
+      bg: '#eef2f8',
+      border: '#b0c4de',
+      isTest: true,
+      test: m.test,
+    },
+  ];
+
+  el.innerHTML = `
+    <div style="margin-bottom:10px;">
+      <span style="font-size:11px;font-weight:700;color:var(--text-muted);">🎯 今月の目標：</span>
+      <span style="font-size:12px;font-weight:700;color:var(--ink);">${m.goal}</span>
     </div>
-    <div style="background:white;border-radius:6px;padding:5px 8px;font-size:11px;color:var(--ink);margin-bottom:6px;">
-      <strong>週課題：</strong>${m.weekly}
-    </div>
-    <div style="background:${col}15;border-radius:6px;padding:4px 8px;font-size:10px;color:${col};font-weight:700;">
-      📝 確認テスト：${m.test}
-    </div>
-  </div>`;
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      ${weeks.map(w => `
+        <div style="background:${w.bg};border-radius:10px;padding:.9rem;border-top:3px solid ${w.color};border:1.5px solid ${w.border};border-top-width:3px;">
+          <div style="font-size:10px;font-weight:700;color:${w.color};letter-spacing:.06em;margin-bottom:2px;">${w.label}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">${w.period}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;border-bottom:1px solid ${w.border};padding-bottom:6px;">${w.theme}</div>
+          <div style="margin-bottom:8px;">
+            ${w.books.map(b => `<div style="font-size:10px;padding:2px 0;color:var(--ink);"><span style="color:${w.color};">▸</span> ${b}</div>`).join('')}
+          </div>
+          <div style="background:white;border-radius:5px;padding:4px 7px;font-size:10px;color:var(--ink);margin-bottom:6px;">
+            <strong>課題：</strong>${w.task}
+          </div>
+          ${w.isTest
+            ? `<div style="background:${w.color};border-radius:5px;padding:4px 7px;font-size:10px;color:white;font-weight:700;">📝 ${w.test}</div>`
+            : `<div style="font-size:9px;color:var(--text-muted);font-style:italic;">${w.note}</div>`
+          }
+        </div>
+      `).join('')}
+    </div>`;
 }
 
 function renderWpWeekGrid() {
@@ -5565,27 +5716,37 @@ function printWeeklyPlanPDF() {
     }).join('')
     + '</div>';
 
-  // ── 科目別プランHTML ──
+  // ── 科目別プランHTML（1ヶ月4週展開） ──
+  var weekColors = ['#c84b31','#c9a84c','#2a7f6f','#4a6fa5'];
+  var weekBgs    = ['#fef0ee','#fdf8ee','#eef5f3','#eef2f8'];
+  var weekBorders= ['#f0c0b8','#f0e0a0','#b0d8d0','#b0c4de'];
+  var weekLabels = ['Week 1（1〜7日目）','Week 2（8〜14日目）','Week 3（15〜21日目）','Week 4（22〜月末）'];
+  var weekThemes = ['導入・基礎固め','反復・定着','演習・強化','総復習・確認テスト'];
+
   const allSubjectsHTML = subs.map(function(sub) {
     var plans = WP_PLANS[sub] || WP_PLANS['英語'];
+    var m = plans[0];
     var subColor = DAY_COLORS[sub] || '#1a1a2e';
-    var cols = plans.map(function(m, i) {
-      return '<div style="display:table-cell;width:33.33%;vertical-align:top;padding:10px 12px;border-top:3px solid ' + phaseColors[i] + ';border-left:' + (i > 0 ? '1px solid ' + phaseBorder[i] : 'none') + ';background:' + phaseBg[i] + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-        + '<div style="font-size:8px;font-weight:700;color:' + phaseColors[i] + ';letter-spacing:.07em;margin-bottom:2px;">' + (i+1) + 'ヶ月目</div>'
-        + '<div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">' + m.phase + '</div>'
-        + '<div style="font-size:9px;color:#555;margin-bottom:6px;display:flex;align-items:flex-start;gap:3px;"><span style="color:' + phaseColors[i] + ';">🎯</span> ' + m.goal + '</div>'
-        + '<div style="border-top:1px solid ' + phaseBorder[i] + ';padding-top:5px;margin-bottom:6px;">'
-        + m.books.map(function(b) { return '<div style="font-size:9px;padding:1px 0;color:#333;"><span style="color:' + phaseColors[i] + ';font-weight:700;">▸</span> ' + b + '</div>'; }).join('')
-        + '</div>'
-        + '<div style="background:rgba(255,255,255,.75);border-radius:4px;padding:3px 6px;font-size:9px;color:#1a1a2e;margin-bottom:4px;"><b>週課題：</b>' + m.weekly + '</div>'
-        + '<div style="background:' + phaseColors[i] + '22;border-radius:4px;padding:2px 6px;font-size:8px;color:' + phaseColors[i] + ';font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📝 ' + m.test + '</div>'
+    var books = m.books || [];
+    var weeklyParts = m.weekly.split('＋').map(function(p){ return p.trim(); });
+    var weekCols = weekLabels.map(function(wl, i) {
+      var wBooks = i < 2 ? books.slice(0, Math.ceil(books.length/2)) : (books.length>1 ? books.slice(Math.ceil(books.length/2)) : books);
+      var wTask  = i < 2 ? (weeklyParts[0]||m.weekly) : (weeklyParts[weeklyParts.length-1]||m.weekly);
+      var isTest = i === 3;
+      return '<div style="display:table-cell;width:25%;vertical-align:top;padding:8px 10px;border-top:3px solid ' + weekColors[i] + ';border-left:' + (i>0?'1px solid '+weekBorders[i]:'none') + ';background:' + weekBgs[i] + ';-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+        + '<div style="font-size:8px;font-weight:700;color:' + weekColors[i] + ';margin-bottom:1px;">' + wl + '</div>'
+        + '<div style="font-size:10px;font-weight:700;color:#1a1a2e;margin-bottom:5px;border-bottom:1px solid ' + weekBorders[i] + ';padding-bottom:4px;">' + weekThemes[i] + '</div>'
+        + wBooks.map(function(b){ return '<div style="font-size:8px;padding:1px 0;color:#333;"><span style="color:' + weekColors[i] + ';font-weight:700;">▸</span> ' + b + '</div>'; }).join('')
+        + '<div style="background:rgba(255,255,255,.75);border-radius:3px;padding:2px 5px;font-size:8px;color:#1a1a2e;margin-top:4px;"><b>課題：</b>' + wTask + '</div>'
+        + (isTest ? '<div style="background:' + weekColors[i] + ';border-radius:3px;padding:2px 5px;font-size:8px;color:white;font-weight:700;margin-top:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📝 ' + m.test + '</div>' : '')
         + '</div>';
     }).join('');
-    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:16px;border:1px solid #e0d8c8;border-radius:8px;overflow:hidden;">'
-      + '<div style="background:' + subColor + ';padding:6px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-      + '<span style="font-size:12px;font-weight:700;color:white;">' + sub + '</span>'
+    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:14px;border:1px solid #e0d8c8;border-radius:8px;overflow:hidden;">'
+      + '<div style="background:' + subColor + ';padding:5px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+      + '<span style="font-size:11px;font-weight:700;color:white;">' + sub + '</span>'
+      + '<span style="font-size:9px;color:rgba(255,255,255,.7);margin-left:8px;">🎯 ' + m.goal + '</span>'
       + '</div>'
-      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;">' + cols + '</div>'
+      + '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;">' + weekCols + '</div>'
       + '</div>';
   }).join('');
 
