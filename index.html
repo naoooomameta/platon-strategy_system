@@ -4592,7 +4592,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
 
   var iframe = document.createElement('iframe');
   iframe.id = IFRAME_ID;
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;visibility:hidden;';
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:10000px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -4622,11 +4622,11 @@ function _renderHtmlToPDF(htmlStr, filename) {
         y: 0,
         width: 794,
         windowWidth: 794,
-        windowHeight: 1123,
+        windowHeight: 15000,
         logging: false,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css'] }
+      pagebreak: { mode: ['css', 'legacy'] }
     };
 
     html2pdf().set(opt).from(body).save().then(function() {
@@ -5337,29 +5337,69 @@ function printWeeklyPlanPDF() {
   const day = now.getDay();
   const DAYS = ['月','火','水','木','金','土','日'];
 
-  // ── 3ヶ月集中ロードマップ（概要カード） ──
-  // 生徒の弱点科目 = 最初の科目を使ってメッセージ生成
+  // ── 3ヶ月集中ロードマップ（個別最適化カード） ──
   const mainSub = subs[0] || '英語';
   const subList = subs.slice(0, 3).join('・');
+  const curDev  = s ? (s.devVal || 0) : 0;
+  const tgtDev  = s ? (s.univInfo && s.univInfo.dev ? s.univInfo.dev : 0) : 0;
+  const gap     = tgtDev - curDev;
+  const remMonths = s ? (s.months || 12) : 12;
+  const gradeStr  = s ? ({ high1:'高1', high2:'高2', high3:'高3', ronin:'浪人' }[s.grade] || '') : '';
+  const isBunkei  = s ? (s.stream !== 'rikei') : true;
+  const catStr    = s && s.univInfo ? (s.univInfo.cat === 'national' ? '国公立' : '私立') : '';
+
+  // 科目ごとのギャップを取得（subDevが存在する場合）
+  const subDevs = s && s.subDevs ? s.subDevs : {};
+  // 最も遅れている科目を特定
+  const weakSub = (function() {
+    if (!s || !s.subDevs) return subs[0] || '英語';
+    let minDiff = Infinity, minSub = subs[0] || '英語';
+    subs.forEach(function(sb) {
+      const cur = s.subDevs[sb] || curDev;
+      const tgt = s.univInfo && s.univInfo.subDev && s.univInfo.subDev[sb] ? s.univInfo.subDev[sb] : tgtDev;
+      const diff = tgt - cur;
+      if (diff < minDiff) { minDiff = diff; minSub = sb; }
+    });
+    return minSub;
+  })();
+
+  // 残り期間に応じてフェーズタイトルとメッセージを最適化
+  const phase1Title = gap >= 15
+    ? '基礎を徹底固め — 偏差値' + curDev + 'から脱出する1ヶ月'
+    : gap >= 8
+    ? mainSub + '・' + (subs[1] || '国語') + 'の基礎を完成させる1ヶ月'
+    : '弱点科目の穴を完全に埋める1ヶ月';
+
+  const phase1Body = (function() {
+    const books1 = s && s.books && s.books[0] ? s.books[0].map(function(b){ return b.title || b; }).slice(0,2).join('・') : '';
+    const bookStr = books1 ? '（' + books1 + '等）' : '';
+    return gradeStr + 'の今、' + subList + 'の基礎参考書' + bookStr + 'を徹底的に完走。'
+      + '毎日の課題提出で学習習慣を確立し、偏差値' + curDev + 'からの底上げを図る。'
+      + 'まず週の学習時間を' + (s && s.studyHours ? s.studyHours : 20) + 'h以上に定着させる。';
+  })();
+
+  const phase2Title = catStr === '国公立'
+    ? '共通テスト対策に軸足を移す1ヶ月'
+    : univName + 'の出題形式に慣れる1ヶ月';
+
+  const phase2Body = subList + 'の演習量を一気に増やし、偏差値+'
+    + Math.round(gap * 0.4) + 'を目指す。'
+    + '週1回の確認テストで「解ける」を数値化し、'
+    + (catStr === '国公立' ? '記述・論述問題への対応力' : '選択式・短答問題のスピード')
+    + 'を高める。模試で初めて手応えが出る時期。';
+
+  const phase3Title = (univName || '志望校') + '合格圏内に到達する最終1ヶ月';
+
+  const phase3Body = '目標偏差値' + tgtDev + 'まで残り'
+    + Math.max(0, gap - Math.round(gap * 0.7)) + 'ポイント。'
+    + (catStr === '国公立' ? '二次試験の過去問' : univName + 'の過去問')
+    + 'を中心に' + subList + 'を総仕上げ。'
+    + '弱点を集中補強しながら、本番で最高のパフォーマンスが出せる状態を完成させる。';
+
   const roadmapCards = [
-    {
-      n: 1, week: 'Week 1〜4',
-      title: '苦手単元を一掃する1ヶ月',
-      body: '現状の弱点科目（' + subList + '）の基礎レベル参考書を完走。インプットよりアウトプットを意識し、毎日の課題で確認を積み重ねる。',
-      color: phaseColors[0], bg: phaseBg[0], border: phaseBorder[0],
-    },
-    {
-      n: 2, week: 'Week 5〜8',
-      title: '模試で結果が出始める1ヶ月',
-      body: subList + 'の演習量を一気に増やし、得点力を実戦レベルへ。週1回の確認テストで「できる」を数値で確認しながら自信をつける。',
-      color: phaseColors[1], bg: phaseBg[1], border: phaseBorder[1],
-    },
-    {
-      n: 3, week: 'Week 9〜12',
-      title: (univName || '志望校') + '合格へ向けた最終調整',
-      body: '共通テスト＋二次試験の過去問・模試レベルで' + subList + 'を仕上げる。弱点を集中補強しながら、本番で最高のパフォーマンスが出せる状態を完成させる。',
-      color: phaseColors[2], bg: phaseBg[2], border: phaseBorder[2],
-    },
+    { n:1, week:'Week 1〜4',  title:phase1Title, body:phase1Body, color:phaseColors[0], bg:phaseBg[0], border:phaseBorder[0] },
+    { n:2, week:'Week 5〜8',  title:phase2Title, body:phase2Body, color:phaseColors[1], bg:phaseBg[1], border:phaseBorder[1] },
+    { n:3, week:'Week 9〜12', title:phase3Title, body:phase3Body, color:phaseColors[2], bg:phaseBg[2], border:phaseBorder[2] },
   ];
   const roadmapHTML = '<div style="display:table;width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:20px;">'
     + roadmapCards.map(function(c) {
@@ -5504,7 +5544,7 @@ function printWeeklyPlanPDF() {
   bar.style.cssText = 'background:#1a1a2e;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
   bar.innerHTML = '<span style="color:white;font-size:13px;font-weight:700;">📄 3ヶ月学習プラン' + (studentName ? '｜' + studentName + ' さん' : '') + '</span>'
     + '<div style="display:flex;gap:8px;">'
-    + '<button onclick="downloadAsPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>'
+    + '<button onclick="downloadDynPDF()" style="padding:7px 18px;background:#c9a84c;color:#1a1a2e;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;">📥 PDFダウンロード</button>'
     + '<button onclick="document.getElementById(\'pdf-modal\').remove()" style="padding:7px 14px;background:rgba(255,255,255,.15);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;">✕ 閉じる</button>'
     + '</div>';
   var iframe = document.createElement('iframe');
