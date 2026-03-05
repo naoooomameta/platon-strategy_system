@@ -4582,35 +4582,33 @@ function resetPageEdit(pageId) {
 // ===== 各ページPDF保存（iframeモーダル印刷） =====
 
 // ===== 共通PDF変換ヘルパー =====
-function _renderHtmlToPDF(htmlStr, filename, extraOpt) {
-  return new Promise(function(resolve) {
-    // 画面外の固定コンテナを作成（スクロール・オフセット完全排除）
-    var container = document.createElement('div');
-    container.style.cssText = [
-      'position:fixed',
-      'left:-9999px',
-      'top:0',
-      'width:794px',       // A4 96dpi幅
-      'min-height:1123px', // A4 96dpi高さ
-      'overflow:visible',
-      'z-index:-1',
-      'background:white',
-      'margin:0',
-      'padding:0',
-    ].join(';');
-    // HTML文字列をsrcdocなしで直接innerHTMLに展開（スクリプトは無効化）
-    var parser = new DOMParser();
-    var parsed = parser.parseFromString(htmlStr, 'text/html');
-    // style要素をコピー
-    var styles = parsed.querySelectorAll('style, link[rel="stylesheet"]');
-    styles.forEach(function(el) { container.appendChild(document.adoptNode(el.cloneNode(true))); });
-    // body内容をコピー
-    var body = parsed.body;
-    body.style.cssText = 'margin:0;padding:0;background:white;font-family:"Noto Sans JP",sans-serif;';
-    container.appendChild(document.adoptNode(body));
-    document.documentElement.appendChild(container);
+// 専用の隠しiframeでHTMLをレンダリングし、そのbody要素をhtml2pdfに渡す
+// → iframeはposition:fixed/left:-9999pxで完全固定するため座標ズレなし
+function _renderHtmlToPDF(htmlStr, filename) {
+  // 既存の隠しiframeを再利用 or 新規作成
+  var IFRAME_ID = '_pdf_render_iframe';
+  var existing = document.getElementById(IFRAME_ID);
+  if (existing) existing.remove();
 
-    var opt = Object.assign({
+  var iframe = document.createElement('iframe');
+  iframe.id = IFRAME_ID;
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;visibility:hidden;';
+  document.body.appendChild(iframe);
+
+  var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iDoc.open();
+  iDoc.write(htmlStr);
+  iDoc.close();
+
+  // フォント・画像の読み込みを待ってから変換
+  setTimeout(function() {
+    var body = iDoc.body;
+    body.style.margin = '0';
+    body.style.padding = '0';
+    body.style.overflow = 'visible';
+    body.style.width = '794px';
+
+    var opt = {
       margin: [10, 12, 10, 12],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
@@ -4629,17 +4627,15 @@ function _renderHtmlToPDF(htmlStr, filename, extraOpt) {
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css'] }
-    }, extraOpt || {});
+    };
 
-    // フォント読み込み待ち後に変換
-    setTimeout(function() {
-      html2pdf().set(opt).from(container).save().then(function() {
-        document.documentElement.removeChild(container);
-        resolve();
-      });
-    }, 400);
-  });
+    html2pdf().set(opt).from(body).save().then(function() {
+      var el = document.getElementById(IFRAME_ID);
+      if (el) el.remove();
+    });
+  }, 600);
 }
+
 function downloadDynPDF() {
   const htmlStr = window._dynPdfHtml;
   const filename = window._dynPdfFilename || 'platon.pdf';
