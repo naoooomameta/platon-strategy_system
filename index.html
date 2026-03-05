@@ -2886,7 +2886,7 @@ function renderRoadmapBooks() {
   } catch(e) {}
 
   // ローディング表示
-  timelineEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">🤖 AIが最適な参考書ルートを生成中...<br><small style="font-size:11px;margin-top:8px;display:block;color:#aaa;">初回のみAI生成します。次回以降はキャッシュを使用します。</small></div>';
+  timelineEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">🔍 ウェブ検索で最新の参考書情報を取得中...<br><small style="font-size:11px;margin-top:8px;display:block;color:#aaa;">Google検索グラウンディングにより最新・正確な参考書を選定します。次回以降はキャッシュを使用します。</small></div>';
   if (subtitle) subtitle.textContent = '生成中...';
   if (filterWrap) filterWrap.innerHTML = ''
 
@@ -2895,7 +2895,8 @@ function renderRoadmapBooks() {
     : '未入力';
 
   const prompt = `あなたは日本の大学受験専門の学習コンサルタントです。
-以下の生徒データをもとに、最適な参考書学習ルートをJSON形式で出力してください。
+Google検索で最新の大学受験参考書情報を調べた上で、以下の生徒データに最適な参考書学習ルートをJSON形式で出力してください。
+必ず現在市販されている実在の参考書のみを使用し、出版社・著者・難易度が正確な情報を出力してください。
 
 【生徒データ】
 - 氏名: ${s.name}
@@ -2929,7 +2930,7 @@ function renderRoadmapBooks() {
 - 試験まで${totalMonths}ヶ月の期間内に無理なく終わる量にする。
 - 対策科目以外の参考書は含めない。`;
 
-  callGemini(prompt).then(function(raw) {
+  callGeminiWithSearch(prompt).then(function(raw) {
     let data;
     try {
       const clean = raw.replace(/```json|```/g, '').trim();
@@ -2990,7 +2991,7 @@ function _applyRoadmapBooksData(rawBooks, s, startMonth, JAmonths, filterWrap, s
     };
   });
   if (subtitle) {
-    subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ AI提案 全${books.length}冊（キャッシュ）`;
+    subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ AI×Web検索 全${books.length}冊（キャッシュ）`;
   }
   const seen = {};
   if (filterWrap) {
@@ -6260,6 +6261,30 @@ async function callGemini(prompt) {
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+// Web検索グラウンディング付きGemini呼び出し（参考書ルート専用）
+async function callGeminiWithSearch(prompt) {
+  const key = getApiKey();
+  // gemini-2.0-flash は Google Search grounding をサポート
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0.2 }
+    })
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error((errData.error && errData.error.message) || ('HTTP ' + res.status));
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  // grounding付きの場合、複数partsが返ることがある
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('');
 }
 async function callGeminiWithImage(base64, mimeType, prompt) {
   const key = getApiKey();
