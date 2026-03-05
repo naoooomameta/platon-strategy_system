@@ -3625,6 +3625,9 @@ function printRoadmapPDF() {
   modal.appendChild(bar);
   modal.appendChild(iframe);
   document.body.appendChild(modal);
+  // html文字列をグローバルに保存（pdf変換で直接使用）
+  window._roadmapHtml = html;
+  window._roadmapFilename = '合格ロードマップ_' + s.name + '.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
 }
@@ -4578,63 +4581,32 @@ function resetPageEdit(pageId) {
 
 // ===== 各ページPDF保存（iframeモーダル印刷） =====
 function downloadDynPDF() {
-  const modal = document.getElementById('pdf-modal-dyn');
-  if (!modal) return;
-  const iframe = modal.querySelector('iframe');
-  if (!iframe) return;
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  if (!iframeDoc) return;
-  const noprint = iframeDoc.body.querySelector('.no-print');
-  if (noprint) noprint.style.display = 'none';
-  const printWin = window.open('', '_blank');
-  printWin.document.write(iframeDoc.documentElement.outerHTML);
-  printWin.document.close();
-  printWin.focus();
-  setTimeout(() => {
-    printWin.print();
-    printWin.close();
-    if (noprint) noprint.style.display = '';
-  }, 800);
+  const htmlStr = window._dynPdfHtml;
+  const filename = window._dynPdfFilename || 'platon.pdf';
+  if (!htmlStr) { showToast('PDFデータがありません'); return; }
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,allowTaint:true},jsPDF:{unit:'mm',format:'a4'}}).from(htmlStr).save();
 }
 
 function downloadReportPDF() {
-  const modal = document.getElementById('pdf-modal');
-  if (!modal) return;
-  const iframe = modal.querySelector('iframe');
-  if (!iframe) return;
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  if (!iframeDoc) return;
-  const noprint = iframeDoc.body.querySelector('.no-print');
-  if (noprint) noprint.style.display = 'none';
-  const printWin = window.open('', '_blank');
-  printWin.document.write(iframeDoc.documentElement.outerHTML);
-  printWin.document.close();
-  printWin.focus();
-  setTimeout(() => {
-    printWin.print();
-    printWin.close();
-    if (noprint) noprint.style.display = '';
-  }, 800);
+  const htmlStr = window._reportPdfHtml;
+  const filename = window._reportPdfFilename || 'report.pdf';
+  if (!htmlStr) { showToast('PDFデータがありません'); return; }
+  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,allowTaint:true},jsPDF:{unit:'mm',format:'a4'}}).from(htmlStr).save();
 }
 
 function downloadAsPDF() {
-  const iframe = document.getElementById('pdf-print-frame');
-  if (!iframe) return;
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  if (!iframeDoc) return;
-  // no-printバーを一時非表示
-  const noprint = iframeDoc.body.querySelector('.no-print');
-  if (noprint) noprint.style.display = 'none';
-  // 新しいウィンドウで印刷（html2canvasの座標ズレを回避）
-  const printWin = window.open('', '_blank');
-  printWin.document.write(iframeDoc.documentElement.outerHTML);
-  printWin.document.close();
-  printWin.focus();
-  setTimeout(() => {
-    printWin.print();
-    printWin.close();
-    if (noprint) noprint.style.display = '';
-  }, 800);
+  const htmlStr = window._roadmapHtml;
+  const filename = window._roadmapFilename || 'roadmap.pdf';
+  if (!htmlStr) { showToast('PDFデータがありません'); return; }
+  const opt = {
+    margin: [10, 12, 10, 12],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css'] }
+  };
+  html2pdf().set(opt).from(htmlStr).save();
 }
 
 function printPage(pageId, title) {
@@ -4769,6 +4741,9 @@ function printPage(pageId, title) {
   modal.appendChild(iframe);
   document.body.appendChild(modal);
 
+  // html文字列をグローバルに保存
+  window._reportPdfHtml = printHTML;
+  window._reportPdfFilename = 'レポート.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(printHTML); doc.close();
 }
@@ -5490,6 +5465,9 @@ function printWeeklyPlanPDF() {
   modal.appendChild(bar);
   modal.appendChild(iframe);
   document.body.appendChild(modal);
+  // html文字列をグローバルに保存
+  window._dynPdfHtml = html;
+  window._dynPdfFilename = '3ヶ月学習プラン.pdf';
   var doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
 }
@@ -6430,6 +6408,9 @@ ${bodyHtml}
   iframe.style.cssText = 'flex:1;border:none;background:white;';
   modal.appendChild(bar); modal.appendChild(iframe);
   document.body.appendChild(modal);
+  // html文字列をグローバルに保存
+  window._dynPdfHtml = html;
+  window._dynPdfFilename = 'テストレポート.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
 }
