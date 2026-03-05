@@ -3585,7 +3585,7 @@ function printRoadmapPDF() {
     + '<div style="font-size:9px;color:#c9a84c;margin-top:3px;">' + (s.goalYear||'') + '年' + (s.goalMonth!=null?s.goalMonth+1:2) + '月 受験</div></div>'
     + '</div>'
 
-    + '<div style="max-width:720px;margin:0 auto;padding:8px 10px;">'
+    + '<div style="max-width:766px;margin:0 auto;padding:0;">'
 
     + secTitle('📅', '月別ロードマップ（タイムライン）')
     + '<div class="card">' + timelineHTML + '</div>'
@@ -4585,14 +4585,16 @@ function resetPageEdit(pageId) {
 // 専用の隠しiframeでHTMLをレンダリングし、そのbody要素をhtml2pdfに渡す
 // → iframeはposition:fixed/left:-9999pxで完全固定するため座標ズレなし
 function _renderHtmlToPDF(htmlStr, filename) {
-  // 既存の隠しiframeを再利用 or 新規作成
+  // A4 @ 96dpi = 794px。margin:0でjsPDFに余白を持たせず、
+  // HTML側のbody paddingで余白を管理することで右クリップを完全排除。
+  var A4W = 794;
   var IFRAME_ID = '_pdf_render_iframe';
   var existing = document.getElementById(IFRAME_ID);
   if (existing) existing.remove();
 
   var iframe = document.createElement('iframe');
   iframe.id = IFRAME_ID;
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:770px;height:10000px;border:none;visibility:hidden;';
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4W + 'px;height:20000px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -4600,16 +4602,13 @@ function _renderHtmlToPDF(htmlStr, filename) {
   iDoc.write(htmlStr);
   iDoc.close();
 
-  // フォント・画像の読み込みを待ってから変換
   setTimeout(function() {
     var body = iDoc.body;
-    body.style.margin = '0';
-    body.style.padding = '0';
-    body.style.overflow = 'visible';
-    body.style.width = '794px';
+    // bodyをA4幅に固定し、内側paddingで余白を確保（jsPDFのmarginは0）
+    body.style.cssText = 'margin:0;padding:10px 14px;overflow:visible;width:' + A4W + 'px;box-sizing:border-box;';
 
     var opt = {
-      margin: [10, 12, 10, 12],
+      margin: 0,          // ← jsPDF側の余白はゼロ（HTML側で管理）
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
@@ -4620,9 +4619,9 @@ function _renderHtmlToPDF(htmlStr, filename) {
         scrollY: 0,
         x: 0,
         y: 0,
-        width: 770,
-        windowWidth: 770,
-        windowHeight: 15000,
+        width: A4W,
+        windowWidth: A4W,
+        windowHeight: 20000,
         logging: false,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -4633,7 +4632,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
       var el = document.getElementById(IFRAME_ID);
       if (el) el.remove();
     });
-  }, 600);
+  }, 800);
 }
 
 function downloadDynPDF() {
@@ -5497,7 +5496,7 @@ function printWeeklyPlanPDF() {
     + '*{box-sizing:border-box;margin:0;padding:0;}'
     + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
     + '.sec{font-size:13px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:18px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.wrap{width:100%;max-width:794px;padding:8px 10px;}'
+    + '.wrap{width:100%;max-width:766px;margin:0 auto;padding:0;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 8mm;size:A4;}}'
     + '</style></head><body>'
 
