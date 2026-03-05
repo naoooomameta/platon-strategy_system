@@ -882,7 +882,7 @@
     <button class="nav-btn active" onclick="showPage('dashboard')">ダッシュボード</button>
     <button class="nav-btn" onclick="showPage('new-student')">生徒登録</button>
     <button class="nav-btn" onclick="showPage('roadmap')">ロードマップ</button>
-    <button class="nav-btn" onclick="showPage('weekly-plan')">3ヶ月プラン</button>
+    <button class="nav-btn" onclick="showPage('weekly-plan')">1ヶ月プラン</button>
     <button class="nav-btn" onclick="showPage('tests')">確認テスト</button>
     <button class="nav-btn" onclick="showPage('monthly')">実力診断</button>
     <div style="display:flex;align-items:center;gap:6px;padding-right:12px;">
@@ -1621,8 +1621,8 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="container">
     <div style="margin-bottom:1.5rem;padding-top:.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
-        <div class="section-title">週次学習計画</div>
-        <div class="section-desc">3ヶ月分（12週）の週次ロードマップと毎日課題を管理します</div>
+        <div class="section-title">1ヶ月学習プラン</div>
+        <div class="section-desc">1ヶ月分（4週）の週次ロードマップと毎日課題を管理します</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <select id="wp-student-sel" onchange="wpSelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
@@ -1634,30 +1634,6 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
 
-    <!-- 3ヶ月フェーズ概要 -->
-    <div class="card" style="margin-bottom:1.5rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-        <div class="card-title" style="margin-bottom:0;">3ヶ月集中ロードマップ</div>
-        <div id="wp-goal-badge" style="font-size:12px;padding:4px 14px;background:var(--ink);color:var(--gold);border-radius:20px;font-weight:700;"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--accent);">
-          <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.08em;margin-bottom:6px;">1ヶ月目 / Week 1〜4</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">基礎固め期</div>
-          <div style="font-size:11px;color:var(--text-muted);">弱点科目の土台を構築。参考書基礎レベルを完走する。</div>
-        </div>
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--gold);">
-          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.08em;margin-bottom:6px;">2ヶ月目 / Week 5〜8</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">標準演習期</div>
-          <div style="font-size:11px;color:var(--text-muted);">問題演習を積み、得点力を実戦レベルへ引き上げる。</div>
-        </div>
-        <div style="padding:1rem;background:var(--paper);border-radius:10px;border-top:3px solid var(--teal);">
-          <div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.08em;margin-bottom:6px;">3ヶ月目 / Week 9〜12</div>
-          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">実戦演習期</div>
-          <div style="font-size:11px;color:var(--text-muted);">過去問・模試レベルで仕上げ。弱点を集中補強する。</div>
-        </div>
-      </div>
-    </div>
 
     <!-- 科目別プラン -->
     <div class="card" style="margin-bottom:1.5rem;">
@@ -1834,7 +1810,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div style="margin-bottom:1.5rem;padding-top:.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title">確認テスト管理</div>
-        <div class="section-desc">3ヶ月分（12週）の週次確認テスト作成・採点・解答管理</div>
+        <div class="section-desc">1ヶ月分（4週）の週次確認テスト作成・採点・解答管理</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <select id="test-student-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
@@ -1853,7 +1829,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <button class="btn btn-secondary" onclick="togglePageEdit('tests')" id="edit-toggle-tests" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printPage('tests','確認テスト')" style="font-size:13px;">📄 PDF保存</button>
         <button class="btn btn-secondary" onclick="openBookImportModal()" style="font-size:13px;">📖 参考書インポート</button>
-        <button class="btn btn-primary" onclick="generateTests()">📝 12週分を自動生成</button>
+        <button class="btn btn-primary" onclick="generateTests()">📝 4週分を自動生成</button>
       </div>
     </div>
 
@@ -4298,7 +4274,7 @@ function filterPlanSubject(sub, btn) {
 function generatePlan3m() {
   const student = document.getElementById('plan3m-student').value;
   if (!student) { showToast('生徒を選択してください'); return; }
-  document.getElementById('plan3m-desc').textContent = `${student} さんの3ヶ月詳細プラン（週単位）`;
+  document.getElementById('plan3m-desc').textContent = `${student} さんの1ヶ月詳細プラン（週単位）`;
   document.getElementById('plan3m-empty').style.display = 'none';
   document.getElementById('plan3m-content').style.display = 'block';
   renderPlan3mCards(PLAN_DATA.rikei);
@@ -5475,24 +5451,24 @@ function selectWpSub(sub, btn) {
 
 function renderWpSubjectPlan(sub) {
   const plans = WP_PLANS[sub] || WP_PLANS['英語'];
-  const cols = ['var(--accent)','var(--gold)','var(--teal)'];
+  const col = 'var(--accent)';
   const el = document.getElementById('wp-subject-plan');
   if (!el) return;
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-    ${plans.map((m,i) => `<div style="background:var(--paper);border-radius:10px;padding:1rem;border-top:3px solid ${cols[i]};">
-      <div style="font-size:10px;font-weight:700;color:${cols[i]};letter-spacing:.07em;margin-bottom:6px;">${i+1}ヶ月目</div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">${m.phase}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">🎯 ${m.goal}</div>
-      <div style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:8px;">
-        ${m.books.map(b=>`<div style="font-size:11px;padding:2px 0;"><span style="color:${cols[i]};">▸</span> ${b}</div>`).join('')}
-      </div>
-      <div style="background:white;border-radius:6px;padding:5px 8px;font-size:11px;color:var(--ink);margin-bottom:6px;">
-        <strong>週課題：</strong>${m.weekly}
-      </div>
-      <div style="background:${cols[i]}15;border-radius:6px;padding:4px 8px;font-size:10px;color:${cols[i]};font-weight:700;">
-        📝 確認テスト：${m.test}
-      </div>
-    </div>`).join('')}
+  // 1ヶ月プラン：1フェーズのみ表示
+  const m = plans[0];
+  el.innerHTML = `<div style="background:var(--paper);border-radius:10px;padding:1rem;border-top:3px solid ${col};">
+    <div style="font-size:10px;font-weight:700;color:${col};letter-spacing:.07em;margin-bottom:6px;">今月の学習フェーズ</div>
+    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">${m.phase}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">🎯 ${m.goal}</div>
+    <div style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:8px;">
+      ${m.books.map(b=>`<div style="font-size:11px;padding:2px 0;"><span style="color:${col};">▸</span> ${b}</div>`).join('')}
+    </div>
+    <div style="background:white;border-radius:6px;padding:5px 8px;font-size:11px;color:var(--ink);margin-bottom:6px;">
+      <strong>週課題：</strong>${m.weekly}
+    </div>
+    <div style="background:${col}15;border-radius:6px;padding:4px 8px;font-size:10px;color:${col};font-weight:700;">
+      📝 確認テスト：${m.test}
+    </div>
   </div>`;
 }
 
@@ -5509,11 +5485,11 @@ function renderWpWeekGrid() {
 
   const month = Math.floor(wpWeekIdx / 4) + 1;
   const wInM = (wpWeekIdx % 4) + 1;
-  lblEl.textContent = `${monday.getMonth()+1}月${monday.getDate()}日〜の週`;
-  badgeEl.textContent = `Week${wpWeekIdx+1}（${month}ヶ月目 第${wInM}週）`;
+  lblEl.textContent = `${monday.getMonth()+1}月${monday.getDate()}日（月）〜の週`;
+  badgeEl.textContent = `第${wpWeekIdx+1}週 / 全4週`;
 
   const subs = getWpSubs();
-  const phaseIdx = Math.min(Math.floor(wpWeekIdx / 4), 2);
+  const phaseIdx = 0;  // 1ヶ月プランは基礎期のみ
   const phaseLabel = ['基礎','標準','演習'][phaseIdx];
 
   // 曜日別科目割り当て（月〜金は2科目ずつ、土は復習、日は確認テスト）
@@ -5672,12 +5648,12 @@ function printWeeklyPlanPDF() {
   var monday0 = new Date(now);
   monday0.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
 
-  var allWeeksHTML = Array.from({length: 12}, function(_, wi) {
+  var allWeeksHTML = Array.from({length: 4}, function(_, wi) {
     var monday = new Date(monday0);
     monday.setDate(monday0.getDate() + wi * 7);
     var monthN = Math.floor(wi / 4) + 1;
     var weekInM = (wi % 4) + 1;
-    var phaseIdx = Math.min(Math.floor(wi / 4), 2);
+    var phaseIdx = 0;  // 1ヶ月プランは基礎期のみ
     var phaseLabel = ['基礎期','標準期','演習期'][phaseIdx];
     var phaseColor = phaseColors[phaseIdx];
     var phaseBgC = phaseBg[phaseIdx];
@@ -5723,7 +5699,7 @@ function printWeeklyPlanPDF() {
 
   // ── HTML組み立て ──
   var html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
-    + '<title>3ヶ月学習プラン｜' + studentName + '</title>'
+    + '<title>1ヶ月学習プラン｜' + studentName + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
@@ -5749,7 +5725,7 @@ function printWeeklyPlanPDF() {
     + '<div class="wrap">'
 
     // ── 3ヶ月集中ロードマップ ──
-    + '<div class="sec">3ヶ月集中ロードマップ</div>'
+    + '<div class="sec">1ヶ月学習プラン</div>'
     + roadmapHTML
 
     // ── 科目別学習プラン ──
@@ -5787,13 +5763,13 @@ function printWeeklyPlanPDF() {
   document.body.appendChild(modal);
   // html文字列をグローバルに保存
   window._dynPdfHtml = html;
-  window._dynPdfFilename = '3ヶ月学習プラン.pdf';
+  window._dynPdfFilename = '1ヶ月学習プラン.pdf';
   var doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open('text/html','replace'); doc.write(html); doc.close();
 }
 
 function changeWpWeek(d) {
-  wpWeekIdx = Math.max(0, Math.min(11, wpWeekIdx + d));
+  wpWeekIdx = Math.max(0, Math.min(3, wpWeekIdx + d));
   renderWpWeekGrid();
 }
 
