@@ -4580,33 +4580,85 @@ function resetPageEdit(pageId) {
 }
 
 // ===== 各ページPDF保存（iframeモーダル印刷） =====
+
+// ===== 共通PDF変換ヘルパー =====
+function _renderHtmlToPDF(htmlStr, filename, extraOpt) {
+  return new Promise(function(resolve) {
+    // 画面外の固定コンテナを作成（スクロール・オフセット完全排除）
+    var container = document.createElement('div');
+    container.style.cssText = [
+      'position:fixed',
+      'left:-9999px',
+      'top:0',
+      'width:794px',       // A4 96dpi幅
+      'min-height:1123px', // A4 96dpi高さ
+      'overflow:visible',
+      'z-index:-1',
+      'background:white',
+      'margin:0',
+      'padding:0',
+    ].join(';');
+    // HTML文字列をsrcdocなしで直接innerHTMLに展開（スクリプトは無効化）
+    var parser = new DOMParser();
+    var parsed = parser.parseFromString(htmlStr, 'text/html');
+    // style要素をコピー
+    var styles = parsed.querySelectorAll('style, link[rel="stylesheet"]');
+    styles.forEach(function(el) { container.appendChild(document.adoptNode(el.cloneNode(true))); });
+    // body内容をコピー
+    var body = parsed.body;
+    body.style.cssText = 'margin:0;padding:0;background:white;font-family:"Noto Sans JP",sans-serif;';
+    container.appendChild(document.adoptNode(body));
+    document.documentElement.appendChild(container);
+
+    var opt = Object.assign({
+      margin: [10, 12, 10, 12],
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
+        width: 794,
+        windowWidth: 794,
+        windowHeight: 1123,
+        logging: false,
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css'] }
+    }, extraOpt || {});
+
+    // フォント読み込み待ち後に変換
+    setTimeout(function() {
+      html2pdf().set(opt).from(container).save().then(function() {
+        document.documentElement.removeChild(container);
+        resolve();
+      });
+    }, 400);
+  });
+}
 function downloadDynPDF() {
   const htmlStr = window._dynPdfHtml;
   const filename = window._dynPdfFilename || 'platon.pdf';
   if (!htmlStr) { showToast('PDFデータがありません'); return; }
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,allowTaint:true},jsPDF:{unit:'mm',format:'a4'}}).from(htmlStr).save();
+  _renderHtmlToPDF(htmlStr, filename);
 }
 
 function downloadReportPDF() {
   const htmlStr = window._reportPdfHtml;
   const filename = window._reportPdfFilename || 'report.pdf';
   if (!htmlStr) { showToast('PDFデータがありません'); return; }
-  html2pdf().set({margin:[10,12],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,allowTaint:true},jsPDF:{unit:'mm',format:'a4'}}).from(htmlStr).save();
+  _renderHtmlToPDF(htmlStr, filename);
 }
 
 function downloadAsPDF() {
   const htmlStr = window._roadmapHtml;
   const filename = window._roadmapFilename || 'roadmap.pdf';
   if (!htmlStr) { showToast('PDFデータがありません'); return; }
-  const opt = {
-    margin: [10, 12, 10, 12],
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, allowTaint: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css'] }
-  };
-  html2pdf().set(opt).from(htmlStr).save();
+  _renderHtmlToPDF(htmlStr, filename);
 }
 
 function printPage(pageId, title) {
