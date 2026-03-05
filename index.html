@@ -1240,26 +1240,62 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
         <div class="form-group full">
           <label>科目別偏差値（模試から転記・任意）</label>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px;">
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:4px;">
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px;">英語</div>
-              <input type="number" id="dev-eng" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px;">英語R</div>
+              <input type="number" id="dev-eng-r" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px;">数学</div>
-              <input type="number" id="dev-math" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px;">英語L</div>
+              <input type="number" id="dev-eng-l" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px;">国語</div>
-              <input type="number" id="dev-jpn" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px;">数学1A</div>
+              <input type="number" id="dev-math1a" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:#4a6fa5;margin-bottom:4px;">理科</div>
-              <input type="number" id="dev-sci" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px;">数学2BC</div>
+              <input type="number" id="dev-math2bc" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
             </div>
             <div style="text-align:center;">
-              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">社会</div>
-              <input type="number" id="dev-soc" placeholder="—" min="20" max="80" style="text-align:center;padding:8px 4px;">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px;">現代文</div>
+              <input type="number" id="dev-gendai" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px;">古文</div>
+              <input type="number" id="dev-kobun" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px;">漢文</div>
+              <input type="number" id="dev-kanbun" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">日本史</div>
+              <input type="number" id="dev-jpnhist" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">世界史</div>
+              <input type="number" id="dev-wldhist" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">地理</div>
+              <input type="number" id="dev-geo" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#7b4fa6;margin-bottom:4px;">公民</div>
+              <input type="number" id="dev-civics" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#4a6fa5;margin-bottom:4px;">理科基礎</div>
+              <input type="number" id="dev-sci-basic" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#4a6fa5;margin-bottom:4px;">情報</div>
+              <input type="number" id="dev-info" placeholder="—" min="20" max="100" style="text-align:center;padding:8px 4px;">
             </div>
           </div>
         </div>
@@ -2653,8 +2689,31 @@ function generateRoadmap() {
   const univName3 = univData3 ? univData3[0] : univ3;
   const univInfo3 = _univCustom[3] ? _univCustom[3] : univData3 ? univData3[1] : null;
 
+  // 科目別偏差値を収集
+  const subDevs = {};
+  const subDevIds = [
+    ['英語R',   'dev-eng-r'],
+    ['英語L',   'dev-eng-l'],
+    ['数学1A',  'dev-math1a'],
+    ['数学2BC', 'dev-math2bc'],
+    ['現代文',  'dev-gendai'],
+    ['古文',    'dev-kobun'],
+    ['漢文',    'dev-kanbun'],
+    ['日本史',  'dev-jpnhist'],
+    ['世界史',  'dev-wldhist'],
+    ['地理',    'dev-geo'],
+    ['公民',    'dev-civics'],
+    ['理科基礎','dev-sci-basic'],
+    ['情報',    'dev-info'],
+  ];
+  subDevIds.forEach(function([label, id]) {
+    const el = document.getElementById(id);
+    const v = el ? parseInt(el.value) : NaN;
+    if (!isNaN(v) && v > 0) subDevs[label] = v;
+  });
+
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
-    univName2, univInfo2, dept2, univName3, univInfo3, dept3 };
+    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs };
 
   // ダッシュボードに追加
   saveStudentToList(currentStudent);
@@ -3629,7 +3688,7 @@ function printRoadmapPDF() {
   window._roadmapHtml = html;
   window._roadmapFilename = '合格ロードマップ_' + s.name + '.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
+  doc.open('text/html','replace'); doc.write(html); doc.close();
 }
 
 function exportPDF() {
@@ -3891,7 +3950,7 @@ ${(s.univName2 || s.univName3) ? `
     </table>
   </div>
   <div class="footer">
-    <div style="font-size:10px;color:#aaa;">プラトン 大学受験 戦略管理システム｜本レポートは生徒指導用の内部資料です</div>
+    <div style="font-size:10px;color:#aaa;">プラトン 大学受験 戦略管理システム</div>
     <div style="font-size:10px;color:#aaa;">${s.name} 様専用</div>
   </div>
 </div>
@@ -3924,7 +3983,7 @@ ${(s.univName2 || s.univName3) ? `
 
   // iframeに書き込む
   const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open();
+  doc.open('text/html','replace');
   doc.write(reportHTML);
   doc.close();
 }
@@ -4598,7 +4657,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
   document.body.appendChild(iframe);
 
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
-  iDoc.open();
+  iDoc.open('text/html', 'replace');
   iDoc.write(htmlStr);
   iDoc.close();
 
@@ -4751,7 +4810,7 @@ function printPage(pageId, title) {
 <div class="container">
   ${bodyHTML}
   <div class="print-footer">
-    <div>プラトン 大学受験 戦略管理システム｜本資料は指導用の内部資料です</div>
+    <div>プラトン 大学受験 戦略管理システム</div>
     ${studentName ? `<div>${studentName} 様専用</div>` : ''}
   </div>
 </div>
@@ -4792,7 +4851,7 @@ function printPage(pageId, title) {
   window._reportPdfHtml = printHTML;
   window._reportPdfFilename = 'レポート.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(printHTML); doc.close();
+  doc.open('text/html','replace'); doc.write(printHTML); doc.close();
 }
 
 // ===== 模試アップロード =====
@@ -5556,7 +5615,7 @@ function printWeeklyPlanPDF() {
   window._dynPdfHtml = html;
   window._dynPdfFilename = '3ヶ月学習プラン.pdf';
   var doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
+  doc.open('text/html','replace'); doc.write(html); doc.close();
 }
 
 function changeWpWeek(d) {
@@ -6499,7 +6558,7 @@ ${bodyHtml}
   window._dynPdfHtml = html;
   window._dynPdfFilename = 'テストレポート.pdf';
   const doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
+  doc.open('text/html','replace'); doc.write(html); doc.close();
 }
 
 // ======================================================
