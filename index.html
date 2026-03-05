@@ -3551,13 +3551,13 @@ function printRoadmapPDF() {
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
-    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:12px;}'
+    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
     + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:7mm 10mm;size:A4;}}'
     + '</style></head><body>'
 
     // ── ヘッダー
-    + '<div style="background-color:#1a1a2e;color:white;padding:10px 22px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div style="background-color:#1a1a2e;color:white;padding:8px 14px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div><div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;">PLATON EXAM STRATEGY MANAGEMENT</div>'
     + '<div style="font-family:\'Noto Serif JP\',serif;font-size:20px;font-weight:700;color:white;margin-top:3px;letter-spacing:.04em;">合格ロードマップ</div></div>'
     + '<div style="text-align:right;font-size:10px;color:rgba(255,255,255,.65);">'
@@ -3566,7 +3566,7 @@ function printRoadmapPDF() {
     + '<div>発行日：' + today + '</div></div></div>'
 
     // ── 生徒情報バンド
-    + '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:9px 22px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:white;padding:7px 14px;display:table;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div style="display:table-cell;width:25%;padding-right:12px;vertical-align:top;">'
     + '<div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-bottom:3px;">生徒氏名</div>'
     + '<div style="font-size:15px;font-weight:700;color:white;font-family:\'Noto Serif JP\',serif;">' + s.name + '</div>'
@@ -3585,7 +3585,7 @@ function printRoadmapPDF() {
     + '<div style="font-size:9px;color:#c9a84c;margin-top:3px;">' + (s.goalYear||'') + '年' + (s.goalMonth!=null?s.goalMonth+1:2) + '月 受験</div></div>'
     + '</div>'
 
-    + '<div style="max-width:960px;margin:0 auto;padding:12px 18px;">'
+    + '<div style="max-width:720px;margin:0 auto;padding:8px 10px;">'
 
     + secTitle('📅', '月別ロードマップ（タイムライン）')
     + '<div class="card">' + timelineHTML + '</div>'
@@ -4592,7 +4592,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
 
   var iframe = document.createElement('iframe');
   iframe.id = IFRAME_ID;
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:10000px;border:none;visibility:hidden;';
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:770px;height:10000px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -4620,8 +4620,8 @@ function _renderHtmlToPDF(htmlStr, filename) {
         scrollY: 0,
         x: 0,
         y: 0,
-        width: 794,
-        windowWidth: 794,
+        width: 770,
+        windowWidth: 770,
         windowHeight: 15000,
         logging: false,
       },
@@ -5495,14 +5495,14 @@ function printWeeklyPlanPDF() {
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
-    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:11px;width:100%;overflow-x:hidden;}'
+    + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
     + '.sec{font-size:13px;font-weight:700;color:#1a1a2e;border-left:4px solid #c84b31;padding-left:8px;margin:18px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    + '.wrap{width:100%;max-width:100%;padding:14px 18px;}'
+    + '.wrap{width:100%;max-width:794px;padding:8px 10px;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:8mm 8mm;size:A4;}}'
     + '</style></head><body>'
 
     // ── ヘッダー（背景色を確実に印刷するためinline styleで完結） ──
-    + '<div style="background-color:#1a1a2e;color:white;padding:13px 22px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+    + '<div style="background-color:#1a1a2e;color:white;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
     + '<div>'
     + '<div style="font-size:8px;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;">PLATON EXAM STRATEGY MANAGEMENT</div>'
     + '<div style="font-family:\'Noto Serif JP\',serif;font-size:17px;font-weight:700;color:white;margin-top:3px;">3ヶ月学習プラン</div>'
