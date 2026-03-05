@@ -893,6 +893,20 @@
   </div>
 </header>
 <script>
+function updateSubCheckStyle(cb) {
+  const label = cb.closest('label');
+  if (!label) return;
+  if (cb.checked) {
+    label.style.background = 'var(--ink)';
+    label.style.color = 'white';
+    label.style.borderColor = 'var(--ink)';
+  } else {
+    label.style.background = 'white';
+    label.style.color = '';
+    label.style.borderColor = 'var(--border)';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   renderStudentList();
   var el = document.getElementById('platon-api-key-input');
@@ -1237,6 +1251,50 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="form-group">
           <label>現状の模試偏差値（任意）</label>
           <input type="number" id="f-deviation" placeholder="例：58" min="20" max="80">
+        </div>
+        <div class="form-group full">
+          <label>主要対策科目<span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">（対策する科目を選択）</span></label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;" id="main-subject-checks">
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-eng-r" value="英語リーディング" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語R
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-eng-l" value="英語リスニング" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語L
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-math1a" value="数学1A" onchange="updateSubCheckStyle(this)" style="accent-color:var(--accent);">数学1A
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-math2bc" value="数学2BC" onchange="updateSubCheckStyle(this)" style="accent-color:var(--accent);">数学2BC
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-gendai" value="現代文" onchange="updateSubCheckStyle(this)" style="accent-color:var(--gold);">現代文
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-kobun" value="古文" onchange="updateSubCheckStyle(this)" style="accent-color:var(--gold);">古文
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-kanbun" value="漢文" onchange="updateSubCheckStyle(this)" style="accent-color:var(--gold);">漢文
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-jpnhist" value="日本史" onchange="updateSubCheckStyle(this)" style="accent-color:#7b4fa6;">日本史
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-wldhist" value="世界史" onchange="updateSubCheckStyle(this)" style="accent-color:#7b4fa6;">世界史
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-geo" value="地理" onchange="updateSubCheckStyle(this)" style="accent-color:#7b4fa6;">地理
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-civics" value="公民" onchange="updateSubCheckStyle(this)" style="accent-color:#7b4fa6;">公民
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-sci-basic" value="理科基礎" onchange="updateSubCheckStyle(this)" style="accent-color:#4a6fa5;">理科基礎
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
+              <input type="checkbox" id="sub-info" value="情報" onchange="updateSubCheckStyle(this)" style="accent-color:#4a6fa5;">情報
+            </label>
+          </div>
         </div>
         <div class="form-group full">
           <label>科目別偏差値（模試から転記・任意）</label>
@@ -2412,13 +2470,24 @@ let _allStudents = _loadStudentsFromStorage();
 function saveStudentToList(s) {
   const idx = _allStudents.findIndex(x => x.name === s.name);
   if (idx >= 0) {
-    _allStudents[idx] = s; // 既存生徒の更新
+    const prevCount = _allStudents[idx].roadmapCount || 0;
+    _allStudents[idx] = Object.assign({}, s, { roadmapCount: prevCount + 1 });
   } else {
-    _allStudents.push(s); // 新規追加
+    _allStudents.push(Object.assign({}, s, { roadmapCount: 1 }));
   }
   _saveStudentsToStorage(_allStudents);
   renderStudentList();
-  renderWpStudentSelect(); // 3ヶ月プランのプルダウンも更新
+  renderWpStudentSelect();
+}
+
+function deleteStudentFromList(name) {
+  if (!confirm('「' + name + '」のデータを削除してよろしいですか？\nこの操作は元に戻せません。')) return;
+  _allStudents = _allStudents.filter(x => x.name !== name);
+  _saveStudentsToStorage(_allStudents);
+  if (currentStudent && currentStudent.name === name) currentStudent = null;
+  renderStudentList();
+  renderWpStudentSelect();
+  showToast(name + ' を削除しました');
 }
 
 function loadStudentFromList(name) {
@@ -2447,10 +2516,13 @@ function renderStudentList() {
     var av = s.name.charAt(0);
     var enrolled = s.enrolled ? s.enrolled.replace('-', '年') + '月' : '—';
     var dn = s.name.replace(/'/g, "\\'");
+    var isDefault = !_allStudents.find(function(x){ return x.name === s.name; });
     return '<div class="student-row" onclick="loadStudentFromList(\'' + dn + '\')">'
       + '<div class="student-avatar">' + av + '</div>'
       + '<div class="student-info">'
-      + '<div class="student-name">' + s.name + '</div>'
+      + '<div class="student-name">' + s.name
+      + '<span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:8px;">ロードマップ ' + (s.roadmapCount||0) + '回</span>'
+      + (isDefault ? '' : '<button onclick="event.stopPropagation();deleteStudentFromList(\'' + dn + '\')" style="margin-left:8px;padding:2px 8px;font-size:10px;background:transparent;border:1px solid #e0c0b8;border-radius:4px;color:#c84b31;cursor:pointer;font-family:inherit;">削除</button>') + '</div>'
       + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + '</div>'
       + '</div>'
       + '<div style="text-align:right;">'
@@ -2689,6 +2761,14 @@ function generateRoadmap() {
   const univName3 = univData3 ? univData3[0] : univ3;
   const univInfo3 = _univCustom[3] ? _univCustom[3] : univData3 ? univData3[1] : null;
 
+  // 主要対策科目（チェックボックス）を収集
+  const mainSubjects = [];
+  const subCheckIds = ['sub-eng-r','sub-eng-l','sub-math1a','sub-math2bc','sub-gendai','sub-kobun','sub-kanbun','sub-jpnhist','sub-wldhist','sub-geo','sub-civics','sub-sci-basic','sub-info'];
+  subCheckIds.forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el && el.checked) mainSubjects.push(el.value);
+  });
+
   // 科目別偏差値を収集
   const subDevs = {};
   const subDevIds = [
@@ -2713,7 +2793,7 @@ function generateRoadmap() {
   });
 
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
-    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs };
+    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
 
   // ダッシュボードに追加
   saveStudentToList(currentStudent);
@@ -5226,6 +5306,8 @@ const DAY_COLORS = {
 
 function getWpSubs() {
   const s = currentStudent;
+  // 主要対策科目が選択されていればそれを優先
+  if (s && s.mainSubjects && s.mainSubjects.length > 0) return s.mainSubjects;
   if (s) return s.stream === 'rikei'
     ? ['英語リーディング','英語リスニング','数学1A','数学2BC','物理','化学']
     : ['英語リーディング','英語リスニング','数学1A','現代文','古文','漢文','日本史'];
