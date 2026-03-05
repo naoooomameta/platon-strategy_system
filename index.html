@@ -2852,50 +2852,119 @@ function renderRoadmapBooks() {
   const timelineEl = document.getElementById('roadmap-books-timeline');
   if (!timelineEl) return;
 
-  const subjectToSub = {
+  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'情報' };
+  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+
+  // 主要対策科目から (sub, categoryFilter, displayLabel) のリストを構築
+  // mainSubjectsが選択されていればそれを優先、なければ志望校科目をフォールバック
+  const MAIN_SUB_MAP = {
+    '英語リーディング': { sub:'eng', cats: null, excludeCats:['リスニング','TEAP','英検','英作文'], label:'英語R' },
+    '英語リスニング':   { sub:'eng', cats:['リスニング'], excludeCats:null, label:'英語L' },
+    '数学1A':          { sub:'math', cats:['数学1A','共通テスト数学'], excludeCats:null, label:'数学1A' },
+    '数学2BC':         { sub:'math', cats:['数学2B','数学3C'], excludeCats:null, label:'数学2BC' },
+    '現代文':          { sub:'jpn',  cats:['現代文'], excludeCats:null, label:'現代文' },
+    '古文':            { sub:'jpn',  cats:['古文'],   excludeCats:null, label:'古文' },
+    '漢文':            { sub:'jpn',  cats:['漢文'],   excludeCats:null, label:'漢文' },
+    '日本史':          { sub:'soc',  cats:['日本史'], excludeCats:null, label:'日本史' },
+    '世界史':          { sub:'soc',  cats:['世界史'], excludeCats:null, label:'世界史' },
+    '地理':            { sub:'soc',  cats:['地理'],   excludeCats:null, label:'地理' },
+    '公民':            { sub:'soc',  cats:['公共・政治経済'], excludeCats:null, label:'公民' },
+    '理科基礎':        { sub:'sci',  cats:null, excludeCats:['化学','物理','生物'], label:'理科基礎',
+                         noteFilter: (b) => b.note && b.note.includes('基礎') || b.level <= 2 },
+    '情報':            { sub:'etc',  cats:['情報'], excludeCats:null, label:'情報' },
+  };
+
+  // 志望校科目 → subコードへのフォールバックマップ
+  const univSubjectToSub = {
     '英語':'eng','数学':'math','国語':'jpn',
     '理科':'sci','理科2科目':'sci','社会':'soc',
     '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
   };
-  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'その他' };
-  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
-
-  const targetSubs = [...new Set(
-    (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
-  )];
 
   const minLv = Math.max(1, s.levelVal - 1);
   const maxLv = Math.min(5, s.levelVal + 2);
-
   const now = new Date();
   const startMonth = now.getFullYear() * 12 + now.getMonth();
   const examMonth  = (s.goalYear || now.getFullYear() + 1) * 12 + (s.goalMonth ?? 1);
   const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33));
-
   const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
   const scheduledBooks = [];
-  targetSubs.forEach(sub => {
-    const candidates = ALL_TEXTBOOKS.filter(b =>
-      b.sub === sub &&
-      (b.stream === 'both' || b.stream === s.stream) &&
-      b.level >= minLv && b.level <= maxLv
-    ).sort((a, b2) => a.level - b2.level);
+  // フィルタボタン用: { sub, label, color }
+  const filterEntries = [];
 
-    let cumWeeks = 0;
-    candidates.forEach(b => {
-      const endW = cumWeeks + b.dur;
-      if (endW > totalWeeks) return;
-      const sAbs = startMonth + Math.floor(cumWeeks / 4.33);
-      const eAbs = startMonth + Math.floor((endW - 1) / 4.33);
-      scheduledBooks.push({
-        ...b,
-        startY: Math.floor(sAbs / 12), startM: sAbs % 12,
-        endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
+  if (s.mainSubjects && s.mainSubjects.length > 0) {
+    // ── 主要対策科目モード：科目ごとにcategoryフィルタして個別スケジューリング ──
+    s.mainSubjects.forEach(subjectName => {
+      const mapping = MAIN_SUB_MAP[subjectName];
+      if (!mapping) return;
+
+      const candidates = ALL_TEXTBOOKS.filter(b => {
+        if (b.sub !== mapping.sub) return false;
+        if (b.stream !== 'both' && b.stream !== s.stream) return false;
+        if (b.level < minLv || b.level > maxLv) return false;
+        // categoryフィルタ
+        if (mapping.cats && !mapping.cats.includes(b.category)) return false;
+        if (mapping.excludeCats && mapping.excludeCats.includes(b.category)) return false;
+        // noteフィルタ（理科基礎）
+        if (mapping.noteFilter) return mapping.noteFilter(b);
+        return true;
+      }).sort((a, b2) => a.level - b2.level);
+
+      if (!candidates.length) return;
+      // フィルタボタン用にキー登録（科目名を使う）
+      const filterKey = mapping.sub + '_' + subjectName;
+      if (!filterEntries.find(e => e.key === filterKey)) {
+        filterEntries.push({ key: filterKey, label: mapping.label, color: subColorMap[mapping.sub] });
+      }
+
+      let cumWeeks = 0;
+      candidates.forEach(b => {
+        const endW = cumWeeks + b.dur;
+        if (endW > totalWeeks) return;
+        const sAbs = startMonth + Math.floor(cumWeeks / 4.33);
+        const eAbs = startMonth + Math.floor((endW - 1) / 4.33);
+        scheduledBooks.push({
+          ...b,
+          _filterKey: filterKey,
+          _displayLabel: mapping.label,
+          startY: Math.floor(sAbs / 12), startM: sAbs % 12,
+          endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
+        });
+        cumWeeks = endW;
       });
-      cumWeeks = endW;
     });
-  });
+  } else {
+    // ── フォールバック：志望校科目ベース（従来ロジック） ──
+    const targetSubs = [...new Set(
+      (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => univSubjectToSub[s2] || null).filter(Boolean)
+    )];
+    targetSubs.forEach(sub => {
+      if (!filterEntries.find(e => e.key === sub)) {
+        filterEntries.push({ key: sub, label: subLabelMap[sub], color: subColorMap[sub] });
+      }
+      const candidates = ALL_TEXTBOOKS.filter(b =>
+        b.sub === sub &&
+        (b.stream === 'both' || b.stream === s.stream) &&
+        b.level >= minLv && b.level <= maxLv
+      ).sort((a, b2) => a.level - b2.level);
+      let cumWeeks = 0;
+      candidates.forEach(b => {
+        const endW = cumWeeks + b.dur;
+        if (endW > totalWeeks) return;
+        const sAbs = startMonth + Math.floor(cumWeeks / 4.33);
+        const eAbs = startMonth + Math.floor((endW - 1) / 4.33);
+        scheduledBooks.push({
+          ...b,
+          _filterKey: sub,
+          _displayLabel: subLabelMap[sub],
+          startY: Math.floor(sAbs / 12), startM: sAbs % 12,
+          endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
+        });
+        cumWeeks = endW;
+      });
+    });
+  }
 
   if (subtitle) {
     subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊提案`;
@@ -2905,15 +2974,13 @@ function renderRoadmapBooks() {
   if (filterWrap) {
     filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
       style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>` +
-      targetSubs.map(sub =>
-        `<button onclick="filterRoadmapBooks('${sub}',this)"
-          style="padding:4px 12px;border-radius:20px;border:1.5px solid ${subColorMap[sub]};background:white;color:${subColorMap[sub]};font-size:11px;cursor:pointer;font-family:inherit;">
-          ${subLabelMap[sub]}</button>`
+      filterEntries.map(e =>
+        `<button onclick="filterRoadmapBooks('${e.key}',this)"
+          style="padding:4px 12px;border-radius:20px;border:1.5px solid ${e.color};background:white;color:${e.color};font-size:11px;cursor:pointer;font-family:inherit;">${e.label}</button>`
       ).join('');
   }
 
-  // テーブル行生成
-  window._roadmapBooksAll = scheduledBooks; // フィルタ用に保持
+  window._roadmapBooksAll = scheduledBooks;
   renderRoadmapBooksRows(scheduledBooks);
 }
 
@@ -2983,7 +3050,7 @@ function renderRoadmapBooksRows(books) {
         <div style="padding-left:6px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px;">
             <div style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.4;">${b.name}</div>
-            <span style="flex-shrink:0;font-size:9px;font-weight:700;background:${col};color:white;padding:2px 6px;border-radius:6px;white-space:nowrap;">${b.subLabel}</span>
+            <span style="flex-shrink:0;font-size:9px;font-weight:700;background:${col};color:white;padding:2px 6px;border-radius:6px;white-space:nowrap;">${b._displayLabel||b.subLabel}</span>
           </div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
             <span style="font-size:10px;background:${col}15;color:${col};padding:1px 7px;border-radius:5px;font-weight:700;">${b.category}</span>
@@ -3012,7 +3079,7 @@ function renderRoadmapBooksRows(books) {
   if (tbody) {
     const lvlLabels = ['','入門','基礎','標準','応用','発展'];
     tbody.innerHTML = books.map(b => `<tr>
-      <td>${b.subLabel}</td><td>${b.name}</td><td>${b.category}</td>
+      <td>${b._displayLabel||b.subLabel}</td><td>${b.name}</td><td>${b.category}</td>
       <td>${lvlLabels[b.level]||''}</td>
       <td>${b.startY}年${JAmonths[b.startM]}〜</td>
       <td>${(b.endY*12+b.endM-nowAbs)<=2?'🔴':'📅'} ${b.endY}年${JAmonths[b.endM]}まで</td>
@@ -3029,7 +3096,7 @@ function filterRoadmapBooks(sub, btn) {
   if (btn) { btn.style.background = btn.style.borderColor; btn.style.color = 'white'; }
 
   const all = window._roadmapBooksAll || [];
-  renderRoadmapBooksRows(sub === 'all' ? all : all.filter(b => b.sub === sub));
+  renderRoadmapBooksRows(sub === 'all' ? all : all.filter(b => b._filterKey === sub || b.sub === sub));
 }
 
 function renderTimeline() {
@@ -3866,7 +3933,7 @@ function exportPDF() {
     const startLabel = `${b.startY}年${JAmonths[b.startM]}〜`;
     const isUrgent = (b.endY * 12 + b.endM) - startMonth <= 2;
     return `<tr style="border-bottom:1px solid #eee;${i % 2 === 0 ? '' : 'background:#fafaf8;'}">
-      <td style="padding:6px 8px;"><span style="background:${subColor}18;color:${subColor};font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;">${b.subLabel}</span></td>
+      <td style="padding:6px 8px;"><span style="background:${subColor}18;color:${subColor};font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;">${b._displayLabel||b.subLabel}</span></td>
       <td style="padding:6px 8px;font-size:12px;font-weight:500;">${b.name}</td>
       <td style="padding:6px 8px;font-size:11px;color:#666;">${b.category}</td>
       <td style="padding:6px 8px;font-size:11px;color:#666;">${lvlLabel}</td>
