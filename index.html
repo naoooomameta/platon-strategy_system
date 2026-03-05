@@ -2866,45 +2866,52 @@ function renderRoadmapBooks() {
   if (subtitle) subtitle.textContent = '生成中...';
   if (filterWrap) filterWrap.innerHTML = ''
 
-  const subDevStr = (s.subDevs && Object.keys(s.subDevs).length > 0)
-    ? Object.entries(s.subDevs).map(([k,v]) => `${k}:${v}`).join('、')
-    : '未入力';
+  // 科目ごとに現在偏差値・目標偏差値・ギャップを整理
+  const subjectDetails = subjectList.split('・').map(subj => {
+    const curDev = (s.subDevs && s.subDevs[subj]) || s.devVal || '不明';
+    const tgtDev = (s.univInfo && s.univInfo.dev) || '不明';
+    const gap = (typeof curDev === 'number' && typeof tgtDev === 'number') ? tgtDev - curDev : '不明';
+    return `  ・${subj}：現在偏差値${curDev}／目標${tgtDev}（ギャップ${gap > 0 ? '+' + gap : gap}）`;
+  }).join('\n');
 
   const prompt = `あなたは日本の大学受験専門の学習コンサルタントです。
-Google検索で最新の大学受験参考書情報を調べた上で、以下の生徒データに最適な参考書学習ルートをJSON形式で出力してください。
-必ず現在市販されている実在の参考書のみを使用し、出版社・著者・難易度が正確な情報を出力してください。
+Google検索で最新の大学受験参考書情報を検索・確認した上で、以下の生徒データに基づき各対策科目の参考書ルートをJSON形式で出力してください。
 
 【生徒データ】
-- 氏名: ${s.name}
-- 学年: ${{ high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || s.grade}
-- 文理: ${s.stream === 'rikei' ? '理系' : '文系'}
-- 第一志望: ${s.univName}${s.dept1 ? '（' + s.dept1 + '）' : ''}（偏差値目標: ${s.univInfo && s.univInfo.dev ? s.univInfo.dev : '不明'}）
-- 現在の偏差値: ${s.devVal || '不明'}
-- 対策科目: ${subjectList}
-- 科目別偏差値: ${subDevStr}
+- 学年: ${{ high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || s.grade}　文理: ${s.stream === 'rikei' ? '理系' : '文系'}
+- 第一志望: ${s.univName}${s.dept1 ? '（' + s.dept1 + '）' : ''}
 - 試験まで: ${totalMonths}ヶ月
 
-【出力形式】
-以下のJSONのみを出力してください。説明・前置きは一切不要です。
+【対策科目と現状】（この科目だけを対象にすること）
+${subjectDetails}
+
+【各科目の参考書選定基準】
+- 現在偏差値が低い科目ほど入門・基礎書から始める
+- 偏差値ギャップが大きい科目は冊数を多めに（3〜4冊）
+- ギャップが小さい科目は仕上げ系参考書を優先（2〜3冊）
+- 各科目の参考書は必ず難易度順（入門→基礎→標準→応用）に並べる
+- startMonthは科目の優先度が高い（ギャップが大きい）順に早めに配置する
+
+【出力形式】JSONのみ。説明・前置き・コードブロック記号は一切不要。
 {
   "books": [
     {
-      "name": "参考書名（実在する参考書の正確な名前）",
-      "subject": "対策科目名（英語R/英語L/数学1A/数学2BC/現代文/古文/漢文/日本史/世界史/地理/公民/理科基礎/情報のいずれか）",
-      "category": "英単語/英文法/英語長文/リスニング/数学1A/数学2BC/現代文/古文/漢文/日本史/世界史/地理/公民/理科基礎/情報 など",
+      "name": "参考書の正式名称（実在するもの・出版社まで正確に）",
+      "subject": "対策科目名（上記【対策科目と現状】に記載の科目名をそのまま使用）",
+      "category": "カテゴリ（英単語/英文法/英語長文/リスニング/数学基礎/問題演習/現代文/古文/漢文/日本史/世界史/地理/公民/理科基礎/情報/過去問 など）",
       "level": 1〜5の整数（1:入門 2:基礎 3:標準 4:応用 5:発展）,
-      "startMonth": 0〜${totalMonths - 1}の整数（今月からの経過月数）,
-      "durationMonths": 1〜4の整数（取り組む期間）,
-      "reason": "この参考書を選んだ理由（30字以内）"
+      "startMonth": 0〜${totalMonths - 1}の整数（今月を0として何ヶ月後から始めるか）,
+      "durationMonths": 1〜3の整数（その参考書に取り組む期間）,
+      "reason": "選定理由（偏差値・レベル・科目特性を踏まえて30字以内）"
     }
   ]
 }
 
-【制約】
-- 実在する参考書のみ。架空の参考書は絶対に含めない。
-- 各科目について難易度順（低→高）に2〜4冊程度を提案。
-- 試験まで${totalMonths}ヶ月の期間内に無理なく終わる量にする。
-- 対策科目以外の参考書は含めない。`;
+【絶対厳守】
+- 架空・廃版・存在しない参考書は絶対に含めない（Google検索で存在確認すること）
+- 上記【対策科目】以外の科目の参考書は含めない
+- 全科目を必ずカバーすること（1科目も漏らさない）
+- totalMonths=${totalMonths}ヶ月の期間を超えないスケジュールにする`;
 
   callGeminiWithSearch(prompt).then(function(raw) {
     let data;
