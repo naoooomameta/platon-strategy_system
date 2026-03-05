@@ -1478,8 +1478,11 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="card-title" style="margin-bottom:2px;">📚 参考書ルート（受験月逆算）</div>
           <div style="font-size:11px;color:var(--text-muted);" id="roadmap-books-subtitle">受験月から逆算した推奨参考書スケジュールです</div>
         </div>
-        <div id="roadmap-books-total" style="font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 14px;display:none;">
-          📦 合計目安：<span id="books-total-price" style="color:var(--accent);">—</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="roadmap-books-total" style="font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 14px;display:none;">
+            📦 合計目安：<span id="books-total-price" style="color:var(--accent);">—</span>
+          </div>
+          <button onclick="_clearBooksCacheAndRegenerate()" title="AIキャッシュをクリアして再生成" style="padding:5px 12px;font-size:11px;background:var(--paper);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text-muted);font-family:inherit;white-space:nowrap;">🔄 再生成</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;" id="roadmap-books-filter">
@@ -2859,11 +2862,6 @@ function renderRoadmapBooks() {
     return;
   }
 
-  // ローディング表示
-  timelineEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">🤖 AIが最適な参考書ルートを生成中...</div>';
-  if (subtitle) subtitle.textContent = '生成中...';
-  if (filterWrap) filterWrap.innerHTML = '';
-
   const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const now = new Date();
   const startMonth = now.getFullYear() * 12 + now.getMonth();
@@ -2873,6 +2871,24 @@ function renderRoadmapBooks() {
   const subjectList = (s.mainSubjects && s.mainSubjects.length > 0)
     ? s.mainSubjects.join('・')
     : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects.join('・') : '英語・国語・社会');
+
+  // ── キャッシュ確認（同じ生徒・科目・偏差値なら再生成しない）──
+  const cacheKey = 'books_cache_' + s.name + '_' + subjectList + '_' + (s.devVal||0) + '_' + (s.univInfo&&s.univInfo.dev||0);
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const cachedData = JSON.parse(cached);
+      if (cachedData && cachedData.books && cachedData.books.length > 0) {
+        _applyRoadmapBooksData(cachedData.books, s, startMonth, JAmonths, filterWrap, subtitle, timelineEl);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // ローディング表示
+  timelineEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">🤖 AIが最適な参考書ルートを生成中...<br><small style="font-size:11px;margin-top:8px;display:block;color:#aaa;">初回のみAI生成します。次回以降はキャッシュを使用します。</small></div>';
+  if (subtitle) subtitle.textContent = '生成中...';
+  if (filterWrap) filterWrap.innerHTML = ''
 
   const subDevStr = (s.subDevs && Object.keys(s.subDevs).length > 0)
     ? Object.entries(s.subDevs).map(([k,v]) => `${k}:${v}`).join('、')
@@ -2923,63 +2939,71 @@ function renderRoadmapBooks() {
       return;
     }
 
-    const subColorMap = {
-      '英語R':'#2a7f6f','英語L':'#2a7f6f','数学1A':'#c84b31','数学2BC':'#c84b31',
-      '現代文':'#9a7a20','古文':'#9a7a20','漢文':'#9a7a20',
-      '日本史':'#7b4fa6','世界史':'#7b4fa6','地理':'#7b4fa6','公民':'#7b4fa6',
-      '理科基礎':'#4a6fa5','情報':'#6a1b9a'
+    // キャッシュ保存
+    try { localStorage.setItem(cacheKey, JSON.stringify({ books: data.books })); } catch(e) {}
+    _applyRoadmapBooksData(data.books, s, startMonth, JAmonths, filterWrap, subtitle, timelineEl);
+  }).catch(function(err) {
+    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:#c84b31;font-size:12px;">⚠️ API呼び出しに失敗しました：' + err.message
+      + '<br><button onclick="localStorage.removeItem(\'' + cacheKey + '\');renderRoadmapBooks();" style="margin-top:10px;padding:6px 14px;background:var(--ink);color:white;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;">🔄 再試行</button></div>';
+  });
+}
+
+function _clearBooksCacheAndRegenerate() {
+  const s = currentStudent;
+  if (!s) return;
+  const subjectList = (s.mainSubjects && s.mainSubjects.length > 0)
+    ? s.mainSubjects.join('・')
+    : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects.join('・') : '英語・国語・社会');
+  const cacheKey = 'books_cache_' + s.name + '_' + subjectList + '_' + (s.devVal||0) + '_' + (s.univInfo&&s.univInfo.dev||0);
+  try { localStorage.removeItem(cacheKey); } catch(e) {}
+  renderRoadmapBooks();
+  showToast('キャッシュをクリアしてAI再生成します');
+}
+
+// キャッシュ or AI結果を描画する共通関数
+function _applyRoadmapBooksData(rawBooks, s, startMonth, JAmonths, filterWrap, subtitle, timelineEl) {
+  const subColorMap = {
+    '英語R':'#2a7f6f','英語L':'#2a7f6f','数学1A':'#c84b31','数学2BC':'#c84b31',
+    '現代文':'#9a7a20','古文':'#9a7a20','漢文':'#9a7a20',
+    '日本史':'#7b4fa6','世界史':'#7b4fa6','地理':'#7b4fa6','公民':'#7b4fa6',
+    '理科基礎':'#4a6fa5','情報':'#6a1b9a'
+  };
+  const subToKey = {
+    '英語R':'eng_r','英語L':'eng_l','数学1A':'math1a','数学2BC':'math2bc',
+    '現代文':'gendai','古文':'kobun','漢文':'kanbun',
+    '日本史':'jpnhist','世界史':'wldhist','地理':'geo','公民':'civics',
+    '理科基礎':'sci_basic','情報':'info'
+  };
+  const books = rawBooks.map(function(b) {
+    const sAbs = startMonth + (b.startMonth || 0);
+    const eAbs = sAbs + Math.max(1, b.durationMonths || 1) - 1;
+    const col = subColorMap[b.subject] || '#555';
+    return {
+      name: b.name, subject: b.subject, sub: 'ai',
+      subLabel: b.subject, _displayLabel: b.subject,
+      _filterKey: subToKey[b.subject] || b.subject,
+      category: b.category || '', level: b.level || 2,
+      dur: (b.durationMonths || 1) * 4, note: b.reason || '',
+      price: null, _color: col,
+      startY: Math.floor(sAbs / 12), startM: sAbs % 12,
+      endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
     };
-    const subToKey = {
-      '英語R':'eng_r','英語L':'eng_l','数学1A':'math1a','数学2BC':'math2bc',
-      '現代文':'gendai','古文':'kobun','漢文':'kanbun',
-      '日本史':'jpnhist','世界史':'wldhist','地理':'geo','公民':'civics',
-      '理科基礎':'sci_basic','情報':'info'
-    };
-
-    // booksデータを renderRoadmapBooksRows 用の形式に変換
-    const books = (data.books || []).map(function(b) {
-      const sAbs = startMonth + (b.startMonth || 0);
-      const eAbs = sAbs + Math.max(1, b.durationMonths || 1) - 1;
-      const col = subColorMap[b.subject] || '#555';
-      return {
-        name: b.name,
-        subject: b.subject,
-        sub: 'ai',                  // AIベース識別用
-        subLabel: b.subject,
-        _displayLabel: b.subject,
-        _filterKey: subToKey[b.subject] || b.subject,
-        category: b.category || '',
-        level: b.level || 2,
-        dur: (b.durationMonths || 1) * 4,
-        note: b.reason || '',
-        price: null,                // AI生成は価格不定のため非表示
-        _color: col,
-        startY: Math.floor(sAbs / 12), startM: sAbs % 12,
-        endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
-      };
-    });
-
-    if (subtitle) {
-      subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ AI提案 全${books.length}冊`;
-    }
-
-    // フィルタボタン生成
-    const seen = {};
-    if (filterWrap) {
-      filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
-        style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>` +
-        books.filter(function(b){ if(seen[b._filterKey]) return false; seen[b._filterKey]=1; return true; })
+  });
+  if (subtitle) {
+    subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ AI提案 全${books.length}冊（キャッシュ）`;
+  }
+  const seen = {};
+  if (filterWrap) {
+    filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
+      style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>`
+      + books.filter(function(b){ if(seen[b._filterKey]) return false; seen[b._filterKey]=1; return true; })
         .map(function(b) {
           return `<button onclick="filterRoadmapBooks('${b._filterKey}',this)"
             style="padding:4px 12px;border-radius:20px;border:1.5px solid ${b._color};background:white;color:${b._color};font-size:11px;cursor:pointer;font-family:inherit;">${b._displayLabel}</button>`;
         }).join('');
-    }
-
-    window._roadmapBooksAll = books;
-    renderRoadmapBooksRows(books);
-  }).catch(function(err) {
-    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:#c84b31;font-size:12px;">⚠️ API呼び出しに失敗しました：' + err.message + '</div>';
-  });
+  }
+  window._roadmapBooksAll = books;
+  renderRoadmapBooksRows(books);
 }
 
 function renderRoadmapBooksRows(books) {
@@ -6228,7 +6252,7 @@ function getApiKey() {
 }
 async function callGemini(prompt) {
   const key = getApiKey();
-  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -6239,7 +6263,7 @@ async function callGemini(prompt) {
 }
 async function callGeminiWithImage(base64, mimeType, prompt) {
   const key = getApiKey();
-  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [
