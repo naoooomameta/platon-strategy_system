@@ -1479,8 +1479,9 @@ document.addEventListener('DOMContentLoaded', function(){
           <div style="font-size:11px;color:var(--text-muted);" id="roadmap-books-subtitle">受験月から逆算した推奨参考書スケジュールです</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-
-
+          <button onclick="openAddBookModal()" style="padding:6px 14px;font-size:12px;background:var(--teal);color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:5px;">
+            ＋ 手動追加
+          </button>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;" id="roadmap-books-filter">
@@ -2340,9 +2341,9 @@ const ALL_TEXTBOOKS = [
   { name: '小論文（カテゴリ内のテキスト参照）', sub: 'jpn', subLabel: '国語', category: '小論文', level: 3, dur: 8, stream: 'both', note: '慶應・国公立向け' , price: 1320 },
 
   // ── 理科：物理 ──
-  { name: '橋元の物理基礎をはじめからていねいに', sub: 'sci', subLabel: '理科', category: '物理', level: 1, dur: 6, stream: 'rikei', note: '物理基礎入門' , price: 1320 },
-  { name: 'チャート式シリーズ 新物理基礎', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '物理基礎の体系学習' , price: 1320 },
-  { name: '大学入試 全レベル問題集 物理1 基礎レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 6, stream: 'rikei', note: '共通テスト基礎' , price: 880 },
+  { name: '橋元の物理基礎をはじめからていねいに', sub: 'sci', subLabel: '理科', category: '物理', level: 1, dur: 6, stream: 'both', note: '物理基礎入門' , price: 1320 },
+  { name: 'チャート式シリーズ 新物理基礎', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'both', note: '物理基礎の体系学習' , price: 1320 },
+  { name: '大学入試 全レベル問題集 物理1 基礎レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 6, stream: 'both', note: '共通テスト基礎' , price: 880 },
   { name: '大学入試 全レベル問題集 物理2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
   { name: '大学入試 全レベル問題集 物理3 私大標準・国公立大レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 4, dur: 8, stream: 'rikei', note: '難関大向け' , price: 880 },
   { name: '改訂版 漆原晃の物理基礎・物理[力学・熱力学]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '力学・熱力学' , price: 1320 },
@@ -2350,22 +2351,22 @@ const ALL_TEXTBOOKS = [
   { name: '改訂版 漆原晃の物理基礎・物理[電磁気]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 8, stream: 'rikei', note: '電磁気' , price: 1320 },
 
   // ── 理科：化学 ──
-  { name: 'チャート式問題集 共通テスト対策 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト化学基礎' , price: 1320 },
+  { name: 'チャート式問題集 共通テスト対策 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'both', note: '共通テスト化学基礎' , price: 1320 },
   { name: '決める！共通テスト 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
   { name: '特装版 チャート式シリーズ 新化学 化学基礎・化学', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 16, stream: 'rikei', note: '化学の体系学習' , price: 1320 },
   { name: '改訂版 フォトサイエンス化学図録', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 4, stream: 'rikei', note: '視覚的理解の補助' , price: 1320 },
   { name: '大学受験Do 鎌田の理論化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '理論化学' , price: 1320 },
   { name: '大学受験Do 鎌田の有機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '有機化学' , price: 1320 },
   { name: '大学受験Do 福間の無機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '無機化学' , price: 1320 },
-  { name: '大学入試 全レベル問題集 化学1 基礎レベル', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' , price: 880 },
+  { name: '大学入試 全レベル問題集 化学1 基礎レベル', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'both', note: '基礎演習' , price: 880 },
   { name: '大学入試 全レベル問題集 化学2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
 
   // ── 理科：生物 ──
-  { name: 'チャート式シリーズ 新生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 8, stream: 'rikei', note: '生物基礎の体系学習' , price: 1320 },
-  { name: 'チャート式問題集 共通テスト対策 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト生物基礎' , price: 1320 },
+  { name: 'チャート式シリーズ 新生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 8, stream: 'both', note: '生物基礎の体系学習' , price: 1320 },
+  { name: 'チャート式問題集 共通テスト対策 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'both', note: '共通テスト生物基礎' , price: 1320 },
   { name: '決める！共通テスト 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
   { name: '生物基礎一問一答【完全版】', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '用語確認' , price: 1320 },
-  { name: 'よくわかる高校生物基礎 問題集', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '基礎演習' , price: 1320 },
+  { name: 'よくわかる高校生物基礎 問題集', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'both', note: '基礎演習' , price: 1320 },
 
   // ── 社会：日本史 ──
   { name: '金谷の日本史「なぜ」と「流れ」がわかる本 原始・古代史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門①' , price: 1430 },
@@ -2859,12 +2860,49 @@ function renderRoadmapBooks() {
   const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33));
   const JAmonths   = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
-  const minLv = Math.max(1, s.levelVal - 1);
+  const minLv = 1;  // 全レベルを対象
   const maxLv = Math.min(5, s.levelVal + 2);
 
   const scheduledBooks = [];
   const filterEntries  = [];
   const seen = {};
+
+  // 科目ごとに候補を取得。条件を段階的に緩めて必ず1冊以上返す
+  function getBooksForSubject(subjectName, m) {
+    // フィルター段階：① 完全条件 → ② catsなし → ③ stream無視 → ④ sub一致のみ
+    const filters = [
+      function(b) { return b.sub===m.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=(m.maxLevel||maxLv) && (!m.cats||m.cats.includes(b.category)); },
+      function(b) { return b.sub===m.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=(m.maxLevel||maxLv); },
+      function(b) { return b.sub===m.sub && b.level<=(m.maxLevel||maxLv); },
+      function(b) { return b.sub===m.sub; },
+    ];
+    for (var fi = 0; fi < filters.length; fi++) {
+      var result = ALL_TEXTBOOKS.filter(filters[fi]).sort(function(a,b2){ return a.level-b2.level; });
+      if (result.length > 0) return result;
+    }
+    // 最終フォールバック：英語の基礎書を返す
+    return ALL_TEXTBOOKS.filter(function(b){ return b.sub==='eng' && b.level<=2; }).sort(function(a,b2){ return a.level-b2.level; });
+  }
+
+  function scheduleBooks(candidates, fKey, label, color) {
+    // totalWeeks内に収まる冊数で配置。超える場合はtotalWeeksを無視して先頭3冊を強制表示
+    var cum = 0;
+    var added = 0;
+    candidates.forEach(function(b) {
+      const endW = cum + b.dur;
+      // totalWeeksを超えても最低1冊は表示する
+      if (endW > totalWeeks && added > 0) return;
+      const sA = startMonth + Math.floor(cum / 4.33);
+      const eA = startMonth + Math.floor((Math.min(endW, totalWeeks) - 1) / 4.33);
+      scheduledBooks.push(Object.assign({}, b, {
+        _filterKey: fKey, _displayLabel: label, _color: color,
+        startY: Math.floor(sA/12), startM: sA%12,
+        endY:   Math.floor(eA/12), endM:   eA%12,
+      }));
+      cum = endW;
+      added++;
+    });
+  }
 
   if (s.mainSubjects && s.mainSubjects.length > 0) {
     // ── 主要対策科目モード ──
@@ -2873,26 +2911,8 @@ function renderRoadmapBooks() {
       if (!m) return;
       const fKey = m.label;
       if (!seen[fKey]) { seen[fKey] = true; filterEntries.push({ key: fKey, label: m.label, color: m.color }); }
-      const candidates = ALL_TEXTBOOKS.filter(function(b) {
-        if (b.sub !== m.sub) return false;
-        if (b.stream !== 'both' && b.stream !== s.stream) return false;
-        if (b.level < minLv || b.level > (m.maxLevel || maxLv)) return false;
-        if (m.cats && !m.cats.includes(b.category)) return false;
-        return true;
-      }).sort(function(a,b2){ return a.level - b2.level; });
-      let cum = 0;
-      candidates.forEach(function(b) {
-        const endW = cum + b.dur;
-        if (endW > totalWeeks) return;
-        const sA = startMonth + Math.floor(cum / 4.33);
-        const eA = startMonth + Math.floor((endW - 1) / 4.33);
-        scheduledBooks.push(Object.assign({}, b, {
-          _filterKey: fKey, _displayLabel: m.label, _color: m.color,
-          startY: Math.floor(sA/12), startM: sA%12,
-          endY:   Math.floor(eA/12), endM:   eA%12,
-        }));
-        cum = endW;
-      });
+      const candidates = getBooksForSubject(subjectName, m);
+      scheduleBooks(candidates, fKey, m.label, m.color);
     });
   } else {
     // ── フォールバック：志望校科目ベース ──
@@ -2903,22 +2923,11 @@ function renderRoadmapBooks() {
     targetSubs.forEach(function(sub) {
       const fKey = sub;
       if (!seen[fKey]) { seen[fKey]=true; filterEntries.push({ key:fKey, label:subLabelMap[sub], color:subColorMap[sub] }); }
-      const candidates = ALL_TEXTBOOKS.filter(function(b){
-        return b.sub===sub && (b.stream==='both'||b.stream===s.stream) && b.level>=minLv && b.level<=maxLv;
+      var candidates = ALL_TEXTBOOKS.filter(function(b){
+        return b.sub===sub && (b.stream==='both'||b.stream===s.stream);
       }).sort(function(a,b2){ return a.level-b2.level; });
-      let cum = 0;
-      candidates.forEach(function(b){
-        const endW = cum + b.dur;
-        if (endW > totalWeeks) return;
-        const sA = startMonth + Math.floor(cum/4.33);
-        const eA = startMonth + Math.floor((endW-1)/4.33);
-        scheduledBooks.push(Object.assign({}, b, {
-          _filterKey: fKey, _displayLabel: subLabelMap[sub], _color: subColorMap[sub],
-          startY: Math.floor(sA/12), startM: sA%12,
-          endY:   Math.floor(eA/12), endM:   eA%12,
-        }));
-        cum = endW;
-      });
+      if (!candidates.length) candidates = ALL_TEXTBOOKS.filter(function(b){ return b.sub===sub; }).sort(function(a,b2){ return a.level-b2.level; });
+      scheduleBooks(candidates, fKey, subLabelMap[sub], subColorMap[sub]);
     });
   }
 
@@ -2949,8 +2958,7 @@ function renderRoadmapBooksRows(books) {
   const nowAbs = now.getFullYear() * 12 + now.getMonth();
 
   if (!books.length) {
-    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">該当する参考書がありません</div>';
-  
+    timelineEl.innerHTML = '<div style="padding:12px;"></div>';
     return;
   }
 
@@ -3924,7 +3932,7 @@ function exportPDF() {
   )];
 
   // レベル幅：levelVal-1 〜 levelVal+1 の範囲（ただし1〜5内）
-  const minLv = Math.max(1, s.levelVal - 1);
+  const minLv = 1;  // 全レベルを対象
   const maxLv = Math.min(5, s.levelVal + 2);
 
   // 科目ごとに全候補取得（levelとstreamで絞り、levelの昇順で並べる）
@@ -4136,8 +4144,7 @@ ${(s.univName2 || s.univName3) ? `
     <div style="font-size:10px;color:#aaa;">プラトン 大学受験 戦略管理システム</div>
     <div style="font-size:10px;color:#aaa;">${s.name} 様専用</div>
   </div>
-</div>
-</body></html>`;
+</div></body></html>`;
 
   // モーダルオーバーレイで表示（ポップアップブロック回避）
   const existing = document.getElementById('pdf-modal');
@@ -4996,8 +5003,7 @@ function printPage(pageId, title) {
     <div>プラトン 大学受験 戦略管理システム</div>
     ${studentName ? `<div>${studentName} 様専用</div>` : ''}
   </div>
-</div>
-</body></html>`;
+</div></body></html>`;
 
   // モーダル表示
   const existing = document.getElementById('pdf-modal');
@@ -7057,6 +7063,148 @@ function toggleMonthlyAns() {
 }
 // ======================================================
 // ===== 月次実力診断 =====================================
+
+
+</script>
+<!-- ── 参考書 手動追加モーダル ── -->
+<div id="add-book-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:1.8rem;width:min(520px,92vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+      <div style="font-size:16px;font-weight:700;color:#1a1a2e;">📗 参考書を手動追加</div>
+      <button onclick="closeAddBookModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">参考書名 <span style="color:#c84b31;">*</span></label>
+      <input id="ab-name" type="text" placeholder="例：システム英単語〈5訂版〉" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">科目 <span style="color:#c84b31;">*</span></label>
+      <select id="ab-subject" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;background:white;">
+        <option value="">── 選択 ──</option>
+        <option value="英語R">英語R</option>
+        <option value="英語L">英語L</option>
+        <option value="数学1A">数学1A</option>
+        <option value="数学2BC">数学2BC</option>
+        <option value="現代文">現代文</option>
+        <option value="古文">古文</option>
+        <option value="漢文">漢文</option>
+        <option value="日本史">日本史</option>
+        <option value="世界史">世界史</option>
+        <option value="地理">地理</option>
+        <option value="公民">公民</option>
+        <option value="理科基礎">理科基礎</option>
+        <option value="情報">情報</option>
+      </select>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">カテゴリ</label>
+      <input id="ab-category" type="text" placeholder="例：英単語、英文法、日本史 など" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">レベル</label>
+      <select id="ab-level" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;background:white;">
+        <option value="1">入門</option>
+        <option value="2">基礎</option>
+        <option value="3" selected>標準</option>
+        <option value="4">応用</option>
+        <option value="5">発展</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.2rem;">
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">開始月 <span style="color:#c84b31;">*</span></label>
+        <input id="ab-start" type="month" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:4px;">終了月 <span style="color:#c84b31;">*</span></label>
+        <input id="ab-end" type="month" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+    </div>
+    <div id="ab-error" style="display:none;font-size:11px;color:#c84b31;margin-bottom:10px;padding:6px 10px;background:#fef0ee;border-radius:6px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeAddBookModal()" style="padding:9px 20px;border:1.5px solid #ddd;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;color:#888;">キャンセル</button>
+      <button onclick="submitAddBook()" style="padding:9px 22px;border:none;border-radius:8px;background:#2a7f6f;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">追加する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var _BOOK_SUBJECT_META = {
+  '英語R':    { sub:'eng', color:'#2a7f6f' },
+  '英語L':    { sub:'eng', color:'#2a7f6f' },
+  '数学1A':   { sub:'math', color:'#c84b31' },
+  '数学2BC':  { sub:'math', color:'#c84b31' },
+  '現代文':   { sub:'jpn',  color:'#9a7a20' },
+  '古文':     { sub:'jpn',  color:'#9a7a20' },
+  '漢文':     { sub:'jpn',  color:'#9a7a20' },
+  '日本史':   { sub:'soc',  color:'#7b4fa6' },
+  '世界史':   { sub:'soc',  color:'#7b4fa6' },
+  '地理':     { sub:'soc',  color:'#7b4fa6' },
+  '公民':     { sub:'soc',  color:'#7b4fa6' },
+  '理科基礎': { sub:'sci',  color:'#4a6fa5' },
+  '情報':     { sub:'etc',  color:'#6a1b9a' }
+};
+function openAddBookModal() {
+  var modal = document.getElementById('add-book-modal');
+  if (!modal) return;
+  var now = new Date();
+  var yy = now.getFullYear();
+  var mm = String(now.getMonth()+1).padStart(2,'0');
+  var nm = now.getMonth()+2 > 12 ? 1 : now.getMonth()+2;
+  var ny = now.getMonth()+2 > 12 ? yy+1 : yy;
+  document.getElementById('ab-start').value = yy+'-'+mm;
+  document.getElementById('ab-end').value = ny+'-'+String(nm).padStart(2,'0');
+  document.getElementById('ab-error').style.display = 'none';
+  modal.style.display = 'flex';
+}
+function closeAddBookModal() {
+  var modal = document.getElementById('add-book-modal');
+  if (modal) modal.style.display = 'none';
+}
+function submitAddBook() {
+  var name=document.getElementById('ab-name').value.trim();
+  var subject=document.getElementById('ab-subject').value;
+  var cat=document.getElementById('ab-category').value.trim()||'手動追加';
+  var level=parseInt(document.getElementById('ab-level').value);
+  var sv=document.getElementById('ab-start').value;
+  var ev=document.getElementById('ab-end').value;
+  var err=document.getElementById('ab-error');
+  if(!name){err.textContent='参考書名を入力してください';err.style.display='block';return;}
+  if(!subject){err.textContent='科目を選択してください';err.style.display='block';return;}
+  if(!sv||!ev){err.textContent='開始月と終了月を入力してください';err.style.display='block';return;}
+  if(sv>ev){err.textContent='開始月は終了月より前にしてください';err.style.display='block';return;}
+  err.style.display='none';
+  var meta=_BOOK_SUBJECT_META[subject]||{sub:'etc',color:'#555'};
+  var sp=sv.split('-'),ep=ev.split('-');
+  var sY=parseInt(sp[0]),sM=parseInt(sp[1]),eY=parseInt(ep[0]),eM=parseInt(ep[1]);
+  var b={name:name,sub:meta.sub,subLabel:subject,category:cat,level:level,stream:'both',
+    _filterKey:subject,_displayLabel:subject,_color:meta.color,_manual:true,
+    startY:sY,startM:sM-1,endY:eY,endM:eM-1};
+  if(!window._roadmapBooksAll) window._roadmapBooksAll=[];
+  window._roadmapBooksAll.push(b);
+  var st=document.getElementById('roadmap-books-subtitle');
+  if(st) st.textContent=st.textContent.replace(/全[0-9]+冊/,'全'+window._roadmapBooksAll.length+'冊');
+  var fw=document.getElementById('roadmap-books-filter');
+  if(fw&&!fw.querySelector('[data-fkey="'+subject+'"]')){
+    var fb=document.createElement('button');
+    fb.setAttribute('data-fkey',subject);
+    fb.textContent=subject;
+    fb.style.cssText='padding:4px 12px;border-radius:20px;border:1.5px solid '+meta.color+';background:white;color:'+meta.color+';font-size:11px;cursor:pointer;font-family:inherit;';
+    fb.onclick=(function(s,btn){return function(){filterRoadmapBooks(s,btn);};})(subject,fb);
+    fw.appendChild(fb);
+  }
+  renderRoadmapBooksRows(window._roadmapBooksAll);
+  closeAddBookModal();
+  if(typeof showToast==='function') showToast('参考書を追加しました ✓');
+  document.getElementById('ab-name').value='';
+  document.getElementById('ab-subject').value='';
+  document.getElementById('ab-category').value='';
+  document.getElementById('ab-level').value='3';
+}
+document.addEventListener('click',function(e){
+  var m=document.getElementById('add-book-modal');
+  if(m&&e.target===m) closeAddBookModal();
+});
 </script>
 </body>
 </html>
