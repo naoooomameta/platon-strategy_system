@@ -2847,141 +2847,139 @@ function renderRoadmap() {
 function renderRoadmapBooks() {
   const s = currentStudent;
   if (!s) return;
-  const filterWrap = document.getElementById('roadmap-books-filter');
-  const subtitle = document.getElementById('roadmap-books-subtitle');
-  const timelineEl = document.getElementById('roadmap-books-timeline');
+  const filterWrap  = document.getElementById('roadmap-books-filter');
+  const subtitle    = document.getElementById('roadmap-books-subtitle');
+  const timelineEl  = document.getElementById('roadmap-books-timeline');
   if (!timelineEl) return;
 
-  const subLabelMap = { eng:'英語', math:'数学', jpn:'国語', sci:'理科', soc:'社会', etc:'情報' };
-  const subColorMap = { eng:'#2a7f6f', math:'#c84b31', jpn:'#9a7a20', sci:'#7b4fa6', soc:'#2e7d32', etc:'#6a1b9a' };
+  const key = getApiKey();
+  if (!key) {
+    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">⚠️ Gemini API Keyを設定すると、AIが最適な参考書ルートを自動生成します。<br>右上「Gemini Key」欄にAPIキーを入力してください。</div>';
+    if (subtitle) subtitle.textContent = 'APIキーを設定してください';
+    return;
+  }
 
-  // 主要対策科目から (sub, categoryFilter, displayLabel) のリストを構築
-  // mainSubjectsが選択されていればそれを優先、なければ志望校科目をフォールバック
-  const MAIN_SUB_MAP = {
-    '英語リーディング': { sub:'eng', cats: null, excludeCats:['リスニング','TEAP','英検','英作文'], label:'英語R' },
-    '英語リスニング':   { sub:'eng', cats:['リスニング'], excludeCats:null, label:'英語L' },
-    '数学1A':          { sub:'math', cats:['数学1A','共通テスト数学'], excludeCats:null, label:'数学1A' },
-    '数学2BC':         { sub:'math', cats:['数学2B','数学3C'], excludeCats:null, label:'数学2BC' },
-    '現代文':          { sub:'jpn',  cats:['現代文'], excludeCats:null, label:'現代文' },
-    '古文':            { sub:'jpn',  cats:['古文'],   excludeCats:null, label:'古文' },
-    '漢文':            { sub:'jpn',  cats:['漢文'],   excludeCats:null, label:'漢文' },
-    '日本史':          { sub:'soc',  cats:['日本史'], excludeCats:null, label:'日本史' },
-    '世界史':          { sub:'soc',  cats:['世界史'], excludeCats:null, label:'世界史' },
-    '地理':            { sub:'soc',  cats:['地理'],   excludeCats:null, label:'地理' },
-    '公民':            { sub:'soc',  cats:['公共・政治経済'], excludeCats:null, label:'公民' },
-    '理科基礎':        { sub:'sci',  cats:null, excludeCats:['化学','物理','生物'], label:'理科基礎',
-                         noteFilter: (b) => b.note && b.note.includes('基礎') || b.level <= 2 },
-    '情報':            { sub:'etc',  cats:['情報'], excludeCats:null, label:'情報' },
-  };
+  // ローディング表示
+  timelineEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">🤖 AIが最適な参考書ルートを生成中...</div>';
+  if (subtitle) subtitle.textContent = '生成中...';
+  if (filterWrap) filterWrap.innerHTML = '';
 
-  // 志望校科目 → subコードへのフォールバックマップ
-  const univSubjectToSub = {
-    '英語':'eng','数学':'math','国語':'jpn',
-    '理科':'sci','理科2科目':'sci','社会':'soc',
-    '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
-  };
-
-  const minLv = Math.max(1, s.levelVal - 1);
-  const maxLv = Math.min(5, s.levelVal + 2);
+  const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const now = new Date();
   const startMonth = now.getFullYear() * 12 + now.getMonth();
   const examMonth  = (s.goalYear || now.getFullYear() + 1) * 12 + (s.goalMonth ?? 1);
-  const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33));
-  const JAmonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const totalMonths = Math.max(3, examMonth - startMonth);
 
-  const scheduledBooks = [];
-  // フィルタボタン用: { sub, label, color }
-  const filterEntries = [];
+  const subjectList = (s.mainSubjects && s.mainSubjects.length > 0)
+    ? s.mainSubjects.join('・')
+    : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects.join('・') : '英語・国語・社会');
 
-  if (s.mainSubjects && s.mainSubjects.length > 0) {
-    // ── 主要対策科目モード：科目ごとにcategoryフィルタして個別スケジューリング ──
-    s.mainSubjects.forEach(subjectName => {
-      const mapping = MAIN_SUB_MAP[subjectName];
-      if (!mapping) return;
+  const subDevStr = (s.subDevs && Object.keys(s.subDevs).length > 0)
+    ? Object.entries(s.subDevs).map(([k,v]) => `${k}:${v}`).join('、')
+    : '未入力';
 
-      const candidates = ALL_TEXTBOOKS.filter(b => {
-        if (b.sub !== mapping.sub) return false;
-        if (b.stream !== 'both' && b.stream !== s.stream) return false;
-        if (b.level < minLv || b.level > maxLv) return false;
-        // categoryフィルタ
-        if (mapping.cats && !mapping.cats.includes(b.category)) return false;
-        if (mapping.excludeCats && mapping.excludeCats.includes(b.category)) return false;
-        // noteフィルタ（理科基礎）
-        if (mapping.noteFilter) return mapping.noteFilter(b);
-        return true;
-      }).sort((a, b2) => a.level - b2.level);
+  const prompt = `あなたは日本の大学受験専門の学習コンサルタントです。
+以下の生徒データをもとに、最適な参考書学習ルートをJSON形式で出力してください。
 
-      if (!candidates.length) return;
-      // フィルタボタン用にキー登録（科目名を使う）
-      const filterKey = mapping.sub + '_' + subjectName;
-      if (!filterEntries.find(e => e.key === filterKey)) {
-        filterEntries.push({ key: filterKey, label: mapping.label, color: subColorMap[mapping.sub] });
-      }
+【生徒データ】
+- 氏名: ${s.name}
+- 学年: ${{ high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade] || s.grade}
+- 文理: ${s.stream === 'rikei' ? '理系' : '文系'}
+- 第一志望: ${s.univName}${s.dept1 ? '（' + s.dept1 + '）' : ''}（偏差値目標: ${s.univInfo && s.univInfo.dev ? s.univInfo.dev : '不明'}）
+- 現在の偏差値: ${s.devVal || '不明'}
+- 対策科目: ${subjectList}
+- 科目別偏差値: ${subDevStr}
+- 試験まで: ${totalMonths}ヶ月
 
-      let cumWeeks = 0;
-      candidates.forEach(b => {
-        const endW = cumWeeks + b.dur;
-        if (endW > totalWeeks) return;
-        const sAbs = startMonth + Math.floor(cumWeeks / 4.33);
-        const eAbs = startMonth + Math.floor((endW - 1) / 4.33);
-        scheduledBooks.push({
-          ...b,
-          _filterKey: filterKey,
-          _displayLabel: mapping.label,
-          startY: Math.floor(sAbs / 12), startM: sAbs % 12,
-          endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
-        });
-        cumWeeks = endW;
-      });
+【出力形式】
+以下のJSONのみを出力してください。説明・前置きは一切不要です。
+{
+  "books": [
+    {
+      "name": "参考書名（実在する参考書の正確な名前）",
+      "subject": "対策科目名（英語R/英語L/数学1A/数学2BC/現代文/古文/漢文/日本史/世界史/地理/公民/理科基礎/情報のいずれか）",
+      "category": "英単語/英文法/英語長文/リスニング/数学1A/数学2BC/現代文/古文/漢文/日本史/世界史/地理/公民/理科基礎/情報 など",
+      "level": 1〜5の整数（1:入門 2:基礎 3:標準 4:応用 5:発展）,
+      "startMonth": 0〜${totalMonths - 1}の整数（今月からの経過月数）,
+      "durationMonths": 1〜4の整数（取り組む期間）,
+      "reason": "この参考書を選んだ理由（30字以内）"
+    }
+  ]
+}
+
+【制約】
+- 実在する参考書のみ。架空の参考書は絶対に含めない。
+- 各科目について難易度順（低→高）に2〜4冊程度を提案。
+- 試験まで${totalMonths}ヶ月の期間内に無理なく終わる量にする。
+- 対策科目以外の参考書は含めない。`;
+
+  callGemini(prompt).then(function(raw) {
+    let data;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      data = JSON.parse(clean);
+    } catch(e) {
+      timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:#c84b31;font-size:12px;">⚠️ AI応答の解析に失敗しました。もう一度お試しください。<br><small>' + e.message + '</small></div>';
+      return;
+    }
+
+    const subColorMap = {
+      '英語R':'#2a7f6f','英語L':'#2a7f6f','数学1A':'#c84b31','数学2BC':'#c84b31',
+      '現代文':'#9a7a20','古文':'#9a7a20','漢文':'#9a7a20',
+      '日本史':'#7b4fa6','世界史':'#7b4fa6','地理':'#7b4fa6','公民':'#7b4fa6',
+      '理科基礎':'#4a6fa5','情報':'#6a1b9a'
+    };
+    const subToKey = {
+      '英語R':'eng_r','英語L':'eng_l','数学1A':'math1a','数学2BC':'math2bc',
+      '現代文':'gendai','古文':'kobun','漢文':'kanbun',
+      '日本史':'jpnhist','世界史':'wldhist','地理':'geo','公民':'civics',
+      '理科基礎':'sci_basic','情報':'info'
+    };
+
+    // booksデータを renderRoadmapBooksRows 用の形式に変換
+    const books = (data.books || []).map(function(b) {
+      const sAbs = startMonth + (b.startMonth || 0);
+      const eAbs = sAbs + Math.max(1, b.durationMonths || 1) - 1;
+      const col = subColorMap[b.subject] || '#555';
+      return {
+        name: b.name,
+        subject: b.subject,
+        sub: 'ai',                  // AIベース識別用
+        subLabel: b.subject,
+        _displayLabel: b.subject,
+        _filterKey: subToKey[b.subject] || b.subject,
+        category: b.category || '',
+        level: b.level || 2,
+        dur: (b.durationMonths || 1) * 4,
+        note: b.reason || '',
+        price: null,                // AI生成は価格不定のため非表示
+        _color: col,
+        startY: Math.floor(sAbs / 12), startM: sAbs % 12,
+        endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
+      };
     });
-  } else {
-    // ── フォールバック：志望校科目ベース（従来ロジック） ──
-    const targetSubs = [...new Set(
-      (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => univSubjectToSub[s2] || null).filter(Boolean)
-    )];
-    targetSubs.forEach(sub => {
-      if (!filterEntries.find(e => e.key === sub)) {
-        filterEntries.push({ key: sub, label: subLabelMap[sub], color: subColorMap[sub] });
-      }
-      const candidates = ALL_TEXTBOOKS.filter(b =>
-        b.sub === sub &&
-        (b.stream === 'both' || b.stream === s.stream) &&
-        b.level >= minLv && b.level <= maxLv
-      ).sort((a, b2) => a.level - b2.level);
-      let cumWeeks = 0;
-      candidates.forEach(b => {
-        const endW = cumWeeks + b.dur;
-        if (endW > totalWeeks) return;
-        const sAbs = startMonth + Math.floor(cumWeeks / 4.33);
-        const eAbs = startMonth + Math.floor((endW - 1) / 4.33);
-        scheduledBooks.push({
-          ...b,
-          _filterKey: sub,
-          _displayLabel: subLabelMap[sub],
-          startY: Math.floor(sAbs / 12), startM: sAbs % 12,
-          endY:   Math.floor(eAbs / 12), endM:   eAbs % 12,
-        });
-        cumWeeks = endW;
-      });
-    });
-  }
 
-  if (subtitle) {
-    subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊提案`;
-  }
+    if (subtitle) {
+      subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ AI提案 全${books.length}冊`;
+    }
 
-  // 科目フィルタボタン生成
-  if (filterWrap) {
-    filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
-      style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>` +
-      filterEntries.map(e =>
-        `<button onclick="filterRoadmapBooks('${e.key}',this)"
-          style="padding:4px 12px;border-radius:20px;border:1.5px solid ${e.color};background:white;color:${e.color};font-size:11px;cursor:pointer;font-family:inherit;">${e.label}</button>`
-      ).join('');
-  }
+    // フィルタボタン生成
+    const seen = {};
+    if (filterWrap) {
+      filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
+        style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>` +
+        books.filter(function(b){ if(seen[b._filterKey]) return false; seen[b._filterKey]=1; return true; })
+        .map(function(b) {
+          return `<button onclick="filterRoadmapBooks('${b._filterKey}',this)"
+            style="padding:4px 12px;border-radius:20px;border:1.5px solid ${b._color};background:white;color:${b._color};font-size:11px;cursor:pointer;font-family:inherit;">${b._displayLabel}</button>`;
+        }).join('');
+    }
 
-  window._roadmapBooksAll = scheduledBooks;
-  renderRoadmapBooksRows(scheduledBooks);
+    window._roadmapBooksAll = books;
+    renderRoadmapBooksRows(books);
+  }).catch(function(err) {
+    timelineEl.innerHTML = '<div style="padding:24px;text-align:center;color:#c84b31;font-size:12px;">⚠️ API呼び出しに失敗しました：' + err.message + '</div>';
+  });
 }
 
 function renderRoadmapBooksRows(books) {
@@ -3040,7 +3038,7 @@ function renderRoadmapBooksRows(books) {
       <div style="flex:1;padding-left:10px;border-left:2px solid ${isNow?'var(--accent)':'var(--border)'};">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">`;
     byMonth[absMonth].forEach(b => {
-      const col  = subColorMap[b.sub] || '#333';
+      const col  = b._color || subColorMap[b.sub] || '#333';
       const lvl  = ['','入門','基礎','標準','応用','発展'][b.level] || '';
       const endAbs  = b.endY * 12 + b.endM;
       const isUrgent = (endAbs - nowAbs) <= 2;
@@ -3066,11 +3064,13 @@ function renderRoadmapBooksRows(books) {
   });
 
   // 合計金額フッター
+  const isAI = books.length > 0 && books[0].price === null;
+  const footerRight = isAI
+    ? `📚 全${books.length}冊 ／ AIが生徒データをもとに選定`
+    : `📦 全${books.length}冊 合計目安：<span style="color:var(--accent);">¥${totalPrice.toLocaleString()}</span>`;
   html += `<div style="margin-top:16px;padding:12px 16px;background:var(--paper);border-radius:8px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-    <div style="font-size:11px;color:var(--text-muted);">※ 試験月までに完了できる参考書のみ表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。</div>
-    <div style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;">
-      📦 全${books.length}冊 合計目安：<span style="color:var(--accent);">¥${totalPrice.toLocaleString()}</span>
-    </div>
+    <div style="font-size:11px;color:var(--text-muted);">※ 試験月までに完了できる順に表示。🔴赤は直近2ヶ月以内に終了すべき書籍です。</div>
+    <div style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;">${footerRight}</div>
   </div>`;
 
   timelineEl.innerHTML = html;
