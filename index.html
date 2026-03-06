@@ -4066,39 +4066,51 @@ function renderTimeline() {
 
   let html = '';
 
-  // Month labels
-  html += '<div class="month-labels">';
+  // Month labels — インラインスタイルでPDFでも確実に横並び
+  html += '<div class="month-labels" style="display:flex;gap:2px;margin-left:88px;margin-bottom:4px;">';
   monthLabels.forEach((m, i) => {
     const isLast = i === months - 1;
-    html += `<div class="month-label${isLast ? ' highlight' : ''}">${m}</div>`;
+    const color = isLast ? 'var(--accent)' : 'var(--text-muted)';
+    html += `<div class="month-label${isLast ? ' highlight' : ''}" style="flex:1;text-align:center;font-size:10px;font-weight:700;color:${color};">${m}</div>`;
   });
   html += '</div>';
 
-  // Subject rows
+  // Subject rows — インラインスタイルでPDFでも確実にレイアウト
+  const blockBgMap = {
+    eng: 'linear-gradient(135deg,#2a7f6f,#3aa88f)',
+    math: 'linear-gradient(135deg,#c84b31,#e8735a)',
+    jpn: 'linear-gradient(135deg,#c9a84c,#d4b96a)',
+    hist: 'linear-gradient(135deg,#4a6fa5,#6b8fc4)',
+    sci: 'linear-gradient(135deg,#4a6fa5,#6b8fc4)',
+    etc: 'linear-gradient(135deg,#6a1b9a,#9c4dcc)',
+  };
+  const blockTextMap = { jpn: '#1a1a2e' };
   subjects.forEach(sub => {
-    html += `<div class="timeline-row">
-      <div class="timeline-subject">${sub.label}</div>
-      <div class="timeline-track">`;
+    const bg = blockBgMap[sub.cls] || '#555';
+    const txtColor = blockTextMap[sub.cls] || 'white';
+    html += `<div class="timeline-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div class="timeline-subject" style="width:80px;flex-shrink:0;font-size:12px;font-weight:700;color:var(--text-muted);text-align:right;">${sub.label}</div>
+      <div class="timeline-track" style="flex:1;height:36px;background:var(--paper-dark);border-radius:6px;position:relative;overflow:hidden;">`;
     sub.blocks.forEach(b => {
       const left = (b.start / months * 100).toFixed(1);
       const width = ((b.end - b.start) / months * 100).toFixed(1);
-      html += `<div class="timeline-block ${sub.cls}" style="left:${left}%;width:${width}%;"
+      html += `<div class="timeline-block ${sub.cls}" style="position:absolute;top:4px;bottom:4px;left:${left}%;width:${width}%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:${txtColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"
         title="${b.label}">${b.label}</div>`;
     });
     html += '</div></div>';
   });
 
   // Test row
-  html += '<div class="test-row"><div class="timeline-subject" style="font-size:10px;">テスト</div><div class="test-markers">';
+  html += '<div class="test-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><div class="timeline-subject" style="width:80px;flex-shrink:0;font-size:10px;font-weight:700;color:var(--text-muted);text-align:right;">テスト</div><div class="test-markers" style="flex:1;height:28px;position:relative;">';
   for (let i = 0; i < months; i++) {
     // weekly test (approx every 2 weeks shown as one marker per month)
     const wx = ((i + 0.3) / months * 100).toFixed(1);
     const wx2 = ((i + 0.65) / months * 100).toFixed(1);
-    html += `<div class="test-dot weekly" style="left:${wx}%;" title="週次確認テスト">週</div>`;
-    html += `<div class="test-dot weekly" style="left:${wx2}%;" title="週次確認テスト">週</div>`;
+    html += `<div class="test-dot weekly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${wx}%;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--ink);" title="週次確認テスト">週</div>`;
+    html += `<div class="test-dot weekly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${wx2}%;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--ink);" title="週次確認テスト">週</div>`;
     // monthly test
     const mx = ((i + 0.95) / months * 100).toFixed(1);
-    html += `<div class="test-dot monthly" style="left:${mx}%;" title="実力診断テスト（月次）">月</div>`;
+    html += `<div class="test-dot monthly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${mx}%;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--accent);" title="実力診断テスト（月次）">月</div>`;
   }
   html += '</div></div>';
 
