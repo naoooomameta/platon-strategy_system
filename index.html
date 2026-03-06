@@ -5893,7 +5893,19 @@ function printPage(pageId, title) {
   .container{max-width:800px;margin:0 auto;padding:28px 32px;}
   .page{display:block!important;}
   header,.header-top,.header-nav{display:none!important;}
-  .timeline{min-width:auto!important;}
+  .timeline{min-width:auto!important;width:100%!important;overflow:visible!important;}
+  .timeline-wrapper{overflow:visible!important;}
+  .timeline-subject{width:56px!important;font-size:9px!important;word-break:keep-all;white-space:nowrap!important;line-height:1.3;overflow:hidden;text-overflow:ellipsis;}
+  .timeline-block{font-size:8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1.2;padding:1px 3px!important;}
+  .timeline-track{height:28px!important;overflow:hidden!important;}
+  .timeline-row{gap:4px!important;margin-bottom:4px!important;}
+  .timeline-header{font-size:9px!important;}
+  .timeline-month-label{font-size:8px!important;}
+  .month-labels{display:grid!important;font-size:8px!important;}
+  .month-label{font-size:8px!important;text-align:center;}
+  .test-row{font-size:8px!important;}
+  .test-dot{font-size:7px!important;}
+  .test-markers{height:20px!important;}
   /* ヘッダーバンド */
   .print-header{background:var(--ink);color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .print-logo{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
