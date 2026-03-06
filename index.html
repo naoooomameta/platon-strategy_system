@@ -3984,6 +3984,30 @@ function filterRoadmapBooks(sub, btn) {
   renderRoadmapBooksRows(sub === 'all' ? all : all.filter(b => b._filterKey === sub || b.sub === sub));
 }
 
+// ===== 科目名短縮（タイムライン・ギャップ分析 共通） =====
+const _SHORT_SUB_MAP = {
+  '英語R':'英語R','英語L':'英語L',
+  '英語リーディング':'英語R','英語リスニング':'英語L',
+  '英語 リーディング':'英語R','英語 リスニング':'英語L',
+  '数学1A':'数学IA','数学2BC':'数学IIB','数学IA':'数学IA','数学IIB':'数学IIB',
+  '現代文':'現代文','古文':'古文','漢文':'漢文','国語':'国語',
+  '日本史':'日本史','世界史':'世界史','地理':'地理','公民':'公民','社会':'社会',
+  '物理':'物理','化学':'化学','生物':'生物','理科':'理科','理科基礎':'理基',
+  '情報':'情報','総合教養':'総合','数学':'数学','英語':'英語',
+};
+function shortSubName(name) {
+  if (!name) return '';
+  var n = name.trim();
+  var s = _SHORT_SUB_MAP[n] || _SHORT_SUB_MAP[n.replace(/\s/g,'')] || n;
+  if (s.length > 5) {
+    if (s.includes('リーディング')) return '英語R';
+    if (s.includes('リスニング')) return '英語L';
+    if (s.includes('理科基礎')) return '理基';
+    return s.substring(0, 4);
+  }
+  return s;
+}
+
 function renderTimeline() {
   const s = currentStudent;
   const months = Math.min(s.months, 12);
@@ -4051,16 +4075,8 @@ function renderTimeline() {
     const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
     const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
     const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
-    var shortLabel = subLabelMap[subName] || subLabelMap[subName.trim()] || subLabelMap[subName.replace(/\s/g,'')] || subName;
-    // 5文字以上の科目名は省略形に
-    if (shortLabel.length > 5) {
-      if (shortLabel.includes('リーディング')) shortLabel = '英語R';
-      else if (shortLabel.includes('リスニング')) shortLabel = '英語L';
-      else if (shortLabel.includes('理科基礎')) shortLabel = '理基';
-      else shortLabel = shortLabel.substring(0, 5);
-    }
     return {
-      label: shortLabel,
+      label: shortSubName(subName),
       cls: subClsMap[subName] || subClsMap[subName.replace(/\s/g,'')] || 'eng',
       blocks: makeBlocks(0, months, relStart, relEnd, phases.join('→')),
     };
@@ -4171,7 +4187,7 @@ function renderGapStats() {
     html += `
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
-        <span style="font-size:13px;font-weight:700;color:var(--ink);width:56px;">${sub.name}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink);width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;">${shortSubName(sub.name)}</span>
         <div style="display:flex;align-items:baseline;gap:6px;">
           <span style="font-size:26px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;line-height:1;">${sub.current}</span>
           <span style="font-size:16px;color:var(--text-muted);">→</span>
