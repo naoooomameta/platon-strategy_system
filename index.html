@@ -1418,7 +1418,7 @@ function updateSubCheckStyle(cb) {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
-        <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
+        <button class="btn btn-secondary" onclick="printPage('roadmap','合格ロードマップ')" style="font-size:13px;">🖨️ PDF保存</button>
         <button class="btn btn-teal" onclick="saveStudentToList(currentStudent).then(()=>showToast('ロードマップを保存しました ✓'))">💾 保存する</button>
       </div>
     </div>
@@ -1644,7 +1644,7 @@ function updateSubCheckStyle(cb) {
           <option value="">── 生徒を選択 ──</option>
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('weekly-plan')" id="edit-toggle-weekly-plan" style="font-size:13px;">✏️ 手動編集</button>
-        <button class="btn btn-secondary" onclick="printWeeklyPlanPDF()" style="font-size:13px;">📄 PDF保存</button>
+        <button class="btn btn-secondary" onclick="printPage('weekly-plan','1ヶ月プラン')" style="font-size:13px;">📄 PDF保存</button>
         <button class="btn btn-primary" onclick="wpInit()">🗓 プランを更新</button>
       </div>
     </div>
@@ -5840,19 +5840,19 @@ function printPage(pageId, title) {
 
   const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
   const studentSel = page.querySelector('select');
-  const studentName = studentSel ? studentSel.options[studentSel.selectedIndex]?.text.replace(/（.+）/, '').trim() : '';
+  const studentName = studentSel ? studentSel.options[studentSel.selectedIndex]?.text.replace(/（.+）/, '').trim() : (currentStudent ? currentStudent.name : '');
 
   // ページのHTMLを取得（ボタン・バナー・select・canvas除外）
   // canvasを先に画像化
   const chartImages = {};
-  page.querySelectorAll('.chart-container canvas').forEach(canvas => {
-    try { chartImages[canvas.id] = canvas.toDataURL('image/png'); } catch(e) {}
+  page.querySelectorAll('canvas').forEach(canvas => {
+    try { chartImages[canvas.id || ('_c'+Math.random())] = canvas.toDataURL('image/png'); } catch(e) {}
   });
 
   const clone = page.querySelector('.container').cloneNode(true);
 
   // 除外要素を削除
-  clone.querySelectorAll('button, select, input, .edit-banner, [id^="edit-banner"]').forEach(el => el.remove());
+  clone.querySelectorAll('button, select, input, .edit-banner, [id^="edit-banner"], .steps, [id$="-file-input"], [id="exam-drop"], [id="exam-preview"], [id="exam-analysis-result"], .actions').forEach(el => el.remove());
   // chart canvasを画像に置換
   clone.querySelectorAll('.chart-container').forEach(container => {
     const canvas = container.querySelector('canvas');
@@ -5861,6 +5861,16 @@ function printPage(pageId, title) {
       container.innerHTML = `<img src="${imgSrc}" style="width:100%;height:auto;border-radius:8px;display:block;">`;
     } else {
       container.innerHTML = '<div style="height:200px;background:#f5f0e8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;">（グラフデータなし）</div>';
+    }
+  });
+  // chart-container外のcanvasも置換
+  clone.querySelectorAll('canvas').forEach(canvas => {
+    const imgSrc = chartImages[canvas.id] || null;
+    if (imgSrc) {
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.style.cssText = 'width:100%;height:auto;display:block;';
+      canvas.replaceWith(img);
     }
   });
   // contenteditable属性を除去
@@ -5967,7 +5977,10 @@ function printPage(pageId, title) {
 
   // html文字列をグローバルに保存
   window._reportPdfHtml = printHTML;
-  window._reportPdfFilename = 'レポート.pdf';
+  window._reportPdfFilename = (title + (studentName ? '_' + studentName : '') + '.pdf').replace(/\s+/g, '_');
+  // downloadAsPDF互換のためにもセット
+  window._roadmapHtml = printHTML;
+  window._roadmapFilename = window._reportPdfFilename;
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open('text/html','replace'); doc.write(printHTML); doc.close();
 }
