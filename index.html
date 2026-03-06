@@ -5800,6 +5800,34 @@ function resetPageEdit(pageId) {
 // ===== 各ページPDF保存（iframeモーダル印刷） =====
 
 // ===== 共通PDF変換ヘルパー =====
+// CSS変数（カスタムプロパティ）を実際の色値に置換する
+// html2canvasはCSS変数を解釈できないため、PDF出力前に展開が必要
+function resolveCssVars(html) {
+  var map = {
+    'var(--ink)':        '#1a1a2e',
+    'var(--ink-light)':  '#2d2d4e',
+    'var(--paper)':      '#f5f0e8',
+    'var(--paper-dark)': '#ede8dc',
+    'var(--accent)':     '#c84b31',
+    'var(--accent-soft)':'#e8735a',
+    'var(--gold)':       '#c9a84c',
+    'var(--teal)':       '#2a7f6f',
+    'var(--teal-light)': '#3aa88f',
+    'var(--text)':       '#2c2c3e',
+    'var(--text-muted)': '#6b6b80',
+    'var(--border)':     '#d8d0c0',
+    'var(--white)':      '#ffffff',
+    'var(--shadow)':     '0 4px 24px rgba(26,26,46,0.12)',
+    'var(--shadow-lg)':  '0 12px 48px rgba(26,26,46,0.18)',
+  };
+  var result = html;
+  Object.keys(map).forEach(function(key) {
+    // グローバル置換（splitJoinでreplaceAllの代替）
+    result = result.split(key).join(map[key]);
+  });
+  return result;
+}
+
 // 専用の隠しiframeでHTMLをレンダリングし、そのbody要素をhtml2pdfに渡す
 // → iframeはposition:fixed/left:-9999pxで完全固定するため座標ズレなし
 function _renderHtmlToPDF(htmlStr, filename) {
@@ -5815,9 +5843,11 @@ function _renderHtmlToPDF(htmlStr, filename) {
   iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4W + 'px;height:20000px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
+  // CSS変数をhtml2canvas対応の実色値に展開してからiframeへ書き込む
+  var resolvedHtml = resolveCssVars(htmlStr);
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
   iDoc.open('text/html', 'replace');
-  iDoc.write(htmlStr);
+  iDoc.write(resolvedHtml);
   iDoc.close();
 
   setTimeout(function() {
@@ -5927,7 +5957,7 @@ function printPage(pageId, title) {
   if (cloneAdvLoading) cloneAdvLoading.remove();
   if (cloneAdvEmpty) cloneAdvEmpty.remove();
 
-  if (origAdvContent && window.getComputedStyle(origAdvContent).display !== 'none') {
+  if (origAdvContent && origAdvContent.style.display !== 'none') {
     // アドバイスが生成済み → ライブDOMのHTMLを直接クローンに注入
     console.log('[DEBUG] Advice is visible, injecting into PDF');
     if (cloneAdvContent) {
@@ -5942,9 +5972,10 @@ function printPage(pageId, title) {
   // クローン内のボタンを再度削除（アドバイス注入で編集ボタンが復活するため）
   clone.querySelectorAll('button').forEach(el => el.remove());
 
-  // display:none の要素を削除（advice-contentは除外）
+  // display:none の要素を削除（advice-content本体と、その子孫は除外）
   clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => {
     if (el.id === 'advice-content') return;
+    if (el.closest && el.closest('#advice-content')) return; // advice-content内の子孫も保護
     el.remove();
   });
 
