@@ -6,7 +6,7 @@
 <title>プラトン 大学受験 戦略管理システム</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --ink: #1a1a2e;
@@ -3041,15 +3041,71 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
-// ===== 生徒リスト管理（Supabase版）=====
+// ===== Supabase直接REST APIヘルパー =====
+async function _sbRestGet(table, params) {
+  const { data: { session } } = await _sb.auth.getSession();
+  const query = params || 'select=*&order=created_at.asc';
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) throw new Error('REST GET error: ' + res.status);
+  return await res.json();
+}
+async function _sbRestPost(table, row) {
+  const { data: { session } } = await _sb.auth.getSession();
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(row)
+  });
+  if (!res.ok) throw new Error('REST POST error: ' + res.status + ' ' + await res.text());
+  return await res.json();
+}
+async function _sbRestPatch(table, id, row) {
+  const { data: { session } } = await _sb.auth.getSession();
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(row)
+  });
+  if (!res.ok) throw new Error('REST PATCH error: ' + res.status);
+  return await res.json();
+}
+async function _sbRestDelete(table, id) {
+  const { data: { session } } = await _sb.auth.getSession();
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
+    }
+  });
+  if (!res.ok) throw new Error('REST DELETE error: ' + res.status);
+}
+
+// ===== 生徒リスト管理（REST API版）=====
 async function _loadStudentsFromSupabase() {
   console.log('[DEBUG] _loadStudentsFromSupabase called');
   try {
-    const { data, error } = await _sb.from('students').select('*').order('created_at', { ascending: true });
-    if (error) { console.warn('DB読込エラー:', error.message); _allStudents = []; }
-    else { _allStudents = (data || []).map(_rowToStudent); console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase'); }
+    const data = await _sbRestGet('students');
+    _allStudents = (data || []).map(_rowToStudent);
+    console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase');
   } catch(e) {
-    console.warn('DB接続エラー:', e.message);
+    console.warn('DB読込エラー:', e.message);
     _allStudents = [];
   }
   renderStudentList();
@@ -3119,37 +3175,26 @@ async function saveStudentToList(s) {
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
 
-  // ② セッション確認してからSupabaseへ保存
+  // ② REST APIでSupabaseへ保存
   try {
     console.log('[DEBUG] saveStudentToList called for:', s.name);
-    const { data: { session }, error: sessErr } = await _sb.auth.getSession();
-    console.log('[DEBUG] getSession result:', session ? 'OK (user=' + session.user.email + ')' : 'NULL', sessErr || '');
-    if (!session) {
-      showToast('セッション切れ：再ログインしてください');
-      console.warn('No session when saving student');
-      return;
-    }
-    console.log('Saving student to Supabase:', s.name);
-
     const existingLocal = existingIdx >= 0 ? _allStudents[existingIdx] : null;
     const row = _studentToRow(Object.assign({}, s, {
       roadmapCount: existingLocal ? existingLocal.roadmapCount : 1
     }));
 
     if (existingLocal && existingLocal._id) {
-      const { error } = await _sb.from('students').update(row).eq('id', existingLocal._id);
-      if (error) { console.error('Update error:', error); showToast('DB更新エラー: ' + error.message); return; }
-      console.log('Updated student:', s.name);
+      await _sbRestPatch('students', existingLocal._id, row);
+      console.log('[DEBUG] Updated student:', s.name);
     } else {
-      const { data, error } = await _sb.from('students').insert(row).select('id').single();
-      if (error) { console.error('Insert error:', error); showToast('DB保存エラー: ' + error.message); return; }
+      const result = await _sbRestPost('students', row);
       const idx2 = _allStudents.findIndex(x => x.name === s.name);
-      if (idx2 >= 0 && data) _allStudents[idx2]._id = data.id;
-      console.log('Inserted student:', s.name, 'id:', data && data.id);
+      if (idx2 >= 0 && result && result[0]) _allStudents[idx2]._id = result[0].id;
+      console.log('[DEBUG] Inserted student:', s.name, 'id:', result && result[0] && result[0].id);
     }
     showToast(s.name + ' を保存しました ✓');
   } catch(e) {
-    console.error('saveStudentToList error:', e);
+    console.error('[DEBUG] saveStudentToList error:', e);
     showToast('DB保存エラー: ' + e.message);
   }
 }
@@ -3158,8 +3203,9 @@ async function deleteStudentFromList(name) {
   if (!confirm('「' + name + '」のデータを削除してよろしいですか？\nこの操作は元に戻せません。')) return;
   const s = _allStudents.find(x => x.name === name);
   if (s && s._id) {
-    const { error } = await _sb.from('students').delete().eq('id', s._id);
-    if (error) { showToast('削除エラー: ' + error.message); return; }
+    try {
+      await _sbRestDelete('students', s._id);
+    } catch(e) { showToast('削除エラー: ' + e.message); return; }
   }
   if (currentStudent && currentStudent.name === name) currentStudent = null;
   await _loadStudentsFromSupabase();
