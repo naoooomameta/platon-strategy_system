@@ -6,6 +6,7 @@
 <title>プラトン 大学受験 戦略管理システム</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --ink: #1a1a2e;
@@ -866,6 +867,7 @@
 </head>
 <body>
 
+<div id="app-body" style="display:none;">
 <header>
   <div class="header-top">
     <div class="logo">
@@ -906,13 +908,6 @@ function updateSubCheckStyle(cb) {
     label.style.borderColor = 'var(--border)';
   }
 }
-
-document.addEventListener('DOMContentLoaded', function(){
-  renderStudentList();
-  var el = document.getElementById('platon-api-key-input');
-  var k = localStorage.getItem('platon_api_key');
-  if (el && k) el.value = k;
-});
 </script>
 
 <!-- LOADING -->
@@ -926,6 +921,9 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="toast-icon">✓</div>
   <span id="toast-msg">保存しました</span>
 </div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+
 
 <!-- ===== PAGE: DASHBOARD ===== -->
 <div class="page active" id="page-dashboard">
@@ -1400,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printRoadmapPDF()" style="font-size:13px;">🖨️ PDF保存</button>
-        <button class="btn btn-teal" onclick="showToast('ロードマップを保存しました')">💾 保存する</button>
+        <button class="btn btn-teal" onclick="saveStudentToList(currentStudent).then(()=>showToast('ロードマップを保存しました ✓'))">💾 保存する</button>
       </div>
     </div>
 
@@ -1854,9 +1852,8 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="section-desc">月末実力診断・採点・推定偏差値の算出と受験期までの推移予測</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-        <select id="monthly-student-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
-          <option>田中 悠斗（高3・理系）</option>
-          <option>佐藤 美咲（高2・文系）</option>
+        <select id="monthly-student-sel" onchange="monthlySelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
+          <option value="">── 生徒を選択 ──</option>
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('monthly')" id="edit-toggle-monthly" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printPage('monthly','実力診断レポート')" style="font-size:13px;">📄 PDF保存</button>
@@ -2925,39 +2922,182 @@ let currentStudent = null;
 let deviationChart = null;
 
 // ===== NAVIGATION =====
-// ===== 生徒リスト管理 =====
-// 生徒データをlocalStorageから読み込む
-function _loadStudentsFromStorage() {
-  try {
-    const raw = localStorage.getItem('platon_students');
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
-}
-function _saveStudentsToStorage(arr) {
-  try { localStorage.setItem('platon_students', JSON.stringify(arr)); } catch(e) {}
-}
-let _allStudents = _loadStudentsFromStorage();
+// ===== Supabase設定 =====
+// ▼▼▼ ここにSupabaseの情報を入力 ▼▼▼
+const SUPABASE_URL = 'https://liutdhrkrgummlferlnw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdXRkaHJrcmd1bW1sZmVybG53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDg4NTksImV4cCI6MjA4ODI4NDg1OX0.y83oMJqV0IrDdvp2uQaodeH4MiLPMIGb11roGObT290';
+// ▲▲▲ ここにSupabaseの情報を入力 ▲▲▲
 
-function saveStudentToList(s) {
-  const idx = _allStudents.findIndex(x => x.name === s.name);
-  if (idx >= 0) {
-    const prevCount = _allStudents[idx].roadmapCount || 0;
-    _allStudents[idx] = Object.assign({}, s, { roadmapCount: prevCount + 1 });
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: window.localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'platon-auth',
+  }
+});
+let _allStudents = [];
+
+// ===== ログイン =====
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  const loading = document.getElementById('login-loading');
+  errEl.style.display = 'none';
+  btn.style.display = 'none';
+  loading.style.display = 'block';
+  const { error } = await _sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = 'メールアドレスまたはパスワードが正しくありません';
+    errEl.style.display = 'block';
+    btn.style.display = 'block';
+    loading.style.display = 'none';
+  }
+}
+
+// Enterキーでログイン
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('login-screen') && document.getElementById('login-screen').style.display !== 'none') {
+    doLogin();
+  }
+});
+
+// 認証状態の監視
+_sb.auth.onAuthStateChange(async function(event, session) {
+  const loginScreen = document.getElementById('login-screen');
+  const appBody = document.getElementById('app-body');
+  if (session) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = '';
+    await _loadStudentsFromSupabase();
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appBody) appBody.style.display = 'none';
+  }
+});
+
+// ===== 生徒リスト管理（Supabase版）=====
+async function _loadStudentsFromSupabase() {
+  try {
+    const { data, error } = await _sb.from('students').select('*').order('created_at', { ascending: true });
+    if (error) { console.warn('DB読込エラー:', error.message); _allStudents = []; }
+    else { _allStudents = (data || []).map(_rowToStudent); }
+  } catch(e) {
+    console.warn('DB接続エラー:', e.message);
+    _allStudents = [];
+  }
+  renderStudentList();
+  renderWpStudentSelect();
+  renderMonthlyStudentSelect();
+}
+
+// DBのスネークケース → JSのキャメルケースに変換
+function _rowToStudent(row) {
+  return {
+    _id: row.id,
+    name: row.name,
+    grade: row.grade,
+    stream: row.stream,
+    univName: row.univ_name,
+    dept1: row.dept1,
+    univInfo: row.univ_info,
+    devVal: row.dev_val,
+    months: row.months,
+    enrolled: row.enrolled,
+    goalYear: row.goal_year,
+    goalMonth: row.goal_month,
+    roadmapCount: row.roadmap_count || 0,
+    mainSubjects: row.main_subjects,
+    subDevs: row.sub_devs,
+    levelVal: row.level_val,
+    examMonth: row.exam_month,
+  };
+}
+
+// JSのキャメルケース → DBのスネークケースに変換
+function _studentToRow(s) {
+  return {
+    name: s.name,
+    grade: s.grade,
+    stream: s.stream,
+    univ_name: s.univName,
+    dept1: s.dept1,
+    univ_info: s.univInfo,
+    dev_val: s.devVal,
+    months: s.months,
+    enrolled: s.enrolled,
+    goal_year: s.goalYear,
+    goal_month: s.goalMonth,
+    roadmap_count: s.roadmapCount || 0,
+    main_subjects: s.mainSubjects,
+    sub_devs: s.subDevs,
+    level_val: s.levelVal,
+    exam_month: s.examMonth,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function saveStudentToList(s) {
+  // ① ローカルを即時更新してUIを描画
+  const existingIdx = _allStudents.findIndex(x => x.name === s.name);
+  if (existingIdx >= 0) {
+    const prev = _allStudents[existingIdx];
+    _allStudents[existingIdx] = Object.assign({}, s, {
+      _id: prev._id,
+      roadmapCount: (prev.roadmapCount || 0) + 1
+    });
   } else {
     _allStudents.push(Object.assign({}, s, { roadmapCount: 1 }));
   }
-  _saveStudentsToStorage(_allStudents);
   renderStudentList();
   renderWpStudentSelect();
+  renderMonthlyStudentSelect();
+
+  // ② セッション確認してからSupabaseへ保存
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) {
+      showToast('セッション切れ：再ログインしてください');
+      console.warn('No session when saving student');
+      return;
+    }
+    console.log('Saving student to Supabase:', s.name);
+
+    const existingLocal = existingIdx >= 0 ? _allStudents[existingIdx] : null;
+    const row = _studentToRow(Object.assign({}, s, {
+      roadmapCount: existingLocal ? existingLocal.roadmapCount : 1
+    }));
+
+    if (existingLocal && existingLocal._id) {
+      const { error } = await _sb.from('students').update(row).eq('id', existingLocal._id);
+      if (error) { console.error('Update error:', error); showToast('DB更新エラー: ' + error.message); return; }
+      console.log('Updated student:', s.name);
+    } else {
+      const { data, error } = await _sb.from('students').insert(row).select('id').single();
+      if (error) { console.error('Insert error:', error); showToast('DB保存エラー: ' + error.message); return; }
+      const idx2 = _allStudents.findIndex(x => x.name === s.name);
+      if (idx2 >= 0 && data) _allStudents[idx2]._id = data.id;
+      console.log('Inserted student:', s.name, 'id:', data && data.id);
+    }
+    showToast(s.name + ' を保存しました ✓');
+  } catch(e) {
+    console.error('saveStudentToList error:', e);
+    showToast('DB保存エラー: ' + e.message);
+  }
 }
 
-function deleteStudentFromList(name) {
+async function deleteStudentFromList(name) {
   if (!confirm('「' + name + '」のデータを削除してよろしいですか？\nこの操作は元に戻せません。')) return;
-  _allStudents = _allStudents.filter(x => x.name !== name);
-  _saveStudentsToStorage(_allStudents);
+  const s = _allStudents.find(x => x.name === name);
+  if (s && s._id) {
+    const { error } = await _sb.from('students').delete().eq('id', s._id);
+    if (error) { showToast('削除エラー: ' + error.message); return; }
+  }
   if (currentStudent && currentStudent.name === name) currentStudent = null;
-  renderStudentList();
-  renderWpStudentSelect();
+  await _loadStudentsFromSupabase();
   showToast(name + ' を削除しました');
 }
 
@@ -2973,35 +3113,34 @@ function renderStudentList() {
   var el = document.getElementById('student-list-dynamic');
   if (!el) return;
   var gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' };
-  var defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12, enrolled:'2024-04' },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23, enrolled:'2024-09' },
-  ];
-  var allSorted = defaults.filter(function(d){ return !_allStudents.find(function(s){ return s.name === d.name; }); }).concat(_allStudents);
-  var html = allSorted.map(function(s) {
-    var gl = gradeLabel[s.grade] || '';
-    var sl = s.stream === 'rikei' ? '理系' : '文系';
-    var catBadge = (s.univInfo && s.univInfo.cat === 'national') ? 'badge-national' : 'badge-private';
-    var diff = ((s.univInfo && s.univInfo.dev) || 0) - (s.devVal || 0);
-    var diffColor = diff > 10 ? '#c84b31' : diff > 5 ? '#c9a84c' : '#2a7f6f';
-    var av = s.name.charAt(0);
-    var enrolled = s.enrolled ? s.enrolled.replace('-', '年') + '月' : '—';
-    var dn = s.name.replace(/'/g, "\\'");
-    var isDefault = !_allStudents.find(function(x){ return x.name === s.name; });
-    return '<div class="student-row" onclick="loadStudentFromList(\'' + dn + '\')">'
-      + '<div class="student-avatar">' + av + '</div>'
-      + '<div class="student-info">'
-      + '<div class="student-name">' + s.name
-      + '<span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:8px;">ロードマップ ' + (s.roadmapCount||0) + '回</span>'
-      + (isDefault ? '' : '<button onclick="event.stopPropagation();deleteStudentFromList(\'' + dn + '\')" style="margin-left:8px;padding:2px 8px;font-size:10px;background:transparent;border:1px solid #e0c0b8;border-radius:4px;color:#c84b31;cursor:pointer;font-family:inherit;">削除</button>') + '</div>'
-      + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + '</div>'
-      + '</div>'
-      + '<div style="text-align:right;">'
-      + '<div class="badge ' + catBadge + '" style="margin-bottom:4px;">' + s.univName + (s.dept1 ? ' ' + s.dept1 : '') + '</div>'
-      + '<div style="font-size:11px;font-weight:700;color:' + diffColor + ';">偏差値 ' + (s.devVal || '—') + ' → ' + ((s.univInfo && s.univInfo.dev) || '—') + '（差' + (diff > 0 ? '+' : '') + diff + '）</div>'
-      + '</div>'
-      + '</div>';
-  }).join('');
+  var html = '';
+  if (_allStudents.length === 0) {
+    html = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">まだ生徒が登録されていません</div>';
+  } else {
+    html = _allStudents.map(function(s) {
+      var gl = gradeLabel[s.grade] || '';
+      var sl = s.stream === 'rikei' ? '理系' : '文系';
+      var catBadge = (s.univInfo && s.univInfo.cat === 'national') ? 'badge-national' : 'badge-private';
+      var diff = ((s.univInfo && s.univInfo.dev) || 0) - (s.devVal || 0);
+      var diffColor = diff > 10 ? '#c84b31' : diff > 5 ? '#c9a84c' : '#2a7f6f';
+      var av = s.name.charAt(0);
+      var enrolled = s.enrolled ? s.enrolled.replace('-', '年') + '月' : '—';
+      var dn = s.name.replace(/'/g, "\\'");
+      return '<div class="student-row" onclick="loadStudentFromList(\'' + dn + '\')">'
+        + '<div class="student-avatar">' + av + '</div>'
+        + '<div class="student-info">'
+        + '<div class="student-name">' + s.name
+        + '<span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:8px;">ロードマップ ' + (s.roadmapCount||0) + '回</span>'
+        + '<button onclick="event.stopPropagation();deleteStudentFromList(\'' + dn + '\')" style="margin-left:8px;padding:2px 8px;font-size:10px;background:transparent;border:1px solid #e0c0b8;border-radius:4px;color:#c84b31;cursor:pointer;font-family:inherit;">削除</button></div>'
+        + '<div class="student-meta">' + gl + ' / ' + sl + ' / 入塾：' + enrolled + '</div>'
+        + '</div>'
+        + '<div style="text-align:right;">'
+        + '<div class="badge ' + catBadge + '" style="margin-bottom:4px;">' + s.univName + (s.dept1 ? ' ' + s.dept1 : '') + '</div>'
+        + '<div style="font-size:11px;font-weight:700;color:' + diffColor + ';">偏差値 ' + (s.devVal || '—') + ' → ' + ((s.univInfo && s.univInfo.dev) || '—') + '（差' + (diff > 0 ? '+' : '') + diff + '）</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
   html += '<div class="student-row" onclick="showPage(\'new-student\')">'
     + '<div class="student-avatar" style="background:var(--border);color:var(--text-muted);">+</div>'
     + '<div class="student-info">'
@@ -3152,11 +3291,57 @@ function _renderProgressSummary(students) {
   }).join('');
 }
 
+document.addEventListener('DOMContentLoaded', async function(){
+  const loginScreen = document.getElementById('login-screen');
+  const appBody = document.getElementById('app-body');
+
+  // 既存セッション確認
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = '';
+    await _loadStudentsFromSupabase();
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appBody) appBody.style.display = 'none';
+  }
+
+  var el = document.getElementById('platon-api-key-input');
+  var k = localStorage.getItem('platon_api_key');
+  if (el && k) el.value = k;
+});
+
+
+// 月次ページ生徒選択
+function renderMonthlyStudentSelect() {
+  const sel = document.getElementById('monthly-student-sel');
+  if (!sel) return;
+  const gradeLabel = { high1:'高1', high2:'高2', high3:'高3', ronin:'浪人' };
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">── 生徒を選択 ──</option>';
+  _allStudents.forEach(s => {
+    const gl = gradeLabel[s.grade] || '';
+    const sl = s.stream === 'rikei' ? '理系' : '文系';
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name + '（' + gl + '・' + sl + '）';
+    if (currentStudent && s.name === currentStudent.name) opt.selected = true;
+    else if (s.name === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function monthlySelectStudent(name) {
+  if (!name) return;
+  const s = _allStudents.find(x => x.name === name);
+  if (s) { currentStudent = s; }
+}
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
   if (name === 'dashboard') { renderStudentList(); renderDashboardWidgets(); }
+  if (name === 'monthly') renderMonthlyStudentSelect();
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
@@ -3318,7 +3503,7 @@ function autoFillExamMonth() {
   document.getElementById('f-exam-month').value = `${y}-02`;
 }
 
-function generateRoadmap() {
+async function generateRoadmap() {
   const name     = document.getElementById('f-name').value || '新規生徒';
   const grade    = document.getElementById('f-grade').value;
   const stream   = document.getElementById('f-stream').value;
@@ -3405,9 +3590,7 @@ function generateRoadmap() {
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
 
-  // ダッシュボードに追加
-  saveStudentToList(currentStudent);
-
+  // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
   loading.classList.add('show');
   setTimeout(() => {
@@ -3418,6 +3601,11 @@ function generateRoadmap() {
     renderStudentList();
     showToast('ロードマップを生成しました ✓');
   }, 1800);
+
+  // ② Supabaseへの保存（バックグラウンドで実行、失敗してもロードマップには影響しない）
+  saveStudentToList(currentStudent).catch(function(e) {
+    console.error('保存エラー:', e);
+  });
 }
 
 function updateStepIndicator() {
@@ -6060,14 +6248,9 @@ function renderWpStudentSelect() {
   const sel = document.getElementById('wp-student-sel');
   if (!sel) return;
   const gradeLabel = { high1:'高1', high2:'高2', high3:'高3', ronin:'浪人' };
-  const defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12 },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23 },
-  ];
-  const allSorted = defaults.filter(d => !_allStudents.find(s => s.name === d.name)).concat(_allStudents);
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">── 生徒を選択 ──</option>';
-  allSorted.forEach(s => {
+  _allStudents.forEach(s => {
     const gl = gradeLabel[s.grade] || '';
     const sl = s.stream === 'rikei' ? '理系' : '文系';
     const opt = document.createElement('option');
@@ -6082,12 +6265,7 @@ function renderWpStudentSelect() {
 // 3ヶ月プラン用：生徒選択時にcurrentStudentを切り替え
 function wpSelectStudent(name) {
   if (!name) { wpInit(); return; }
-  const defaults = [
-    { name:'田中 悠斗', grade:'high3', stream:'rikei', univName:'東京大学', dept1:'理科一類', univInfo:{dev:72,cat:'national'}, devVal:68, months:12 },
-    { name:'佐藤 美咲', grade:'high2', stream:'bunkei', univName:'早稲田大学', dept1:'法学部', univInfo:{dev:65,cat:'private'}, devVal:56, months:23 },
-  ];
-  const allSorted = defaults.filter(d => !_allStudents.find(s => s.name === d.name)).concat(_allStudents);
-  const s = allSorted.find(x => x.name === name);
+  const s = _allStudents.find(x => x.name === name);
   if (s) { currentStudent = s; }
   wpInit();
 }
@@ -7698,6 +7876,7 @@ function toggleMonthlyAns() {
 
 
 </script>
+</div><!-- /app-body -->
 <!-- ── 参考書 手動追加モーダル ── -->
 <div id="add-book-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:16px;padding:1.8rem;width:min(520px,92vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);">
@@ -7838,5 +8017,26 @@ document.addEventListener('click',function(e){
   if(m&&e.target===m) closeAddBookModal();
 });
 </script>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--paper);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2.5rem;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.15);">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div style="font-size:28px;margin-bottom:8px;">🎓</div>
+      <div style="font-size:18px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;">プラトン 戦略管理システム</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">スタッフ専用ログイン</div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">メールアドレス</label>
+      <input id="login-email" type="email" placeholder="staff@example.com" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">パスワード</label>
+      <input id="login-password" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div id="login-error" style="display:none;font-size:12px;color:#c84b31;margin-bottom:12px;padding:8px 12px;background:#fef0ee;border-radius:6px;"></div>
+    <button id="login-btn" onclick="doLogin()" style="width:100%;padding:12px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">ログイン</button>
+    <div id="login-loading" style="display:none;text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted);">ログイン中...</div>
+  </div>
+</div>
 </body>
 </html>
