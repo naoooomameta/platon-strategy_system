@@ -4003,11 +4003,13 @@ function renderTimeline() {
   };
   const subLabelMap = {
     '英語R':'英語R','英語L':'英語L','英語リーディング':'英語R','英語リスニング':'英語L',
-    '数学':'数学','数学1A':'数学1A','数学2BC':'数学2BC',
+    '英語 リーディング':'英語R','英語 リスニング':'英語L',
+    '数学':'数学','数学1A':'数学IA','数学2BC':'数学IIB',
+    '数学IA':'数学IA','数学IIB':'数学IIB','数学IIBC':'数学IIB',
     '現代文':'現代文','古文':'古文','漢文':'漢文','国語':'国語',
     '日本史':'日本史','世界史':'世界史','地理':'地理','公民':'公民','社会':'社会',
-    '物理':'物理','化学':'化学','生物':'生物','理科':'理科','理科基礎':'理科基礎',
-    '情報':'情報',
+    '物理':'物理','化学':'化学','生物':'生物','理科':'理科','理科基礎':'理基',
+    '情報':'情報','総合教養':'総合教養',
   };
   const subPhasesMap = {
     '英語R':'英単語・文法 基礎固め→長文読解 強化期→実戦演習 仕上げ',
@@ -4047,9 +4049,17 @@ function renderTimeline() {
     const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
     const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
     const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
+    var shortLabel = subLabelMap[subName] || subLabelMap[subName.trim()] || subLabelMap[subName.replace(/\s/g,'')] || subName;
+    // 5文字以上の科目名は省略形に
+    if (shortLabel.length > 5) {
+      if (shortLabel.includes('リーディング')) shortLabel = '英語R';
+      else if (shortLabel.includes('リスニング')) shortLabel = '英語L';
+      else if (shortLabel.includes('理科基礎')) shortLabel = '理基';
+      else shortLabel = shortLabel.substring(0, 5);
+    }
     return {
-      label: subLabelMap[subName] || subName,
-      cls: subClsMap[subName] || 'eng',
+      label: shortLabel,
+      cls: subClsMap[subName] || subClsMap[subName.replace(/\s/g,'')] || 'eng',
       blocks: makeBlocks(0, months, relStart, relEnd, phases.join('→')),
     };
   });
@@ -5895,7 +5905,7 @@ function printPage(pageId, title) {
   header,.header-top,.header-nav{display:none!important;}
   .timeline{min-width:auto!important;width:100%!important;overflow:visible!important;}
   .timeline-wrapper{overflow:visible!important;}
-  .timeline-subject{width:56px!important;font-size:9px!important;word-break:keep-all;white-space:nowrap!important;line-height:1.3;overflow:hidden;text-overflow:ellipsis;}
+  .timeline-subject{width:80px!important;font-size:9px!important;white-space:normal!important;line-height:1.3;overflow:hidden;word-break:keep-all;text-align:right;}
   .timeline-block{font-size:8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1.2;padding:1px 3px!important;}
   .timeline-track{height:28px!important;overflow:hidden!important;}
   .timeline-row{gap:4px!important;margin-bottom:4px!important;}
