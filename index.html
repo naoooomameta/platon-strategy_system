@@ -869,7 +869,7 @@
 </head>
 <body>
 
-<div id="login-screen" style="position:fixed;inset:0;background:var(--paper);z-index:99999;display:none;align-items:center;justify-content:center;">
+<div id="login-screen" style="position:fixed;inset:0;background:var(--paper);z-index:99999;display:flex;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:20px;padding:2.5rem;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.15);">
     <div style="text-align:center;margin-bottom:2rem;">
       <div style="font-size:28px;margin-bottom:8px;">🎓</div>
@@ -890,7 +890,7 @@
   </div>
 </div>
 
-<div id="app-body" style="display:block;">
+<div id="app-body" style="display:none;">
 <header>
   <div class="header-top">
     <div class="logo">
@@ -1426,7 +1426,7 @@ function updateSubCheckStyle(cb) {
     </div>
 
     <!-- INFO BOX -->
-    <div class="info-box fade-in" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#1a1a2e!important;">
+    <div class="info-box fade-in" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)!important;">
       <div class="info-item">
         <label>生徒名</label>
         <div class="val" id="info-name">—</div>
@@ -3025,18 +3025,21 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
-    // ログイン不要モード：常にアプリを表示して生徒データを読み込む
-    const loginScreen = document.getElementById('login-screen');
-    const appBody = document.getElementById('app-body');
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) {
-      appBody.style.display = '';
-      appBody.style.visibility = 'visible';
+    const token = _getAccessToken();
+    console.log('[DEBUG] DOMContentLoaded session check:', token ? 'OK' : 'NULL');
+    if (token) {
+      const loginScreen = document.getElementById('login-screen');
+      const appBody = document.getElementById('app-body');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appBody) {
+        appBody.style.display = '';
+        appBody.style.visibility = 'visible';
+      }
+      await _loadStudentsFromSupabase();
+      showPage('dashboard');
     }
-    await _loadStudentsFromSupabase();
-    showPage('dashboard');
   } catch(e) {
-    console.error('[DEBUG] DOMContentLoaded error:', e);
+    console.error('[DEBUG] DOMContentLoaded auth check error:', e);
   }
 });
 
@@ -3403,10 +3406,16 @@ document.addEventListener('DOMContentLoaded', async function(){
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
 
-  // ログイン不要モード：常にアプリを表示
-  if (loginScreen) loginScreen.style.display = 'none';
-  if (appBody) appBody.style.display = '';
-  await _loadStudentsFromSupabase();
+  // 既存セッション確認（localStorageから直接）
+  const token = _getAccessToken();
+  if (token) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = '';
+    await _loadStudentsFromSupabase();
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appBody) appBody.style.display = 'none';
+  }
 
   var el = document.getElementById('platon-api-key-input');
   var k = localStorage.getItem('platon_api_key');
@@ -5930,61 +5939,16 @@ function printPage(pageId, title) {
     if (cloneAdvContent) cloneAdvContent.remove();
   }
 
-  // クローン内のボタンを再度削除
+  // クローン内のボタンを再度削除（アドバイス注入で編集ボタンが復活するため）
   clone.querySelectorAll('button').forEach(el => el.remove());
 
-  // display:none の要素を全て削除
-  clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => el.remove());
+  // display:none の要素を削除（advice-contentは除外）
+  clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => {
+    if (el.id === 'advice-content') return;
+    el.remove();
+  });
 
-  let bodyHTML = clone.innerHTML;
-
-  // ===== アドバイスセクションを直接HTML文字列として構築・注入 =====
-  const origAdvContent = document.getElementById('advice-content');
-  if (origAdvContent && window.getComputedStyle(origAdvContent).display !== 'none') {
-    console.log('[DEBUG] Building advice HTML for PDF');
-    const summaryEl = document.getElementById('advice-summary');
-    const summaryTxt = summaryEl ? summaryEl.innerText.trim() : '';
-    const subjEl = document.getElementById('advice-subjects');
-    const taskEl = document.getElementById('advice-tasks');
-
-    let advHTML = '<div style="margin-top:2rem;page-break-inside:avoid;">';
-    advHTML += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;">';
-    advHTML += '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);display:flex;align-items:center;justify-content:center;font-size:14px;color:#c9a84c;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">塾</div>';
-    advHTML += '<div style="font-size:14px;font-weight:700;color:#1a1a2e;">塾長からの戦略アドバイス</div></div>';
-
-    // 総合戦略コメント
-    if (summaryTxt) {
-      advHTML += '<div style="background:linear-gradient(135deg,#fdf8f0,#f5ede0);border-left:4px solid #c9a84c;border-radius:0 10px 10px 0;padding:1.2rem 1.4rem;margin-bottom:1.2rem;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-      advHTML += '<div style="font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:0.08em;margin-bottom:8px;">📋 総合戦略コメント</div>';
-      advHTML += '<div style="font-size:13px;line-height:1.8;color:#1a1a2e;">' + summaryTxt + '</div></div>';
-    }
-
-    // 科目別アドバイス
-    if (subjEl && subjEl.children.length > 0) {
-      advHTML += '<div style="font-size:12px;font-weight:700;color:#6b6b80;margin-bottom:10px;">科目別 重点アドバイス</div>';
-      advHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.2rem;">';
-      Array.from(subjEl.children).forEach(function(card) {
-        var cardClone = card.cloneNode(true);
-        cardClone.querySelectorAll('button').forEach(b => b.remove());
-        advHTML += cardClone.outerHTML;
-      });
-      advHTML += '</div>';
-    }
-
-    // 今月の最優先タスク
-    if (taskEl && taskEl.children.length > 0) {
-      advHTML += '<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border-radius:10px;padding:1.2rem 1.4rem;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-      advHTML += '<div style="font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:0.08em;margin-bottom:10px;">🎯 今月の最優先タスク</div>';
-      Array.from(taskEl.children).forEach(function(item) {
-        advHTML += '<div style="color:rgba(255,255,255,0.9);font-size:13px;margin-bottom:6px;">' + item.innerHTML + '</div>';
-      });
-      advHTML += '</div>';
-    }
-    advHTML += '</div>';
-    bodyHTML += advHTML;
-  } else {
-    console.log('[DEBUG] Advice not generated, skipping');
-  }
+  const bodyHTML = clone.innerHTML;
 
   // メインページの全CSSを取得（タイムラインなどの複雑なスタイルも含む）
   const mainStyle = document.querySelector('style') ? document.querySelector('style').textContent : '';
@@ -5998,7 +5962,7 @@ function printPage(pageId, title) {
   /* PDF用オーバーライド */
   body{background:white!important;font-size:13px;padding:0;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  .info-box{background:#1a1a2e!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:white!important;}
+  .info-box{background:linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   .container{max-width:800px;margin:0 auto;padding:28px 32px;}
   .page{display:block!important;}
   header,.header-top,.header-nav{display:none!important;}
@@ -6016,7 +5980,7 @@ function printPage(pageId, title) {
   .test-dot{font-size:7px!important;}
   .test-markers{height:20px!important;}
   /* ヘッダーバンド */
-  .print-header{background:#1a1a2e!important;color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-header{background:var(--ink);color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .print-logo{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
   .print-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;margin-top:4px;}
   .print-meta{font-size:11px;color:rgba(255,255,255,.5);text-align:right;}
