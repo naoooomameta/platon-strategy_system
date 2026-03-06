@@ -573,6 +573,8 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     margin-bottom: 2rem;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .info-item label {
     font-size: 10px;
@@ -1424,7 +1426,7 @@ function updateSubCheckStyle(cb) {
     </div>
 
     <!-- INFO BOX -->
-    <div class="info-box fade-in">
+    <div class="info-box fade-in" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)!important;">
       <div class="info-item">
         <label>生徒名</label>
         <div class="val" id="info-name">—</div>
@@ -5912,6 +5914,8 @@ function printPage(pageId, title) {
   ${mainStyle}
   /* PDF用オーバーライド */
   body{background:white!important;font-size:13px;padding:0;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .info-box{background:linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   .container{max-width:800px;margin:0 auto;padding:28px 32px;}
   .page{display:block!important;}
   header,.header-top,.header-nav{display:none!important;}
