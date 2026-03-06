@@ -5922,22 +5922,27 @@ function printPage(pageId, title) {
   const advEmpty = clone.querySelector('#advice-empty');
   const advLoading = clone.querySelector('#advice-loading');
   if (advContent) {
-    // 元ページでアドバイスが表示中かチェック
+    // 元ページでアドバイスが表示中かチェック（computedStyleで確実に）
     const origContent = page.querySelector('#advice-content');
-    if (origContent && origContent.style.display !== 'none') {
-      advContent.style.display = '';
+    const isVisible = origContent && window.getComputedStyle(origContent).display !== 'none';
+    console.log('[DEBUG] PDF advice-content visible:', isVisible, 'origDisplay:', origContent ? origContent.style.display : 'N/A');
+    if (isVisible) {
+      // 確実にblock表示にする（styleAttributeごと上書き）
+      advContent.setAttribute('style', 'display:block !important;');
       if (advEmpty) advEmpty.remove();
       if (advLoading) advLoading.remove();
     } else {
-      // アドバイス未生成ならセクション全体を削除（空メッセージが出るのを防ぐ）
       if (advContent) advContent.remove();
       if (advEmpty) advEmpty.remove();
       if (advLoading) advLoading.remove();
     }
   }
 
-  // display:none の要素を全て削除（非表示セクションがPDFに残らないように）
-  clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => el.remove());
+  // display:none の要素を全て削除（ただしadvice-contentは上で処理済みなので除外）
+  clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => {
+    if (el.id === 'advice-content') return; // 上で処理済み
+    el.remove();
+  });
 
   const bodyHTML = clone.innerHTML;
 
