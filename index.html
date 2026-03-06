@@ -3023,9 +3023,9 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
-    const { data: { session } } = await _sb.auth.getSession();
-    console.log('[DEBUG] DOMContentLoaded session check:', session ? 'OK' : 'NULL');
-    if (session) {
+    const token = _getAccessToken();
+    console.log('[DEBUG] DOMContentLoaded session check:', token ? 'OK' : 'NULL');
+    if (token) {
       const loginScreen = document.getElementById('login-screen');
       const appBody = document.getElementById('app-body');
       if (loginScreen) loginScreen.style.display = 'none';
@@ -3042,57 +3042,55 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 // ===== Supabase直接REST APIヘルパー =====
+function _getAccessToken() {
+  try {
+    const raw = localStorage.getItem('platon-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed.access_token || (parsed.session && parsed.session.access_token) || null;
+  } catch(e) { return null; }
+}
+function _sbHeaders() {
+  const token = _getAccessToken();
+  console.log('[DEBUG] _sbHeaders token:', token ? 'found (' + token.substring(0,20) + '...)' : 'NULL');
+  return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + (token || SUPABASE_ANON_KEY),
+    'Content-Type': 'application/json'
+  };
+}
 async function _sbRestGet(table, params) {
-  const { data: { session } } = await _sb.auth.getSession();
   const query = params || 'select=*&order=created_at.asc';
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json'
-    }
+    headers: _sbHeaders()
   });
   if (!res.ok) throw new Error('REST GET error: ' + res.status);
   return await res.json();
 }
 async function _sbRestPost(table, row) {
-  const { data: { session } } = await _sb.auth.getSession();
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
+    headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
     body: JSON.stringify(row)
   });
   if (!res.ok) throw new Error('REST POST error: ' + res.status + ' ' + await res.text());
   return await res.json();
 }
 async function _sbRestPatch(table, id, row) {
-  const { data: { session } } = await _sb.auth.getSession();
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
+    headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
     body: JSON.stringify(row)
   });
   if (!res.ok) throw new Error('REST PATCH error: ' + res.status);
   return await res.json();
 }
 async function _sbRestDelete(table, id) {
-  const { data: { session } } = await _sb.auth.getSession();
+  const h = _sbHeaders();
+  delete h['Content-Type'];
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
     method: 'DELETE',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY),
-    }
+    headers: h
   });
   if (!res.ok) throw new Error('REST DELETE error: ' + res.status);
 }
@@ -3406,9 +3404,9 @@ document.addEventListener('DOMContentLoaded', async function(){
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
 
-  // 既存セッション確認
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session) {
+  // 既存セッション確認（localStorageから直接）
+  const token = _getAccessToken();
+  if (token) {
     if (loginScreen) loginScreen.style.display = 'none';
     if (appBody) appBody.style.display = '';
     await _loadStudentsFromSupabase();
