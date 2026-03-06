@@ -867,6 +867,27 @@
 </head>
 <body>
 
+<div id="login-screen" style="position:fixed;inset:0;background:var(--paper);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2.5rem;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.15);">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div style="font-size:28px;margin-bottom:8px;">🎓</div>
+      <div style="font-size:18px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;">プラトン 戦略管理システム</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">スタッフ専用ログイン</div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">メールアドレス</label>
+      <input id="login-email" type="email" placeholder="staff@example.com" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">パスワード</label>
+      <input id="login-password" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div id="login-error" style="display:none;font-size:12px;color:#c84b31;margin-bottom:12px;padding:8px 12px;background:#fef0ee;border-radius:6px;"></div>
+    <button id="login-btn" onclick="doLogin()" style="width:100%;padding:12px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">ログイン</button>
+    <div id="login-loading" style="display:none;text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted);">ログイン中...</div>
+  </div>
+</div>
+
 <div id="app-body" style="display:none;">
 <header>
   <div class="header-top">
@@ -2967,24 +2988,66 @@ document.addEventListener('keydown', function(e) {
 
 // 認証状態の監視
 _sb.auth.onAuthStateChange(async function(event, session) {
+  console.log('[DEBUG] onAuthStateChange:', event, session ? 'session=OK' : 'session=NULL');
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
+  console.log('[DEBUG] loginScreen found:', !!loginScreen, 'appBody found:', !!appBody);
   if (session) {
     if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) appBody.style.display = '';
-    await _loadStudentsFromSupabase();
+    if (appBody) {
+      appBody.style.display = '';
+      appBody.style.visibility = 'visible';
+      appBody.style.opacity = '1';
+      console.log('[DEBUG] appBody display set to visible');
+    }
+    try {
+      await _loadStudentsFromSupabase();
+      console.log('[DEBUG] Students loaded successfully');
+    } catch(e) {
+      console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
+    }
+    // ダッシュボードを明示的に表示
+    try {
+      showPage('dashboard');
+      console.log('[DEBUG] Dashboard shown');
+    } catch(e) {
+      console.error('[DEBUG] showPage error:', e);
+    }
   } else {
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appBody) appBody.style.display = 'none';
   }
 });
 
+// ページ読み込み完了時にも認証チェック
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('[DEBUG] DOMContentLoaded fired');
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    console.log('[DEBUG] DOMContentLoaded session check:', session ? 'OK' : 'NULL');
+    if (session) {
+      const loginScreen = document.getElementById('login-screen');
+      const appBody = document.getElementById('app-body');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appBody) {
+        appBody.style.display = '';
+        appBody.style.visibility = 'visible';
+      }
+      await _loadStudentsFromSupabase();
+      showPage('dashboard');
+    }
+  } catch(e) {
+    console.error('[DEBUG] DOMContentLoaded auth check error:', e);
+  }
+});
+
 // ===== 生徒リスト管理（Supabase版）=====
 async function _loadStudentsFromSupabase() {
+  console.log('[DEBUG] _loadStudentsFromSupabase called');
   try {
     const { data, error } = await _sb.from('students').select('*').order('created_at', { ascending: true });
     if (error) { console.warn('DB読込エラー:', error.message); _allStudents = []; }
-    else { _allStudents = (data || []).map(_rowToStudent); }
+    else { _allStudents = (data || []).map(_rowToStudent); console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase'); }
   } catch(e) {
     console.warn('DB接続エラー:', e.message);
     _allStudents = [];
@@ -3058,7 +3121,9 @@ async function saveStudentToList(s) {
 
   // ② セッション確認してからSupabaseへ保存
   try {
-    const { data: { session } } = await _sb.auth.getSession();
+    console.log('[DEBUG] saveStudentToList called for:', s.name);
+    const { data: { session }, error: sessErr } = await _sb.auth.getSession();
+    console.log('[DEBUG] getSession result:', session ? 'OK (user=' + session.user.email + ')' : 'NULL', sessErr || '');
     if (!session) {
       showToast('セッション切れ：再ログインしてください');
       console.warn('No session when saving student');
@@ -8018,25 +8083,5 @@ document.addEventListener('click',function(e){
 });
 </script>
 
-<div id="login-screen" style="position:fixed;inset:0;background:var(--paper);z-index:99999;display:flex;align-items:center;justify-content:center;">
-  <div style="background:white;border-radius:20px;padding:2.5rem;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.15);">
-    <div style="text-align:center;margin-bottom:2rem;">
-      <div style="font-size:28px;margin-bottom:8px;">🎓</div>
-      <div style="font-size:18px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;">プラトン 戦略管理システム</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">スタッフ専用ログイン</div>
-    </div>
-    <div style="margin-bottom:1rem;">
-      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">メールアドレス</label>
-      <input id="login-email" type="email" placeholder="staff@example.com" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-    </div>
-    <div style="margin-bottom:1.5rem;">
-      <label style="font-size:12px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;">パスワード</label>
-      <input id="login-password" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-    </div>
-    <div id="login-error" style="display:none;font-size:12px;color:#c84b31;margin-bottom:12px;padding:8px 12px;background:#fef0ee;border-radius:6px;"></div>
-    <button id="login-btn" onclick="doLogin()" style="width:100%;padding:12px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">ログイン</button>
-    <div id="login-loading" style="display:none;text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted);">ログイン中...</div>
-  </div>
-</div>
 </body>
 </html>
