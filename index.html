@@ -5917,30 +5917,34 @@ function printPage(pageId, title) {
   clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
   clone.querySelectorAll('[style*="outline"]').forEach(el => { el.style.outline = ''; });
 
-  // アドバイスセクション: 生成済みなら表示、未生成なら非表示要素を削除
-  const advContent = clone.querySelector('#advice-content');
-  const advEmpty = clone.querySelector('#advice-empty');
-  const advLoading = clone.querySelector('#advice-loading');
-  if (advContent) {
-    // 元ページでアドバイスが表示中かチェック（computedStyleで確実に）
-    const origContent = page.querySelector('#advice-content');
-    const isVisible = origContent && window.getComputedStyle(origContent).display !== 'none';
-    console.log('[DEBUG] PDF advice-content visible:', isVisible, 'origDisplay:', origContent ? origContent.style.display : 'N/A');
-    if (isVisible) {
-      // 確実にblock表示にする（styleAttributeごと上書き）
-      advContent.setAttribute('style', 'display:block !important;');
-      if (advEmpty) advEmpty.remove();
-      if (advLoading) advLoading.remove();
-    } else {
-      if (advContent) advContent.remove();
-      if (advEmpty) advEmpty.remove();
-      if (advLoading) advLoading.remove();
+  // アドバイスセクション: ライブDOMから直接HTMLを取得してクローンに注入
+  const origAdvContent = page.querySelector('#advice-content');
+  const cloneAdvContent = clone.querySelector('#advice-content');
+  const cloneAdvEmpty = clone.querySelector('#advice-empty');
+  const cloneAdvLoading = clone.querySelector('#advice-loading');
+
+  // ローディング・空メッセージは常に削除
+  if (cloneAdvLoading) cloneAdvLoading.remove();
+  if (cloneAdvEmpty) cloneAdvEmpty.remove();
+
+  if (origAdvContent && window.getComputedStyle(origAdvContent).display !== 'none') {
+    // アドバイスが生成済み → ライブDOMのHTMLを直接クローンに注入
+    console.log('[DEBUG] Advice is visible, injecting into PDF');
+    if (cloneAdvContent) {
+      cloneAdvContent.innerHTML = origAdvContent.innerHTML;
+      cloneAdvContent.setAttribute('style', 'display:block;');
     }
+  } else {
+    console.log('[DEBUG] Advice not visible, removing from PDF');
+    if (cloneAdvContent) cloneAdvContent.remove();
   }
 
-  // display:none の要素を全て削除（ただしadvice-contentは上で処理済みなので除外）
+  // クローン内のボタンを再度削除（アドバイス注入で編集ボタンが復活するため）
+  clone.querySelectorAll('button').forEach(el => el.remove());
+
+  // display:none の要素を削除（advice-contentは除外）
   clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => {
-    if (el.id === 'advice-content') return; // 上で処理済み
+    if (el.id === 'advice-content') return;
     el.remove();
   });
 
