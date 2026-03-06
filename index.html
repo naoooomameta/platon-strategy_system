@@ -5801,7 +5801,7 @@ function resetPageEdit(pageId) {
 
 // ===== 共通PDF変換ヘルパー =====
 // CSS変数（カスタムプロパティ）を実際の色値に置換する
-// html2canvasはCSS変数を解釈できないため、PDF出力前に展開が必要
+// html2canvasはiframe内でCSS変数を解釈できないため、PDF生成前に展開が必要
 function resolveCssVars(html) {
   var map = {
     'var(--ink)':        '#1a1a2e',
@@ -5816,13 +5816,10 @@ function resolveCssVars(html) {
     'var(--text)':       '#2c2c3e',
     'var(--text-muted)': '#6b6b80',
     'var(--border)':     '#d8d0c0',
-    'var(--white)':      '#ffffff',
-    'var(--shadow)':     '0 4px 24px rgba(26,26,46,0.12)',
-    'var(--shadow-lg)':  '0 12px 48px rgba(26,26,46,0.18)',
+    'var(--white)':      '#ffffff'
   };
   var result = html;
   Object.keys(map).forEach(function(key) {
-    // グローバル置換（splitJoinでreplaceAllの代替）
     result = result.split(key).join(map[key]);
   });
   return result;
@@ -5843,11 +5840,9 @@ function _renderHtmlToPDF(htmlStr, filename) {
   iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4W + 'px;height:20000px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
-  // CSS変数をhtml2canvas対応の実色値に展開してからiframeへ書き込む
-  var resolvedHtml = resolveCssVars(htmlStr);
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
   iDoc.open('text/html', 'replace');
-  iDoc.write(resolvedHtml);
+  iDoc.write(resolveCssVars(htmlStr));
   iDoc.close();
 
   setTimeout(function() {
@@ -5947,35 +5942,44 @@ function printPage(pageId, title) {
   clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
   clone.querySelectorAll('[style*="outline"]').forEach(el => { el.style.outline = ''; });
 
-  // アドバイスセクション: ライブDOMから直接HTMLを取得してクローンに注入
+  // ━━━━━ 塾長アドバイス ━━━━━
+  // advice-content は .container の外側に置かれているため、
+  // cloneNode(true) では取得できない。ライブDOMから直接カードを取得して追加する。
   const origAdvContent = page.querySelector('#advice-content');
-  const cloneAdvContent = clone.querySelector('#advice-content');
-  const cloneAdvEmpty = clone.querySelector('#advice-empty');
-  const cloneAdvLoading = clone.querySelector('#advice-loading');
+  const adviceIsVisible = origAdvContent && origAdvContent.style.display !== 'none';
 
-  // ローディング・空メッセージは常に削除
-  if (cloneAdvLoading) cloneAdvLoading.remove();
-  if (cloneAdvEmpty) cloneAdvEmpty.remove();
-
-  if (origAdvContent && origAdvContent.style.display !== 'none') {
-    // アドバイスが生成済み → ライブDOMのHTMLを直接クローンに注入
-    console.log('[DEBUG] Advice is visible, injecting into PDF');
-    if (cloneAdvContent) {
-      cloneAdvContent.innerHTML = origAdvContent.innerHTML;
-      cloneAdvContent.setAttribute('style', 'display:block;');
+  if (adviceIsVisible) {
+    // アドバイスカード全体（.card親要素）をクローン
+    const adviceCard = origAdvContent.closest('.card') || origAdvContent.parentElement;
+    if (adviceCard) {
+      const advCardClone = adviceCard.cloneNode(true);
+      // クローン内のloading・emptyを削除
+      const acLoading = advCardClone.querySelector('#advice-loading');
+      const acEmpty   = advCardClone.querySelector('#advice-empty');
+      if (acLoading) acLoading.remove();
+      if (acEmpty)   acEmpty.remove();
+      // advice-contentの中身をライブDOMから直接注入して表示
+      const acContent = advCardClone.querySelector('#advice-content');
+      if (acContent) {
+        acContent.innerHTML = origAdvContent.innerHTML;
+        acContent.style.cssText = 'display:block;';
+        acContent.removeAttribute('contenteditable');
+      }
+      // ボタン・編集UI削除
+      advCardClone.querySelectorAll('button').forEach(function(el){ el.remove(); });
+      advCardClone.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+      // cloneに追加
+      clone.appendChild(advCardClone);
     }
-  } else {
-    console.log('[DEBUG] Advice not visible, removing from PDF');
-    if (cloneAdvContent) cloneAdvContent.remove();
   }
 
-  // クローン内のボタンを再度削除（アドバイス注入で編集ボタンが復活するため）
+  // クローン内のボタンを再度削除
   clone.querySelectorAll('button').forEach(el => el.remove());
 
-  // display:none の要素を削除（advice-content本体と、その子孫は除外）
+  // display:none の要素を削除（advice-content本体と子孫は除外）
   clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(el => {
     if (el.id === 'advice-content') return;
-    if (el.closest && el.closest('#advice-content')) return; // advice-content内の子孫も保護
+    if (el.closest && el.closest('#advice-content')) return;
     el.remove();
   });
 
