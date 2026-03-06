@@ -4343,7 +4343,7 @@ function printRoadmapPDF() {
     ];
     const SUBJ_W = 46;
 
-    let h = '<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:\'Noto Sans JP\',sans-serif;">';
+    let h = '<div class="chart-wrap"><table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:\'Noto Sans JP\',sans-serif;">';
 
     // ── フェーズ行 ──
     h += '<tr>';
@@ -4367,7 +4367,7 @@ function printRoadmapPDF() {
     // ── 科目行（フェーズごとにcolspan結合セル） ──
     subjects.forEach(function(sub) {
       h += '<tr>';
-      h += '<td style="padding:0 4px;background:#fafaf8;font-size:12px;font-weight:700;color:'+sub.color+';text-align:center;border:1px solid #ccc;white-space:nowrap;vertical-align:middle;height:36px;">'+sub.label+'</td>';
+      h += '<td style="padding:0 4px;background:#fafaf8;font-size:11px;font-weight:700;color:'+sub.color+';text-align:center;border:1px solid #ccc;vertical-align:middle;height:36px;word-break:keep-all;">'+sub.label+'</td>';
       phaseDef.forEach(function(ph, pi) {
         h += '<td colspan="'+ph.span+'" style="'
           + 'padding:8px 10px;'
@@ -4377,7 +4377,7 @@ function printRoadmapPDF() {
           + 'border-left:2px solid '+sub.color+';'
           + 'border-right:2px solid '+ph.border+';'
           + 'font-size:11px;font-weight:700;color:'+sub.color+';'
-          + 'white-space:nowrap;vertical-align:middle;'
+          + 'vertical-align:middle;word-break:break-word;'
           + '-webkit-print-color-adjust:exact;print-color-adjust:exact;'
           + '">'
           + sub.phases[pi]
@@ -4399,7 +4399,7 @@ function printRoadmapPDF() {
     });
     h += '</tr>';
 
-    h += '</table>';
+    h += '</table></div>';
 
     // 凡例
     h += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding:7px 12px;background:#f9f7f4;border-radius:6px;">';
@@ -4622,7 +4622,7 @@ function printRoadmapPDF() {
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0;}'
     + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
-    + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;}'
+    + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}.chart-wrap{page-break-inside:avoid;break-inside:avoid;}table{page-break-inside:avoid;break-inside:avoid;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:7mm 10mm;size:A4;}}'
     + '</style></head><body>'
 
@@ -5694,7 +5694,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
         logging: false,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: ['.pdf-section'], avoid: ['table', '.card', '.chart-wrap', 'canvas', 'img'] }
     };
 
     html2pdf().set(opt).from(body).save().then(function() {
