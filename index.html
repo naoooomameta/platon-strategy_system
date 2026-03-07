@@ -5807,8 +5807,8 @@ function resolveCssVars(html) {
 
   // ── Step1: CSS変数を実色値に展開 ──────────────────────────────
   var varMap = {
-    'var(--ink)':        '#1a1a2e',
-    'var(--ink-light)':  '#2d2d4e',
+    'var(--ink)':        '#262642',
+    'var(--ink-light)':  '#262642',
     'var(--paper)':      '#f5f0e8',
     'var(--paper-dark)': '#ede8dc',
     'var(--accent)':     '#c84b31',
@@ -5830,7 +5830,7 @@ function resolveCssVars(html) {
   // スペース・%・順番の違いに関係なく「最初のカラーストップ色」に置換
   // html2canvasはgradientを描画できないため全て単色化する
   var colorPriority = {
-    '#1a1a2e': 0, '#2d2d4e': 1,  // 紺系 → 濃い方を使う
+    '#1a1a2e': 0, '#2d2d4e': 1, '#262642': 0,  // 紺系
     '#fdf8f0': 0, '#f5ede0': 1,  // クリーム系
     '#2a7f6f': 0, '#3aa88f': 1,  // ティール系
     '#c84b31': 0, '#e8735a': 1,  // 赤系
@@ -5848,9 +5848,16 @@ function resolveCssVars(html) {
     if (colors.length === 0) return 'transparent';
     // colorPriorityで優先度0（濃い・メイン）のものを返す
     for (var i = 0; i < colors.length; i++) {
-      if (colorPriority[colors[i]] === 0) return colors[i];
+      var c = colors[i];
+      if (colorPriority[c] === 0) {
+        // 紺系グラデーションは#262642で統一
+        if (c === '#1a1a2e' || c === '#2d2d4e') return '#262642';
+        return c;
+      }
     }
-    return colors[0]; // フォールバック：最初の色
+    // フォールバック：紺系なら#262642、それ以外は最初の色
+    if (colors[0] === '#1a1a2e' || colors[0] === '#2d2d4e') return '#262642';
+    return colors[0];
   });
 
   // ── Step3: rgba半透明の白を実色値に変換（暗背景上の白文字が消えないように）──
@@ -6076,9 +6083,9 @@ function printPage(pageId, title) {
   .timeline-block.sci{background:#4a6fa5!important;}
   .timeline-block.etc{background:#6a1b9a!important;}
   /* info-box（インフォボックス）確実に紺色 */
-  .info-box{background:#1a1a2e!important;}
+  .info-box{background:#262642!important;}
   /* ヘッダーバンド */
-  .print-header{background:#1a1a2e;color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-header{background:#262642;color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .print-logo{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
   .print-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;margin-top:4px;}
   .print-meta{font-size:11px;color:rgba(255,255,255,.5);text-align:right;}
