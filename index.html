@@ -4769,7 +4769,7 @@ function printRoadmapPDF() {
     + '<title>合格ロードマップ｜' + s.name + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">'
     + '<style>'
-    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
     + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
     + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}.chart-wrap{page-break-inside:avoid;break-inside:avoid;}table{page-break-inside:avoid;break-inside:avoid;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:7mm 10mm;size:A4;}}'
@@ -5874,8 +5874,30 @@ function resolveCssVars(html) {
     var v = Math.round(255 * (1 - alpha) + 26 * alpha);
     return 'rgb(' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+46*alpha) + ')';
   });
+  // 残りの全rgbaを白背景との合成で実色化（html2canvasの半透明描画不具合を回避）
+  result = result.replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/g, function(m, r, g, b, a) {
+    var alpha = parseFloat(a);
+    var rr = Math.round(parseInt(r) * alpha + 255 * (1 - alpha));
+    var gg = Math.round(parseInt(g) * alpha + 255 * (1 - alpha));
+    var bb = Math.round(parseInt(b) * alpha + 255 * (1 - alpha));
+    return 'rgb(' + rr + ',' + gg + ',' + bb + ')';
+  });
 
-  // ── Step4: インラインwidthを拡張（timeline-subject）──────────
+  // ── Step4: 8桁HEXカラー（#rrggbbaa）→ 実色値に変換 ──
+  // html2canvasは8桁HEXを正しく描画できないため、白背景との合成色に変換
+  result = result.replace(/#([0-9a-fA-F]{6})([0-9a-fA-F]{2})\b/g, function(m, hex6, hexAlpha) {
+    var a = parseInt(hexAlpha, 16) / 255;
+    var r = parseInt(hex6.substr(0,2), 16);
+    var g = parseInt(hex6.substr(2,2), 16);
+    var b = parseInt(hex6.substr(4,2), 16);
+    // 白背景(255)との合成
+    var rr = Math.round(r * a + 255 * (1 - a));
+    var gg = Math.round(g * a + 255 * (1 - a));
+    var bb = Math.round(b * a + 255 * (1 - a));
+    return 'rgb(' + rr + ',' + gg + ',' + bb + ')';
+  });
+
+  // ── Step5: インラインwidthを拡張（timeline-subject）──────────
   result = result.split('class="timeline-subject" style="width:80px;').join('class="timeline-subject" style="width:96px;');
 
   return result;
@@ -5906,10 +5928,19 @@ function _renderHtmlToPDF(htmlStr, filename) {
     // bodyをA4幅に固定し、内側paddingで余白を確保（jsPDFのmarginは0）
     body.style.cssText = 'margin:0;padding:10px 14px;overflow:visible;width:' + A4W + 'px;box-sizing:border-box;';
 
+    // ── iframe内の全要素にprint-color-adjustを強制付与 ──
+    try {
+      var allEls = iDoc.querySelectorAll('*');
+      for (var i = 0; i < allEls.length; i++) {
+        allEls[i].style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+        allEls[i].style.setProperty('print-color-adjust', 'exact', 'important');
+      }
+    } catch(e) {}
+
     var opt = {
       margin: 0,          // ← jsPDF側の余白はゼロ（HTML側で管理）
       filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'png' },
       html2canvas: {
         scale: 2,
         useCORS: true,
@@ -5923,6 +5954,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
         windowWidth: A4W,
         windowHeight: 20000,
         logging: false,
+        removeContainer: true,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: ['.pdf-section'], avoid: ['table', '.card', '.chart-wrap', 'canvas', 'img'] }
@@ -5932,7 +5964,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
       var el = document.getElementById(IFRAME_ID);
       if (el) el.remove();
     });
-  }, 800);
+  }, 1500);
 }
 
 function downloadDynPDF() {
