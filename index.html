@@ -5803,7 +5803,10 @@ function resetPageEdit(pageId) {
 // CSS変数（カスタムプロパティ）を実際の色値に置換する
 // html2canvasはiframe内でCSS変数を解釈できないため、PDF生成前に展開が必要
 function resolveCssVars(html) {
-  var map = {
+  var result = html;
+
+  // ── Step1: CSS変数を実色値に展開 ──────────────────────────────
+  var varMap = {
     'var(--ink)':        '#1a1a2e',
     'var(--ink-light)':  '#2d2d4e',
     'var(--paper)':      '#f5f0e8',
@@ -5816,14 +5819,67 @@ function resolveCssVars(html) {
     'var(--text)':       '#2c2c3e',
     'var(--text-muted)': '#6b6b80',
     'var(--border)':     '#d8d0c0',
-    'var(--white)':      '#ffffff'
+    'var(--white)':      '#ffffff',
+    'var(--shadow)':     'none',
+    'var(--shadow-lg)':  'none'
   };
-  var result = html;
-  Object.keys(map).forEach(function(key) {
-    result = result.split(key).join(map[key]);
+  Object.keys(varMap).forEach(function(k){ result = result.split(k).join(varMap[k]); });
+
+  // ── Step2: linear-gradient → 単色に変換（html2canvasはgradientを描画できない）──
+  var gradMap = {
+    // 紺系（ヘッダー・インフォボックス・アドバイスタスク）
+    'linear-gradient(135deg,#1a1a2e,#2d2d4e)':              '#1a1a2e',
+    'linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)':      '#1a1a2e',
+    'linear-gradient(135deg, #1a1a2e 0%, #2d2d4e 100%)':    '#1a1a2e',
+    'linear-gradient(135deg,#1a1a2e, #2d2d4e)':              '#1a1a2e',
+    // クリーム系（アドバイス総合コメント背景）
+    'linear-gradient(135deg,#fdf8f0,#f5ede0)':               '#fdf8f0',
+    'linear-gradient(135deg, #fdf8f0, #f5ede0)':             '#fdf8f0',
+    'linear-gradient(135deg,#fdf8f0 ,#f5ede0)':              '#fdf8f0',
+    // ティール系（タイムライン英語・ボタン）
+    'linear-gradient(135deg,#2a7f6f,#3aa88f)':               '#2a7f6f',
+    'linear-gradient(135deg, #2a7f6f, #3aa88f)':             '#2a7f6f',
+    // 赤系（タイムライン数学）
+    'linear-gradient(135deg,#c84b31,#e8735a)':               '#c84b31',
+    'linear-gradient(135deg, #c84b31, #e8735a)':             '#c84b31',
+    // ゴールド系（タイムライン国語・アドバイスバー）
+    'linear-gradient(135deg,#c9a84c,#d4b96a)':               '#c9a84c',
+    'linear-gradient(135deg, #c9a84c, #d4b96a)':             '#c9a84c',
+    'linear-gradient(180deg,#c9a84c,#c84b31)':               '#c9a84c',
+    // 青系（タイムライン社会・理科）
+    'linear-gradient(135deg,#4a6fa5,#6b8fc4)':               '#4a6fa5',
+    'linear-gradient(135deg, #4a6fa5, #6b8fc4)':             '#4a6fa5',
+    // 紫系
+    'linear-gradient(135deg,#6a1b9a,#9c4dcc)':               '#6a1b9a',
+    // 区切り線（透明グラデーション→単色）
+    'linear-gradient(90deg,#d8d0c0,transparent)':            '#d8d0c0',
+    'linear-gradient(90deg, #d8d0c0, transparent)':          '#d8d0c0',
+    // ログイン・プログレスなど
+    'linear-gradient(135deg, #2a7f6f, #3aa88f)':             '#2a7f6f',
+  };
+  // gradient文字列をそのまま単色値に置換（値として使われている箇所全て）
+  Object.keys(gradMap).forEach(function(k){
+    result = result.split(k).join(gradMap[k]);
   });
-  // timeline-subjectのインラインwidth:80pxをPDF用に拡張（!importantでも上書き不可のため直接置換）
+
+  // ── Step3: rgba半透明の白を実色値に変換（暗背景上の白文字が消えないように）──
+  // rgba(255,255,255,α) → 暗背景(#1a1a2e)との合成色
+  result = result.replace(/rgba\(255\s*,\s*255\s*,\s*255\s*,\s*([\d.]+)\)/g, function(m, a) {
+    var alpha = parseFloat(a);
+    var bg = 26; // #1a1a2e のR≒G≒B
+    var v = Math.round(bg + (255 - bg) * alpha);
+    return 'rgb(' + v + ',' + v + ',' + Math.round(bg + (255 - bg) * alpha) + ')';
+  });
+  // rgba(26,26,46,α) のような暗系半透明も実色化
+  result = result.replace(/rgba\(26\s*,\s*26\s*,\s*46\s*,\s*([\d.]+)\)/g, function(m, a) {
+    var alpha = parseFloat(a);
+    var v = Math.round(255 * (1 - alpha) + 26 * alpha);
+    return 'rgb(' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+46*alpha) + ')';
+  });
+
+  // ── Step4: インラインwidthを拡張（timeline-subject）──────────
   result = result.split('class="timeline-subject" style="width:80px;').join('class="timeline-subject" style="width:96px;');
+
   return result;
 }
 
@@ -6021,6 +6077,15 @@ function printPage(pageId, title) {
   .test-row{font-size:8px!important;}
   .test-dot{font-size:7px!important;}
   .test-markers{height:20px!important;}
+  /* タイムラインブロック：グラデーション→単色（html2canvas対応） */
+  .timeline-block.eng{background:#2a7f6f!important;}
+  .timeline-block.math{background:#c84b31!important;}
+  .timeline-block.jpn{background:#c9a84c!important;color:#1a1a2e!important;}
+  .timeline-block.hist{background:#4a6fa5!important;}
+  .timeline-block.sci{background:#4a6fa5!important;}
+  .timeline-block.etc{background:#6a1b9a!important;}
+  /* info-box（インフォボックス）確実に紺色 */
+  .info-box{background:#1a1a2e!important;}
   /* ヘッダーバンド */
   .print-header{background:#1a1a2e;color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .print-logo{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
