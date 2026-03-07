@@ -5822,6 +5822,8 @@ function resolveCssVars(html) {
   Object.keys(map).forEach(function(key) {
     result = result.split(key).join(map[key]);
   });
+  // timeline-subjectのインラインwidth:80pxをPDF用に拡張（!importantでも上書き不可のため直接置換）
+  result = result.split('class="timeline-subject" style="width:80px;').join('class="timeline-subject" style="width:96px;');
   return result;
 }
 
@@ -5858,6 +5860,7 @@ function _renderHtmlToPDF(htmlStr, filename) {
         scale: 2,
         useCORS: true,
         allowTaint: true,
+        backgroundColor: '#ffffff',
         scrollX: 0,
         scrollY: 0,
         x: 0,
@@ -6007,23 +6010,23 @@ function printPage(pageId, title) {
   header,.header-top,.header-nav{display:none!important;}
   .timeline{min-width:auto!important;width:100%!important;overflow:visible!important;}
   .timeline-wrapper{overflow:visible!important;}
-  .timeline-subject{width:80px!important;font-size:9px!important;white-space:normal!important;line-height:1.3;overflow:hidden;word-break:keep-all;text-align:right;}
+  .timeline-subject{width:96px!important;min-width:96px!important;max-width:96px!important;font-size:9px!important;white-space:normal!important;line-height:1.4!important;overflow:visible!important;word-break:break-all!important;text-align:right!important;padding-right:4px!important;}
   .timeline-block{font-size:8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1.2;padding:1px 3px!important;}
   .timeline-track{height:28px!important;overflow:hidden!important;}
-  .timeline-row{gap:4px!important;margin-bottom:4px!important;}
+  .timeline-row{gap:4px!important;margin-bottom:4px!important;align-items:center!important;}
   .timeline-header{font-size:9px!important;}
   .timeline-month-label{font-size:8px!important;}
-  .month-labels{display:flex!important;font-size:8px!important;margin-left:84px!important;}
+  .month-labels{display:flex!important;font-size:8px!important;margin-left:100px!important;}
   .month-label{font-size:8px!important;text-align:center;flex:1!important;}
   .test-row{font-size:8px!important;}
   .test-dot{font-size:7px!important;}
   .test-markers{height:20px!important;}
   /* ヘッダーバンド */
-  .print-header{background:var(--ink);color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-header{background:#1a1a2e;color:white;padding:18px 36px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .print-logo{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
   .print-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;margin-top:4px;}
   .print-meta{font-size:11px;color:rgba(255,255,255,.5);text-align:right;}
-  .print-footer{margin-top:24px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:#bbb;}
+  .print-footer{margin-top:48px;padding-top:16px;border-top:2px solid #c8c0b0;display:flex;justify-content:space-between;font-size:10px;color:#666;clear:both;position:relative;z-index:10;}
   .no-print{display:none!important;}
   @media print{
     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
