@@ -5826,40 +5826,31 @@ function resolveCssVars(html) {
   Object.keys(varMap).forEach(function(k){ result = result.split(k).join(varMap[k]); });
 
   // ── Step2: linear-gradient → 単色に変換（html2canvasはgradientを描画できない）──
-  var gradMap = {
-    // 紺系（ヘッダー・インフォボックス・アドバイスタスク）
-    'linear-gradient(135deg,#1a1a2e,#2d2d4e)':              '#1a1a2e',
-    'linear-gradient(135deg,#1a1a2e 0%,#2d2d4e 100%)':      '#1a1a2e',
-    'linear-gradient(135deg, #1a1a2e 0%, #2d2d4e 100%)':    '#1a1a2e',
-    'linear-gradient(135deg,#1a1a2e, #2d2d4e)':              '#1a1a2e',
-    // クリーム系（アドバイス総合コメント背景）
-    'linear-gradient(135deg,#fdf8f0,#f5ede0)':               '#fdf8f0',
-    'linear-gradient(135deg, #fdf8f0, #f5ede0)':             '#fdf8f0',
-    'linear-gradient(135deg,#fdf8f0 ,#f5ede0)':              '#fdf8f0',
-    // ティール系（タイムライン英語・ボタン）
-    'linear-gradient(135deg,#2a7f6f,#3aa88f)':               '#2a7f6f',
-    'linear-gradient(135deg, #2a7f6f, #3aa88f)':             '#2a7f6f',
-    // 赤系（タイムライン数学）
-    'linear-gradient(135deg,#c84b31,#e8735a)':               '#c84b31',
-    'linear-gradient(135deg, #c84b31, #e8735a)':             '#c84b31',
-    // ゴールド系（タイムライン国語・アドバイスバー）
-    'linear-gradient(135deg,#c9a84c,#d4b96a)':               '#c9a84c',
-    'linear-gradient(135deg, #c9a84c, #d4b96a)':             '#c9a84c',
-    'linear-gradient(180deg,#c9a84c,#c84b31)':               '#c9a84c',
-    // 青系（タイムライン社会・理科）
-    'linear-gradient(135deg,#4a6fa5,#6b8fc4)':               '#4a6fa5',
-    'linear-gradient(135deg, #4a6fa5, #6b8fc4)':             '#4a6fa5',
-    // 紫系
-    'linear-gradient(135deg,#6a1b9a,#9c4dcc)':               '#6a1b9a',
-    // 区切り線（透明グラデーション→単色）
-    'linear-gradient(90deg,#d8d0c0,transparent)':            '#d8d0c0',
-    'linear-gradient(90deg, #d8d0c0, transparent)':          '#d8d0c0',
-    // ログイン・プログレスなど
-    'linear-gradient(135deg, #2a7f6f, #3aa88f)':             '#2a7f6f',
+  // ── Step2: linear-gradient を正規表現で一括処理 ──
+  // スペース・%・順番の違いに関係なく「最初のカラーストップ色」に置換
+  // html2canvasはgradientを描画できないため全て単色化する
+  var colorPriority = {
+    '#1a1a2e': 0, '#2d2d4e': 1,  // 紺系 → 濃い方を使う
+    '#fdf8f0': 0, '#f5ede0': 1,  // クリーム系
+    '#2a7f6f': 0, '#3aa88f': 1,  // ティール系
+    '#c84b31': 0, '#e8735a': 1,  // 赤系
+    '#c9a84c': 0, '#d4b96a': 1,  // ゴールド系
+    '#4a6fa5': 0, '#6b8fc4': 1,  // 青系
+    '#6a1b9a': 0, '#9c4dcc': 1,  // 紫系
+    '#d8d0c0': 0                  // ボーダー系
   };
-  // gradient文字列をそのまま単色値に置換（値として使われている箇所全て）
-  Object.keys(gradMap).forEach(function(k){
-    result = result.split(k).join(gradMap[k]);
+  result = result.replace(/linear-gradient\([^)]+\)/g, function(grad) {
+    // グラデーション文字列から全16進カラーを抽出
+    var colors = [];
+    var re = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+    var m;
+    while ((m = re.exec(grad)) !== null) { colors.push(m[0].toLowerCase()); }
+    if (colors.length === 0) return 'transparent';
+    // colorPriorityで優先度0（濃い・メイン）のものを返す
+    for (var i = 0; i < colors.length; i++) {
+      if (colorPriority[colors[i]] === 0) return colors[i];
+    }
+    return colors[0]; // フォールバック：最初の色
   });
 
   // ── Step3: rgba半透明の白を実色値に変換（暗背景上の白文字が消えないように）──
