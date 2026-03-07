@@ -5965,9 +5965,13 @@ function printPage(pageId, title) {
         acContent.style.cssText = 'display:block;';
         acContent.removeAttribute('contenteditable');
       }
-      // ボタン・編集UI削除
+      // ボタン・編集UI・説明テキスト削除
       advCardClone.querySelectorAll('button').forEach(function(el){ el.remove(); });
       advCardClone.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+      // 「各セクションの編集ボタン...」などUI説明テキストを含む行を削除
+      advCardClone.querySelectorAll('div').forEach(function(el) {
+        if (el.children.length === 0 && el.textContent.includes('編集」ボタンで直接書き換え')) el.remove();
+      });
       // cloneに追加
       clone.appendChild(advCardClone);
     }
@@ -6031,10 +6035,9 @@ function printPage(pageId, title) {
 <div class="print-header">
   <div>
     <div class="print-logo">PLATON EXAM STRATEGY MANAGEMENT</div>
-    <div class="print-title">${title}</div>
   </div>
   <div class="print-meta">
-    ${studentName ? `<div style="font-size:14px;font-weight:700;color:white;">${studentName} さん</div>` : ''}
+    ${studentName ? `<div style="font-size:14px;font-weight:700;color:#1a1a2e;">${studentName} さん</div>` : ''}
     <div>発行日：${today}</div>
   </div>
 </div>
