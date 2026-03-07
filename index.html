@@ -6092,6 +6092,15 @@ function printPage(pageId, title) {
   .print-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;margin-top:4px;}
   .print-meta{font-size:11px;color:rgba(255,255,255,.5);text-align:right;}
   .print-footer{margin-top:48px;padding-top:16px;border-top:2px solid #c8c0b0;display:flex;justify-content:space-between;font-size:10px;color:#666;clear:both;position:relative;z-index:10;}
+  /* アニメーション・トランジションを全無効化（html2canvasがdelay中にスナップするとopacity:0になるため） */
+  *, *::before, *::after {
+    animation: none !important;
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
   .no-print{display:none!important;}
   @media print{
     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
