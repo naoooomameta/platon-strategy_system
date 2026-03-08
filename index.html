@@ -4769,7 +4769,7 @@ function printRoadmapPDF() {
     + '<title>合格ロードマップ｜' + s.name + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">'
     + '<style>'
-    + '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
     + 'body{font-family:"Noto Sans JP",sans-serif;color:#1a1a2e;background:white;font-size:10px;width:794px;max-width:794px;overflow-x:hidden;}'
     + '.card{background:white;border-radius:8px;padding:12px 14px;border:1px solid #d8d0c0;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}.chart-wrap{page-break-inside:avoid;break-inside:avoid;}table{page-break-inside:avoid;break-inside:avoid;}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:7mm 10mm;size:A4;}}'
@@ -5871,30 +5871,22 @@ function resolveCssVars(html) {
   // rgba(26,26,46,α) のような暗系半透明も実色化
   result = result.replace(/rgba\(26\s*,\s*26\s*,\s*46\s*,\s*([\d.]+)\)/g, function(m, a) {
     var alpha = parseFloat(a);
-    var v = Math.round(255 * (1 - alpha) + 26 * alpha);
     return 'rgb(' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+26*alpha) + ',' + Math.round(255*(1-alpha)+46*alpha) + ')';
   });
   // 残りの全rgbaを白背景との合成で実色化（html2canvasの半透明描画不具合を回避）
   result = result.replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/g, function(m, r, g, b, a) {
     var alpha = parseFloat(a);
-    var rr = Math.round(parseInt(r) * alpha + 255 * (1 - alpha));
-    var gg = Math.round(parseInt(g) * alpha + 255 * (1 - alpha));
-    var bb = Math.round(parseInt(b) * alpha + 255 * (1 - alpha));
-    return 'rgb(' + rr + ',' + gg + ',' + bb + ')';
+    return 'rgb(' + Math.round(parseInt(r)*alpha+255*(1-alpha)) + ',' + Math.round(parseInt(g)*alpha+255*(1-alpha)) + ',' + Math.round(parseInt(b)*alpha+255*(1-alpha)) + ')';
   });
 
-  // ── Step4: 8桁HEXカラー（#rrggbbaa）→ 実色値に変換 ──
-  // html2canvasは8桁HEXを正しく描画できないため、白背景との合成色に変換
-  result = result.replace(/#([0-9a-fA-F]{6})([0-9a-fA-F]{2})\b/g, function(m, hex6, hexAlpha) {
+  // ── Step4: 8桁HEXカラー（#rrggbbaa）→ 実色に変換 ──
+  // col+'18' 等で生成される8桁HEXはhtml2canvasが描画できない
+  result = result.replace(/#([0-9a-fA-F]{6})([0-9a-fA-F]{2})(?![0-9a-fA-F])/g, function(m, hex6, hexAlpha) {
     var a = parseInt(hexAlpha, 16) / 255;
     var r = parseInt(hex6.substr(0,2), 16);
     var g = parseInt(hex6.substr(2,2), 16);
     var b = parseInt(hex6.substr(4,2), 16);
-    // 白背景(255)との合成
-    var rr = Math.round(r * a + 255 * (1 - a));
-    var gg = Math.round(g * a + 255 * (1 - a));
-    var bb = Math.round(b * a + 255 * (1 - a));
-    return 'rgb(' + rr + ',' + gg + ',' + bb + ')';
+    return 'rgb(' + Math.round(r*a+255*(1-a)) + ',' + Math.round(g*a+255*(1-a)) + ',' + Math.round(b*a+255*(1-a)) + ')';
   });
 
   // ── Step5: インラインwidthを拡張（timeline-subject）──────────
@@ -5905,7 +5897,11 @@ function resolveCssVars(html) {
 
 // 専用の隠しiframeでHTMLをレンダリングし、そのbody要素をhtml2pdfに渡す
 // → iframeはposition:fixed/left:-9999pxで完全固定するため座標ズレなし
+var _pdfRendering = false; // 二重実行防止フラグ
 function _renderHtmlToPDF(htmlStr, filename) {
+  if (_pdfRendering) { showToast('PDF生成中です…'); return; }
+  _pdfRendering = true;
+
   // A4 @ 96dpi = 794px。margin:0でjsPDFに余白を持たせず、
   // HTML側のbody paddingで余白を管理することで右クリップを完全排除。
   var A4W = 794;
@@ -5915,7 +5911,8 @@ function _renderHtmlToPDF(htmlStr, filename) {
 
   var iframe = document.createElement('iframe');
   iframe.id = IFRAME_ID;
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4W + 'px;height:20000px;border:none;visibility:hidden;';
+  // visibility:hiddenを使わない（html2canvasのスタイル計算に影響する場合がある）
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4W + 'px;height:20000px;border:none;opacity:0;';
   document.body.appendChild(iframe);
 
   var iDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -5926,16 +5923,49 @@ function _renderHtmlToPDF(htmlStr, filename) {
   setTimeout(function() {
     var body = iDoc.body;
     // bodyをA4幅に固定し、内側paddingで余白を確保（jsPDFのmarginは0）
-    body.style.cssText = 'margin:0;padding:10px 14px;overflow:visible;width:' + A4W + 'px;box-sizing:border-box;';
+    body.style.cssText = 'margin:0;padding:10px 14px;overflow:visible;width:' + A4W + 'px;box-sizing:border-box;background:#ffffff;';
 
-    // ── iframe内の全要素にprint-color-adjustを強制付与 ──
+    // ━━━ 全要素の算出済み背景色・文字色をインラインに焼き込み ━━━
+    // html2canvasはCSSクラス経由の色を正確に拾えない場合があるため、
+    // 計算済みスタイルを直接inline styleに書き込んで確実に反映させる
     try {
       var allEls = iDoc.querySelectorAll('*');
       for (var i = 0; i < allEls.length; i++) {
-        allEls[i].style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
-        allEls[i].style.setProperty('print-color-adjust', 'exact', 'important');
+        var el = allEls[i];
+        var cs = iDoc.defaultView.getComputedStyle(el);
+        if (!cs) continue;
+
+        // 背景色
+        var bg = cs.backgroundColor;
+        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+          el.style.setProperty('background-color', bg, 'important');
+        }
+        // 背景画像(gradient等)はresolveCssVarsで単色化済みだが念のため
+        var bgImg = cs.backgroundImage;
+        if (bgImg && bgImg !== 'none' && bgImg.indexOf('gradient') !== -1) {
+          // gradient が残っていたら単色に変換
+          var match = bgImg.match(/rgb[a]?\([^)]+\)/);
+          if (match) {
+            el.style.setProperty('background-color', match[0], 'important');
+            el.style.setProperty('background-image', 'none', 'important');
+          }
+        }
+        // 文字色
+        var col = cs.color;
+        if (col) {
+          el.style.setProperty('color', col, 'important');
+        }
+        // ボーダー色
+        var bTop = cs.borderTopColor;
+        var bRight = cs.borderRightColor;
+        var bBottom = cs.borderBottomColor;
+        var bLeft = cs.borderLeftColor;
+        if (bTop && bTop !== 'rgba(0, 0, 0, 0)') el.style.setProperty('border-top-color', bTop, 'important');
+        if (bRight && bRight !== 'rgba(0, 0, 0, 0)') el.style.setProperty('border-right-color', bRight, 'important');
+        if (bBottom && bBottom !== 'rgba(0, 0, 0, 0)') el.style.setProperty('border-bottom-color', bBottom, 'important');
+        if (bLeft && bLeft !== 'rgba(0, 0, 0, 0)') el.style.setProperty('border-left-color', bLeft, 'important');
       }
-    } catch(e) {}
+    } catch(e) { console.warn('Style bake failed:', e); }
 
     var opt = {
       margin: 0,          // ← jsPDF側の余白はゼロ（HTML側で管理）
@@ -5963,6 +5993,9 @@ function _renderHtmlToPDF(htmlStr, filename) {
     html2pdf().set(opt).from(body).save().then(function() {
       var el = document.getElementById(IFRAME_ID);
       if (el) el.remove();
+      _pdfRendering = false;
+    }).catch(function() {
+      _pdfRendering = false;
     });
   }, 1500);
 }
