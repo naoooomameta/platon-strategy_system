@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 戦略管理システム v3.2</title>
+<title>プラトン 戦略管理システム v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -899,7 +899,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v3.2</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.0</span>
       </div>
     </div>
   </div>
@@ -3025,7 +3025,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v3.2] ファイル読み込み完了 - 手動編集保護版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('%c[PLATON v4.0] ファイル読み込み完了 - 生徒別キャッシュ版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -3216,20 +3216,9 @@ async function deleteStudentFromList(name) {
 }
 
 function loadStudentFromList(name) {
-  const s = _allStudents.find(x => x.name === name);
+  var s = _allStudents.find(function(x) { return x.name === name; });
   if (!s) { showToast('生徒データが見つかりません'); return; }
-
-  // 同じ生徒なら再描画せずページ切替のみ（手動編集を保持）
-  if (currentStudent && currentStudent.name === name) {
-    console.log('[EDIT-PROTECT] 同一生徒 → 再描画スキップ:', name);
-    showPage('roadmap');
-    return;
-  }
-
-  console.log('[EDIT-PROTECT] 新規生徒ロード → 全ページ再描画:', name);
-  currentStudent = s;
-  renderRoadmap();
-  _initAllPagesForStudent();
+  _switchToStudent(s, false);
   showPage('roadmap');
 }
 
@@ -3457,68 +3446,113 @@ function renderMonthlyStudentSelect() {
 
 function monthlySelectStudent(name) {
   if (!name) return;
-  const s = _allStudents.find(x => x.name === name);
-  if (s) {
-    currentStudent = s;
-
-    // 偏差値表示を即座に更新
-    document.getElementById('ms-initial').textContent = s.devVal || '—';
-    document.getElementById('ms-target').textContent = s.univInfo?.dev || '—';
-    document.getElementById('ms-current').textContent = '—';
-    document.getElementById('ms-3month').textContent = '—';
-
-    // チャートを再構築
-    monthlyScores = {};
-    buildMonthlyChart(s, monthlyScores);
-
-    // テスト・採点フォームをリセット
-    monthlyTestData = null;
-    monthlyAnsVisible = false;
-    document.getElementById('monthly-test-content').style.display = 'none';
-    document.getElementById('monthly-scoring').innerHTML = `
-      <div style="padding:2rem;text-align:center;color:var(--text-muted);">
-        <div style="font-size:36px;margin-bottom:10px;">📋</div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">月次テストを作成してください</div>
-        <div style="font-size:12px;">「今月の診断テストを作成」ボタンで自動生成します</div>
-      </div>`;
-    document.getElementById('monthly-deviation').innerHTML = `
-      <div style="padding:2rem;text-align:center;color:var(--text-muted);">
-        <div style="font-size:36px;margin-bottom:10px;">📈</div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">採点後に自動算出されます</div>
-      </div>`;
-
-    showToast(`${s.name} さんに切り替えました`);
-  }
+  var s = _allStudents.find(function(x) { return x.name === name; });
+  if (!s) return;
+  _switchToStudent(s, false);
+  showPage('monthly');
+  showToast(s.name + ' さんに切り替えました');
 }
-// ===== ページ編集保護 =====
-// showPage は表示/非表示のみ。コンテンツ再描画は一切行わない。
-// 各ページの初期化は生徒ロード時に一括実行する。
+// ===== 生徒別ページキャッシュ =====
+// 生徒を切り替える前に全ページのHTMLを保存し、戻ったときに復元する
+var _studentCache = {}; // { "生徒名": { roadmap: html, weekly: html, tests: html, monthly: html, monthlyScores: {}, monthlyTestData: null } }
+var _CACHE_PAGES = ['roadmap', 'weekly-plan', 'tests', 'monthly'];
+
+// 現在の生徒の全ページをキャッシュに保存
+function _cacheSaveCurrentStudent() {
+  if (!currentStudent) return;
+  var name = currentStudent.name;
+  var cache = {};
+  _CACHE_PAGES.forEach(function(pid) {
+    var page = document.getElementById('page-' + pid);
+    if (!page) return;
+    var container = page.querySelector('.container');
+    if (container && container.children.length > 0) {
+      cache[pid] = container.innerHTML;
+    }
+  });
+  // グラフインスタンスを破棄（HTML復元後に再構築する）
+  if (deviationChart) { deviationChart.destroy(); deviationChart = null; }
+  if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
+  // 月次データもキャッシュ
+  cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
+  cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
+  cache._monthlyAnsVisible = monthlyAnsVisible;
+  _studentCache[name] = cache;
+  console.log('[CACHE] 保存:', name, Object.keys(cache).filter(function(k){return k.charAt(0)!=='_';}).join(','));
+}
+
+// キャッシュからページを復元。成功したらtrue
+function _cacheRestoreStudent(name) {
+  var cache = _studentCache[name];
+  if (!cache) return false;
+  var restored = false;
+  _CACHE_PAGES.forEach(function(pid) {
+    if (!cache[pid]) return;
+    var page = document.getElementById('page-' + pid);
+    if (!page) return;
+    var container = page.querySelector('.container');
+    if (container) {
+      container.innerHTML = cache[pid];
+      restored = true;
+    }
+  });
+  if (!restored) return false;
+  // 月次データを復元
+  monthlyScores = cache._monthlyScores || {};
+  monthlyTestData = cache._monthlyTestData || null;
+  monthlyAnsVisible = cache._monthlyAnsVisible || false;
+  // Chart.jsを再構築（canvasは復元済みだがインスタンスは未作成）
+  try { renderGapChart(); } catch(e) { console.warn('gap chart rebuild error:', e); }
+  try {
+    var s = currentStudent || {};
+    buildMonthlyChart(s, monthlyScores);
+  } catch(e) { console.warn('monthly chart rebuild error:', e); }
+  console.log('[CACHE] 復元:', name);
+  return true;
+}
 
 function showPage(name) {
-  console.log('[EDIT-PROTECT] showPage called:', name, '| currentStudent:', currentStudent?.name || 'null');
-
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const pg = document.getElementById('page-' + name);
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
 
-  // ナビボタン active
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
-  const idx = btnMap[name];
-  if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
+  var idx = btnMap[name];
+  if (idx !== undefined) {
+    var btns = document.querySelectorAll('.nav-btn');
+    if (btns[idx]) btns[idx].classList.add('active');
+  }
 
-  // ダッシュボードだけは生徒リスト更新（編集対象外）
+  // ダッシュボードのみ生徒リスト再描画
   if (name === 'dashboard') { renderStudentList(); }
-
-  // それ以外のページはDOMに一切触れない（手動編集を保持）
-  console.log('[EDIT-PROTECT] showPage完了 - コンテンツ再描画なし:', name);
 
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+// 生徒切替の中央ルーター
+function _switchToStudent(s, forceRender) {
+  if (!forceRender && currentStudent && currentStudent.name === s.name) {
+    // 同じ生徒 → 何もしない
+    return;
+  }
+  // 前の生徒のページを保存
+  _cacheSaveCurrentStudent();
+  currentStudent = s;
+  // キャッシュから復元を試行
+  if (!forceRender && _cacheRestoreStudent(s.name)) {
+    // 復元成功 → ドロップダウンだけ更新
+    renderWpStudentSelect();
+    renderMonthlyStudentSelect();
+    return;
+  }
+  // キャッシュなし → 全ページをフル描画
+  renderRoadmap();
+  _initAllPagesForStudent();
+}
+
 // 生徒ロード時に全ページを一括初期化する関数
 function _initAllPagesForStudent() {
-  console.log('[EDIT-PROTECT] _initAllPagesForStudent() 全ページ一括初期化');
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
   wpInit();
@@ -3761,7 +3795,7 @@ async function generateRoadmap() {
     if (!isNaN(v) && v > 0) subDevs[label] = v;
   });
 
-  currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
+  var _newStudentObj = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
 
   // ① ロードマップ生成・表示（必ず実行）
@@ -3769,8 +3803,8 @@ async function generateRoadmap() {
   loading.classList.add('show');
   setTimeout(() => {
     loading.classList.remove('show');
-    renderRoadmap();
-    _initAllPagesForStudent();
+    // _switchToStudent が旧生徒のキャッシュ保存→新生徒のフル描画を一括実行
+    _switchToStudent(_newStudentObj, true);
     showPage('roadmap');
     updateStepIndicator();
     renderStudentList();
@@ -3778,7 +3812,7 @@ async function generateRoadmap() {
   }, 1800);
 
   // ② Supabaseへの保存（バックグラウンドで実行、失敗してもロードマップには影響しない）
-  saveStudentToList(currentStudent).catch(function(e) {
+  saveStudentToList(_newStudentObj).catch(function(e) {
     console.error('保存エラー:', e);
   });
 }
@@ -3794,8 +3828,6 @@ function updateStepIndicator() {
 
 // ===== RENDER ROADMAP =====
 function renderRoadmap() {
-  console.log('[EDIT-PROTECT] renderRoadmap() 呼び出し - 全内容再構築');
-  console.trace('[EDIT-PROTECT] renderRoadmap呼び出し元');
   const s = currentStudent;
   const gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade];
   const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
@@ -4450,14 +4482,13 @@ function loadStudentRoadmap(name) {
     const goalDate = new Date(goalYear, 1, 1);
     const months = Math.max(3, Math.round((goalDate - now) / (1000 * 60 * 60 * 24 * 30)));
 
-    currentStudent = {
+    var newS = {
       name: p.name, grade: p.grade, stream: p.stream,
       univName: univData ? univData[0] : p.univ1,
       univInfo: univData ? univData[1] : { cat: 'national', dev: 65, subjects: [] },
       levelVal: p.level, devVal: p.dev, months, goalYear
     };
-    renderRoadmap();
-    _initAllPagesForStudent();
+    _switchToStudent(newS, true);
     showPage('roadmap');
     showToast(`${p.name} さんのロードマップを表示しました`);
   }, 1200);
@@ -6703,14 +6734,14 @@ function renderWpStudentSelect() {
 
 // 3ヶ月プラン用：生徒選択時にcurrentStudentを切り替え
 function wpSelectStudent(name) {
-  if (!name) { wpInit(); return; }
-  const s = _allStudents.find(x => x.name === name);
-  if (s) { currentStudent = s; }
-  wpInit();
+  if (!name) return;
+  var s = _allStudents.find(function(x) { return x.name === name; });
+  if (!s) return;
+  _switchToStudent(s, false);
+  showPage('weekly-plan');
 }
 
 function wpInit() {
-  console.log('[EDIT-PROTECT] wpInit() 呼び出し');
   renderWpStudentSelect();
   const s = currentStudent || {devVal:63, univName:'東京大学', univInfo:{dev:72,cat:'national'}, stream:'bunkei', grade:'high3'};
   const badge = document.getElementById('wp-goal-badge');
