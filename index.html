@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 戦略管理システム v4.1</title>
+<title>プラトン 戦略管理システム v4.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -404,6 +404,9 @@
   .timeline-block.hist { background: linear-gradient(135deg, #4a6fa5, #6b8fc4); }
   .timeline-block.test-w { background: var(--ink); }
   .timeline-block.test-m { background: var(--ink-light); border: 2px solid var(--gold); }
+
+  .tl-drag-handle:hover > div { background: var(--accent) !important; width: 4px !important; }
+  .tl-drag-handle:active > div { background: var(--accent) !important; width: 5px !important; }
 
   .test-row {
     display: flex;
@@ -899,7 +902,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.1</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.2</span>
       </div>
     </div>
   </div>
@@ -3025,7 +3028,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.1] ファイル読み込み完了 - DOM編集→データ同期版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('%c[PLATON v4.2] ファイル読み込み完了 - タイムラインドラッグ対応', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -4170,7 +4173,6 @@ function renderTimeline() {
     monthLabels.push((d.getMonth() + 1) + '月');
   }
 
-  // 登録された対策科目を使用（mainSubjects優先、なければ志望校科目）
   const subClsMap = {
     '英語R':'eng','英語L':'eng','英語リーディング':'eng','英語リスニング':'eng',
     '数学':'math','数学1A':'math','数学2BC':'math',
@@ -4190,9 +4192,9 @@ function renderTimeline() {
     '情報':'情報','総合教養':'総合教養',
   };
   const subPhasesMap = {
-    '英語R':'英単語・文法 基礎固め→長文読解 強化期→実戦演習 仕上げ',
+    '英語R':'基礎固め期→演習 強化期→実戦仕上げ',
     '英語L':'基礎音声 定着期→演習量 積上げ期→実戦仕上げ',
-    '英語リーディング':'英単語・文法 基礎固め→長文読解 強化期→実戦演習 仕上げ',
+    '英語リーディング':'基礎固め期→演習 強化期→実戦仕上げ',
     '英語リスニング':'基礎音声 定着期→演習量 積上げ期→実戦仕上げ',
     '数学':'基礎問題 全範囲網羅→標準問題 演習期→応用・記述 仕上げ',
     '数学1A':'基礎問題 全範囲網羅→標準問題 演習期→応用・記述 仕上げ',
@@ -4213,17 +4215,14 @@ function renderTimeline() {
     '情報':'基礎概念 習得期→プログラミング 演習期→実戦演習 仕上げ',
   };
 
-  // 登録科目を取得
   const registeredSubs = (s.mainSubjects && s.mainSubjects.length > 0)
     ? s.mainSubjects
     : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
 
-  // タイムラインの科目ごとのstart/endを科目別偏差値ギャップから計算
   const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
   const subjects = registeredSubs.map(function(subName) {
     const curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
     const gap = Math.max(0, tgtDev - curDev);
-    // ギャップが大きいほど早めに開始・長めに取り組む
     const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
     const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
     const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
@@ -4236,7 +4235,7 @@ function renderTimeline() {
 
   let html = '';
 
-  // Month labels — インラインスタイルでPDFでも確実に横並び
+  // Month labels
   html += '<div class="month-labels" style="display:flex;gap:2px;margin-left:88px;margin-bottom:4px;">';
   monthLabels.forEach((m, i) => {
     const isLast = i === months - 1;
@@ -4245,7 +4244,7 @@ function renderTimeline() {
   });
   html += '</div>';
 
-  // Subject rows — インラインスタイルでPDFでも確実にレイアウト
+  // Subject rows with draggable phase boundaries
   const blockBgMap = {
     eng: 'linear-gradient(135deg,#2a7f6f,#3aa88f)',
     math: 'linear-gradient(135deg,#c84b31,#e8735a)',
@@ -4255,17 +4254,27 @@ function renderTimeline() {
     etc: 'linear-gradient(135deg,#6a1b9a,#9c4dcc)',
   };
   const blockTextMap = { jpn: '#1a1a2e' };
-  subjects.forEach(sub => {
+  subjects.forEach((sub, si) => {
     const bg = blockBgMap[sub.cls] || '#555';
     const txtColor = blockTextMap[sub.cls] || 'white';
     html += `<div class="timeline-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
       <div class="timeline-subject" style="width:80px;flex-shrink:0;font-size:12px;font-weight:700;color:var(--text-muted);text-align:right;">${sub.label}</div>
-      <div class="timeline-track" style="flex:1;height:36px;background:var(--paper-dark);border-radius:6px;position:relative;overflow:hidden;">`;
-    sub.blocks.forEach(b => {
-      const left = (b.start / months * 100).toFixed(1);
-      const width = ((b.end - b.start) / months * 100).toFixed(1);
-      html += `<div class="timeline-block ${sub.cls}" style="position:absolute;top:4px;bottom:4px;left:${left}%;width:${width}%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:${txtColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"
+      <div class="timeline-track" data-row="${si}" data-months="${months}" style="flex:1;height:36px;background:var(--paper-dark);border-radius:6px;position:relative;overflow:visible;">`;
+    sub.blocks.forEach((b, bi) => {
+      const left = (b.start / months * 100).toFixed(2);
+      const width = ((b.end - b.start) / months * 100).toFixed(2);
+      html += `<div class="timeline-block ${sub.cls}" data-row="${si}" data-block="${bi}"
+        style="position:absolute;top:4px;bottom:4px;left:${left}%;width:${width}%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:${txtColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;z-index:1;"
         title="${b.label}">${b.label}</div>`;
+      // ドラッグハンドル（最後のブロック以外）
+      if (bi < sub.blocks.length - 1) {
+        var handleLeft = (b.end / months * 100).toFixed(2);
+        html += `<div class="tl-drag-handle" data-row="${si}" data-handle="${bi}"
+          style="position:absolute;top:0;bottom:0;left:${handleLeft}%;width:12px;transform:translateX(-50%);cursor:col-resize;z-index:10;display:flex;align-items:center;justify-content:center;"
+          title="ドラッグでフェーズの期間を調整">
+          <div style="width:3px;height:18px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div>
+        </div>`;
+      }
     });
     html += '</div></div>';
   });
@@ -4273,18 +4282,117 @@ function renderTimeline() {
   // Test row
   html += '<div class="test-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><div class="timeline-subject" style="width:80px;flex-shrink:0;font-size:10px;font-weight:700;color:var(--text-muted);text-align:right;">テスト</div><div class="test-markers" style="flex:1;height:28px;position:relative;">';
   for (let i = 0; i < months; i++) {
-    // weekly test (approx every 2 weeks shown as one marker per month)
     const wx = ((i + 0.3) / months * 100).toFixed(1);
     const wx2 = ((i + 0.65) / months * 100).toFixed(1);
     html += `<div class="test-dot weekly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${wx}%;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--ink);" title="週次確認テスト">週</div>`;
     html += `<div class="test-dot weekly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${wx2}%;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--ink);" title="週次確認テスト">週</div>`;
-    // monthly test
     const mx = ((i + 0.95) / months * 100).toFixed(1);
     html += `<div class="test-dot monthly" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:${mx}%;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;background:var(--accent);" title="実力診断テスト（月次）">月</div>`;
   }
   html += '</div></div>';
 
+  // ドラッグ操作ヒント
+  html += '<div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:4px;">※ フェーズ境界をドラッグして期間を調整できます</div>';
+
   document.getElementById('timeline-content').innerHTML = html;
+
+  // ドラッグイベントをセットアップ
+  _setupTimelineDrag();
+}
+
+// ===== タイムラインドラッグ =====
+var _tlDrag = null; // { row, handle, trackEl, blocks, startX, months }
+
+function _setupTimelineDrag() {
+  var handles = document.querySelectorAll('.tl-drag-handle');
+  handles.forEach(function(h) {
+    h.addEventListener('mousedown', _tlDragStart);
+    h.addEventListener('touchstart', _tlDragStart, {passive:false});
+  });
+}
+
+function _tlDragStart(e) {
+  e.preventDefault();
+  var row = parseInt(this.dataset.row);
+  var handle = parseInt(this.dataset.handle);
+  var trackEl = this.closest('.timeline-track');
+  if (!trackEl) return;
+  var months = parseInt(trackEl.dataset.months);
+  var blocks = trackEl.querySelectorAll('.timeline-block[data-row="' + row + '"]');
+  if (blocks.length < 2) return;
+
+  var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  _tlDrag = { row: row, handle: handle, trackEl: trackEl, blocks: blocks, startX: clientX, months: months };
+
+  // ハンドルをハイライト
+  this.querySelector('div').style.background = 'var(--accent)';
+  this.querySelector('div').style.width = '4px';
+
+  document.addEventListener('mousemove', _tlDragMove);
+  document.addEventListener('mouseup', _tlDragEnd);
+  document.addEventListener('touchmove', _tlDragMove, {passive:false});
+  document.addEventListener('touchend', _tlDragEnd);
+}
+
+function _tlDragMove(e) {
+  if (!_tlDrag) return;
+  e.preventDefault();
+  var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  var trackRect = _tlDrag.trackEl.getBoundingClientRect();
+  var trackWidth = trackRect.width;
+  var months = _tlDrag.months;
+
+  // マウス位置を月単位に変換
+  var relX = (clientX - trackRect.left) / trackWidth;
+  var monthPos = relX * months;
+
+  // 0.5月刻みにスナップ
+  monthPos = Math.round(monthPos * 2) / 2;
+
+  var hi = _tlDrag.handle;
+  var blocks = _tlDrag.blocks;
+  var leftBlock = blocks[hi];
+  var rightBlock = blocks[hi + 1];
+  if (!leftBlock || !rightBlock) return;
+
+  // 左ブロックのstartと右ブロックのendを取得（現在のstyle.leftとwidthから逆算）
+  var leftStart = parseFloat(leftBlock.style.left) / 100 * months;
+  var rightEnd = (parseFloat(rightBlock.style.left) + parseFloat(rightBlock.style.width)) / 100 * months;
+
+  // 最小幅 0.5月を保証
+  var minWidth = 0.5;
+  monthPos = Math.max(leftStart + minWidth, Math.min(rightEnd - minWidth, monthPos));
+
+  // 左ブロック: start〜monthPos
+  var leftPct = (leftStart / months * 100).toFixed(2);
+  var leftWPct = ((monthPos - leftStart) / months * 100).toFixed(2);
+  leftBlock.style.left = leftPct + '%';
+  leftBlock.style.width = leftWPct + '%';
+
+  // 右ブロック: monthPos〜rightEnd
+  var rightPct = (monthPos / months * 100).toFixed(2);
+  var rightWPct = ((rightEnd - monthPos) / months * 100).toFixed(2);
+  rightBlock.style.left = rightPct + '%';
+  rightBlock.style.width = rightWPct + '%';
+
+  // ハンドル位置を更新
+  var handleEl = _tlDrag.trackEl.querySelector('.tl-drag-handle[data-handle="' + hi + '"]');
+  if (handleEl) handleEl.style.left = (monthPos / months * 100).toFixed(2) + '%';
+}
+
+function _tlDragEnd(e) {
+  if (!_tlDrag) return;
+  // ハンドルの見た目を戻す
+  var handleEl = _tlDrag.trackEl.querySelector('.tl-drag-handle[data-handle="' + _tlDrag.handle + '"]');
+  if (handleEl) {
+    var inner = handleEl.querySelector('div');
+    if (inner) { inner.style.background = 'rgba(0,0,0,0.25)'; inner.style.width = '3px'; }
+  }
+  _tlDrag = null;
+  document.removeEventListener('mousemove', _tlDragMove);
+  document.removeEventListener('mouseup', _tlDragEnd);
+  document.removeEventListener('touchmove', _tlDragMove);
+  document.removeEventListener('touchend', _tlDragEnd);
 }
 
 function makeBlocks(startOffset, total, relStart, relEnd, label) {
