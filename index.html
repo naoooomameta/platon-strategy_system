@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 戦略管理システム v4.0</title>
+<title>プラトン 戦略管理システム v4.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -899,7 +899,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.0</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.1</span>
       </div>
     </div>
   </div>
@@ -3025,7 +3025,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.0] ファイル読み込み完了 - 生徒別キャッシュ版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('%c[PLATON v4.1] ファイル読み込み完了 - DOM編集→データ同期版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -3457,10 +3457,58 @@ function monthlySelectStudent(name) {
 var _studentCache = {}; // { "生徒名": { roadmap: html, weekly: html, tests: html, monthly: html, monthlyScores: {}, monthlyTestData: null } }
 var _CACHE_PAGES = ['roadmap', 'weekly-plan', 'tests', 'monthly'];
 
+// ロードマップ上の手動編集をcurrentStudentと_allStudentsに書き戻す
+function _syncEditedFieldsToData() {
+  if (!currentStudent) return;
+  var nameEl = document.getElementById('info-name');
+  var univEl = document.getElementById('info-univ');
+  var targetDevEl = document.getElementById('info-target-dev');
+  var currentDevEl = document.getElementById('info-current-dev');
+
+  if (nameEl) {
+    var newName = nameEl.textContent.trim();
+    if (newName && newName !== '—') currentStudent.name = newName;
+  }
+  if (univEl) {
+    var newUniv = univEl.textContent.trim();
+    if (newUniv && newUniv !== '—') currentStudent.univName = newUniv;
+  }
+  if (targetDevEl) {
+    var td = parseInt(targetDevEl.textContent);
+    if (!isNaN(td) && td > 0) {
+      if (!currentStudent.univInfo) currentStudent.univInfo = {};
+      currentStudent.univInfo.dev = td;
+    }
+  }
+  if (currentDevEl) {
+    // "現状 55（模試）" → 55
+    var m = (currentDevEl.textContent || '').match(/(\d+)/);
+    if (m) {
+      var cd = parseInt(m[1]);
+      if (!isNaN(cd) && cd > 0) currentStudent.devVal = cd;
+    }
+  }
+
+  // _allStudentsの該当エントリを更新（名前で検索→見つからなければ_idで検索）
+  var idx = _allStudents.findIndex(function(s) { return s._id && currentStudent._id && s._id === currentStudent._id; });
+  if (idx < 0) idx = _allStudents.findIndex(function(s) { return s.name === currentStudent.name; });
+  if (idx >= 0) {
+    _allStudents[idx] = Object.assign({}, _allStudents[idx], {
+      name: currentStudent.name,
+      univName: currentStudent.univName,
+      univInfo: currentStudent.univInfo,
+      devVal: currentStudent.devVal
+    });
+  }
+  console.log('[SYNC] DOM→データ同期:', currentStudent.name);
+}
+
 // 現在の生徒の全ページをキャッシュに保存
 function _cacheSaveCurrentStudent() {
   if (!currentStudent) return;
-  var name = currentStudent.name;
+  // まずDOMの手動編集をデータに書き戻す
+  _syncEditedFieldsToData();
+  var cacheKey = currentStudent._id || currentStudent.name;
   var cache = {};
   _CACHE_PAGES.forEach(function(pid) {
     var page = document.getElementById('page-' + pid);
@@ -3477,13 +3525,14 @@ function _cacheSaveCurrentStudent() {
   cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
   cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
   cache._monthlyAnsVisible = monthlyAnsVisible;
-  _studentCache[name] = cache;
-  console.log('[CACHE] 保存:', name, Object.keys(cache).filter(function(k){return k.charAt(0)!=='_';}).join(','));
+  _studentCache[cacheKey] = cache;
+  console.log('[CACHE] 保存:', cacheKey);
 }
 
 // キャッシュからページを復元。成功したらtrue
-function _cacheRestoreStudent(name) {
-  var cache = _studentCache[name];
+function _cacheRestoreStudent(s) {
+  var cacheKey = s._id || s.name;
+  var cache = _studentCache[cacheKey];
   if (!cache) return false;
   var restored = false;
   _CACHE_PAGES.forEach(function(pid) {
@@ -3507,7 +3556,7 @@ function _cacheRestoreStudent(name) {
     var s = currentStudent || {};
     buildMonthlyChart(s, monthlyScores);
   } catch(e) { console.warn('monthly chart rebuild error:', e); }
-  console.log('[CACHE] 復元:', name);
+  console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
 
@@ -3524,23 +3573,28 @@ function showPage(name) {
     if (btns[idx]) btns[idx].classList.add('active');
   }
 
-  // ダッシュボードのみ生徒リスト再描画
-  if (name === 'dashboard') { renderStudentList(); }
+  // ダッシュボードのみ：表示前にDOM編集をデータに書き戻してから生徒リスト再描画
+  if (name === 'dashboard') {
+    _syncEditedFieldsToData();
+    renderStudentList();
+  }
 
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
 // 生徒切替の中央ルーター
 function _switchToStudent(s, forceRender) {
-  if (!forceRender && currentStudent && currentStudent.name === s.name) {
-    // 同じ生徒 → 何もしない
-    return;
+  if (!forceRender && currentStudent) {
+    // 同じ生徒判定（_idがあれば_idで、なければnameで）
+    var sameStudent = (currentStudent._id && s._id && currentStudent._id === s._id)
+                   || (!currentStudent._id && currentStudent.name === s.name);
+    if (sameStudent) return;
   }
-  // 前の生徒のページを保存
+  // 前の生徒のページを保存（DOM編集→データ同期も含む）
   _cacheSaveCurrentStudent();
   currentStudent = s;
   // キャッシュから復元を試行
-  if (!forceRender && _cacheRestoreStudent(s.name)) {
+  if (!forceRender && _cacheRestoreStudent(s)) {
     // 復元成功 → ドロップダウンだけ更新
     renderWpStudentSelect();
     renderMonthlyStudentSelect();
