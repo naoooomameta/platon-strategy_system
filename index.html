@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 大学受験 戦略管理システム</title>
+<title>プラトン 戦略管理システム v3.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -899,7 +899,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v3.1</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v3.2</span>
       </div>
     </div>
   </div>
@@ -3008,12 +3008,14 @@ _sb.auth.onAuthStateChange(async function(event, session) {
     } catch(e) {
       console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
     }
-    // ダッシュボードを明示的に表示
-    try {
-      showPage('dashboard');
-      console.log('[DEBUG] Dashboard shown');
-    } catch(e) {
-      console.error('[DEBUG] showPage error:', e);
+    // 初回ログイン時のみダッシュボード表示（TOKEN_REFRESHED等では切り替えない）
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      try {
+        showPage('dashboard');
+        console.log('[DEBUG] Dashboard shown (initial)');
+      } catch(e) {
+        console.error('[DEBUG] showPage error:', e);
+      }
     }
   } else {
     if (loginScreen) loginScreen.style.display = 'flex';
@@ -3023,6 +3025,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
+  console.log('%c[PLATON v3.2] ファイル読み込み完了 - 手動編集保護版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -3215,6 +3218,15 @@ async function deleteStudentFromList(name) {
 function loadStudentFromList(name) {
   const s = _allStudents.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
+
+  // 同じ生徒なら再描画せずページ切替のみ（手動編集を保持）
+  if (currentStudent && currentStudent.name === name) {
+    console.log('[EDIT-PROTECT] 同一生徒 → 再描画スキップ:', name);
+    showPage('roadmap');
+    return;
+  }
+
+  console.log('[EDIT-PROTECT] 新規生徒ロード → 全ページ再描画:', name);
   currentStudent = s;
   renderRoadmap();
   _initAllPagesForStudent();
@@ -3483,6 +3495,8 @@ function monthlySelectStudent(name) {
 // 各ページの初期化は生徒ロード時に一括実行する。
 
 function showPage(name) {
+  console.log('[EDIT-PROTECT] showPage called:', name, '| currentStudent:', currentStudent?.name || 'null');
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
@@ -3494,16 +3508,21 @@ function showPage(name) {
   if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
 
   // ダッシュボードだけは生徒リスト更新（編集対象外）
-  if (name === 'dashboard') { renderStudentList(); renderDashboardWidgets(); }
+  if (name === 'dashboard') { renderStudentList(); }
+
+  // それ以外のページはDOMに一切触れない（手動編集を保持）
+  console.log('[EDIT-PROTECT] showPage完了 - コンテンツ再描画なし:', name);
 
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
 // 生徒ロード時に全ページを一括初期化する関数
 function _initAllPagesForStudent() {
+  console.log('[EDIT-PROTECT] _initAllPagesForStudent() 全ページ一括初期化');
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
   wpInit();
+  testInit();
   monthlyInit();
 }
 
@@ -3775,6 +3794,8 @@ function updateStepIndicator() {
 
 // ===== RENDER ROADMAP =====
 function renderRoadmap() {
+  console.log('[EDIT-PROTECT] renderRoadmap() 呼び出し - 全内容再構築');
+  console.trace('[EDIT-PROTECT] renderRoadmap呼び出し元');
   const s = currentStudent;
   const gradeLabel = { high1:'高校1年', high2:'高校2年', high3:'高校3年', ronin:'浪人' }[s.grade];
   const streamLabel = s.stream === 'rikei' ? '理系' : '文系';
@@ -6689,6 +6710,7 @@ function wpSelectStudent(name) {
 }
 
 function wpInit() {
+  console.log('[EDIT-PROTECT] wpInit() 呼び出し');
   renderWpStudentSelect();
   const s = currentStudent || {devVal:63, univName:'東京大学', univInfo:{dev:72,cat:'national'}, stream:'bunkei', grade:'high3'};
   const badge = document.getElementById('wp-goal-badge');
