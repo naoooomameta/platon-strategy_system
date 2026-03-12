@@ -3216,6 +3216,7 @@ function loadStudentFromList(name) {
   const s = _allStudents.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
   currentStudent = s;
+  _resetPageInitTracking();
   renderRoadmap();
   showPage('roadmap');
 }
@@ -3445,21 +3446,83 @@ function renderMonthlyStudentSelect() {
 function monthlySelectStudent(name) {
   if (!name) return;
   const s = _allStudents.find(x => x.name === name);
-  if (s) { currentStudent = s; }
+  if (s) {
+    currentStudent = s;
+    // ページ初期化追跡をリセットして再描画を許可
+    _pageInitStudent['monthly'] = null;
+
+    // 偏差値表示を即座に更新
+    document.getElementById('ms-initial').textContent = s.devVal || '—';
+    document.getElementById('ms-target').textContent = s.univInfo?.dev || '—';
+    document.getElementById('ms-current').textContent = '—';
+    document.getElementById('ms-3month').textContent = '—';
+
+    // チャートを再構築
+    monthlyScores = {};
+    buildMonthlyChart(s, monthlyScores);
+
+    // テスト・採点フォームをリセット
+    monthlyTestData = null;
+    monthlyAnsVisible = false;
+    document.getElementById('monthly-test-content').style.display = 'none';
+    document.getElementById('monthly-scoring').innerHTML = `
+      <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+        <div style="font-size:36px;margin-bottom:10px;">📋</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">月次テストを作成してください</div>
+        <div style="font-size:12px;">「今月の診断テストを作成」ボタンで自動生成します</div>
+      </div>`;
+    document.getElementById('monthly-deviation').innerHTML = `
+      <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+        <div style="font-size:36px;margin-bottom:10px;">📈</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">採点後に自動算出されます</div>
+      </div>`;
+
+    // 初期化済みとしてマーク
+    _pageInitStudent['monthly'] = s.name;
+    showToast(`${s.name} さんに切り替えました`);
+  }
 }
+// ページ初期化追跡：生徒が変わった時のみ再描画し、手動編集を保持する
+const _pageInitStudent = {};
+function _resetPageInitTracking() {
+  Object.keys(_pageInitStudent).forEach(k => delete _pageInitStudent[k]);
+}
+
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
+
+  const curName = currentStudent ? currentStudent.name : null;
+
   if (name === 'dashboard') { renderStudentList(); renderDashboardWidgets(); }
   if (name === 'monthly') renderMonthlyStudentSelect();
+
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
   const idx = btnMap[name];
   if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
-  if (name === 'weekly-plan') { renderWpStudentSelect(); setTimeout(wpInit, 50); }
-  if (name === 'tests')       { setTimeout(testInit, 50); }
-  if (name === 'monthly')     { setTimeout(monthlyInit, 50); }
+
+  // 手動編集保護: 生徒が変わった場合のみ再描画する
+  if (name === 'weekly-plan') {
+    renderWpStudentSelect();
+    if (_pageInitStudent['weekly-plan'] !== curName) {
+      _pageInitStudent['weekly-plan'] = curName;
+      setTimeout(wpInit, 50);
+    }
+  }
+  if (name === 'tests') {
+    if (_pageInitStudent['tests'] !== curName) {
+      _pageInitStudent['tests'] = curName;
+      setTimeout(testInit, 50);
+    }
+  }
+  if (name === 'monthly') {
+    if (_pageInitStudent['monthly'] !== curName) {
+      _pageInitStudent['monthly'] = curName;
+      setTimeout(monthlyInit, 50);
+    }
+  }
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
@@ -3700,6 +3763,7 @@ async function generateRoadmap() {
 
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
+  _resetPageInitTracking();
 
   // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
@@ -4173,7 +4237,7 @@ function renderGapStats() {
   const toP = v => Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100));
 
   let html = '';
-  subjects.forEach(sub => {
+  subjects.forEach((sub, si) => {
     const diff      = sub.target - sub.current;
     const barColor  = diff > 8 ? '#c84b31' : diff > 3 ? '#c9a84c' : '#2a7f6f';
     const diffColor = diff > 8 ? '#c84b31' : diff > 3 ? '#b8922a' : '#2a7f6f';
@@ -4185,29 +4249,35 @@ function renderGapStats() {
       `<div style="position:absolute;top:10px;left:${toP(v)}%;transform:translateX(-50%);font-size:10px;color:var(--text-muted);">${v}</div>`
     ).join('');
     html += `
-    <div style="margin-bottom:14px;">
+    <div style="margin-bottom:14px;" id="gap-row-${si}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
         <span style="font-size:12px;font-weight:700;color:var(--ink);width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;">${shortSubName(sub.name)}</span>
         <div style="display:flex;align-items:baseline;gap:6px;">
-          <span style="font-size:26px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;line-height:1;">${sub.current}</span>
+          <input type="number" value="${sub.current}" min="30" max="80" data-gap-idx="${si}" data-gap-type="current"
+            onchange="updateGapBar(${si})" oninput="updateGapBar(${si})"
+            style="width:52px;font-size:22px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;line-height:1;
+              border:none;border-bottom:2px dashed var(--border);background:transparent;text-align:center;padding:0 2px;outline:none;">
           <span style="font-size:16px;color:var(--text-muted);">→</span>
-          <span style="font-size:22px;font-weight:700;color:${barColor};font-family:'DM Mono',monospace;">${sub.target}</span>
-          <span style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:${diff>0?barColor+'22':'#e8f5e9'};color:${diffColor};">
+          <input type="number" value="${sub.target}" min="30" max="80" data-gap-idx="${si}" data-gap-type="target"
+            onchange="updateGapBar(${si})" oninput="updateGapBar(${si})"
+            style="width:52px;font-size:20px;font-weight:700;color:${barColor};font-family:'DM Mono',monospace;
+              border:none;border-bottom:2px dashed var(--border);background:transparent;text-align:center;padding:0 2px;outline:none;">
+          <span id="gap-diff-${si}" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:${diff>0?barColor+'22':'#e8f5e9'};color:${diffColor};">
             ${diff > 0 ? '+' : ''}${diff}
           </span>
         </div>
       </div>
-      <div style="position:relative;height:8px;background:var(--paper-dark);border-radius:4px;">
-        <div style="position:absolute;top:0;left:${gapLeft}%;width:${gapWidth}%;height:100%;background:${barColor}33;border-radius:2px;"></div>
-        <div style="position:absolute;top:0;left:0;width:${curP}%;height:100%;background:${barColor};border-radius:4px;transition:width 1s cubic-bezier(.23,1,.32,1);"></div>
-        <div style="position:absolute;top:-3px;left:${tarP}%;width:2px;height:14px;background:${barColor};border-radius:1px;transform:translateX(-50%);box-shadow:0 0 0 2px white;"></div>
+      <div style="position:relative;height:8px;background:var(--paper-dark);border-radius:4px;" id="gap-bar-wrap-${si}">
+        <div id="gap-fill-bg-${si}" style="position:absolute;top:0;left:${gapLeft}%;width:${gapWidth}%;height:100%;background:${barColor}33;border-radius:2px;"></div>
+        <div id="gap-fill-${si}" style="position:absolute;top:0;left:0;width:${curP}%;height:100%;background:${barColor};border-radius:4px;transition:width 0.4s cubic-bezier(.23,1,.32,1);"></div>
+        <div id="gap-marker-${si}" style="position:absolute;top:-3px;left:${tarP}%;width:2px;height:14px;background:${barColor};border-radius:1px;transform:translateX(-50%);box-shadow:0 0 0 2px white;"></div>
         ${ticks}
       </div>
       <div style="height:14px;"></div>
     </div>`;
   });
 
-  html += `<div style="margin-top:12px;padding:12px;background:var(--paper);border-radius:8px;border:1px solid var(--border);">
+  html += `<div id="gap-summary" style="margin-top:12px;padding:12px;background:var(--paper);border-radius:8px;border:1px solid var(--border);">
     <div style="font-size:12px;color:var(--text-muted);">総合ギャップ</div>
     <div style="font-size:24px;font-weight:700;color:${gap > 10 ? 'var(--accent)' : 'var(--teal)'};font-family:'DM Mono',monospace;margin-top:4px;">
       ${gap > 0 ? '+' : ''}${gap} <span style="font-size:13px;font-weight:400;">偏差値</span>
@@ -4218,6 +4288,64 @@ function renderGapStats() {
   </div>`;
 
   document.getElementById('gap-stats').innerHTML = html;
+}
+
+// ギャップ分析：数値変更時にバーをリアルタイム更新
+function updateGapBar(si) {
+  const SCALE_MIN = 35, SCALE_MAX = 80;
+  const toP = v => Math.max(0, Math.min(100, (v - SCALE_MIN) / (SCALE_MAX - SCALE_MIN) * 100));
+
+  const curInput = document.querySelector(`[data-gap-idx="${si}"][data-gap-type="current"]`);
+  const tarInput = document.querySelector(`[data-gap-idx="${si}"][data-gap-type="target"]`);
+  if (!curInput || !tarInput) return;
+
+  const cur = parseInt(curInput.value) || 0;
+  const tar = parseInt(tarInput.value) || 0;
+  const diff = tar - cur;
+  const barColor = diff > 8 ? '#c84b31' : diff > 3 ? '#c9a84c' : '#2a7f6f';
+  const diffColor = diff > 8 ? '#c84b31' : diff > 3 ? '#b8922a' : '#2a7f6f';
+  const curP = toP(cur);
+  const tarP = toP(tar);
+  const gapLeft = Math.min(curP, tarP);
+  const gapWidth = Math.abs(tarP - curP);
+
+  // バーを更新
+  const fill = document.getElementById('gap-fill-' + si);
+  const fillBg = document.getElementById('gap-fill-bg-' + si);
+  const marker = document.getElementById('gap-marker-' + si);
+  const diffEl = document.getElementById('gap-diff-' + si);
+
+  if (fill) { fill.style.width = curP + '%'; fill.style.background = barColor; }
+  if (fillBg) { fillBg.style.left = gapLeft + '%'; fillBg.style.width = gapWidth + '%'; fillBg.style.background = barColor + '33'; }
+  if (marker) { marker.style.left = tarP + '%'; marker.style.background = barColor; }
+  if (diffEl) {
+    diffEl.textContent = (diff > 0 ? '+' : '') + diff;
+    diffEl.style.background = diff > 0 ? barColor + '22' : '#e8f5e9';
+    diffEl.style.color = diffColor;
+  }
+
+  // 入力の色もバーに合わせて更新
+  tarInput.style.color = barColor;
+
+  // 総合ギャップも再計算
+  const allCur = document.querySelectorAll('[data-gap-type="current"]');
+  const allTar = document.querySelectorAll('[data-gap-type="target"]');
+  let sumCur = 0, sumTar = 0, cnt = 0;
+  allCur.forEach((el, i) => {
+    const c = parseInt(el.value) || 0;
+    const t = parseInt(allTar[i]?.value) || 0;
+    sumCur += c; sumTar += t; cnt++;
+  });
+  const avgGap = cnt > 0 ? Math.round((sumTar - sumCur) / cnt) : 0;
+  const summaryEl = document.getElementById('gap-summary');
+  if (summaryEl) {
+    const col = avgGap > 10 ? 'var(--accent)' : 'var(--teal)';
+    summaryEl.innerHTML = `
+      <div style="font-size:12px;color:var(--text-muted);">総合ギャップ（平均）</div>
+      <div style="font-size:24px;font-weight:700;color:${col};font-family:'DM Mono',monospace;margin-top:4px;">
+        ${avgGap > 0 ? '+' : ''}${avgGap} <span style="font-size:13px;font-weight:400;">偏差値</span>
+      </div>`;
+  }
 }
 
 // ===== CHART =====
@@ -4326,6 +4454,7 @@ function loadStudentRoadmap(name) {
       univInfo: univData ? univData[1] : { cat: 'national', dev: 65, subjects: [] },
       levelVal: p.level, devVal: p.dev, months, goalYear
     };
+    _resetPageInitTracking();
     renderRoadmap();
     showPage('roadmap');
     showToast(`${p.name} さんのロードマップを表示しました`);
