@@ -899,7 +899,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v3.1</span>
       </div>
     </div>
   </div>
@@ -3216,8 +3216,8 @@ function loadStudentFromList(name) {
   const s = _allStudents.find(x => x.name === name);
   if (!s) { showToast('生徒データが見つかりません'); return; }
   currentStudent = s;
-  _resetPageInitTracking();
   renderRoadmap();
+  _initAllPagesForStudent();
   showPage('roadmap');
 }
 
@@ -3445,12 +3445,9 @@ function renderMonthlyStudentSelect() {
 
 function monthlySelectStudent(name) {
   if (!name) return;
-  delete _pageDirty['monthly']; // 明示的に生徒変更 → 編集保護を解除
   const s = _allStudents.find(x => x.name === name);
   if (s) {
     currentStudent = s;
-    // ページ初期化追跡をリセットして再描画を許可
-    _pageInitStudent['monthly'] = null;
 
     // 偏差値表示を即座に更新
     document.getElementById('ms-initial').textContent = s.devVal || '—';
@@ -3478,32 +3475,17 @@ function monthlySelectStudent(name) {
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;">採点後に自動算出されます</div>
       </div>`;
 
-    // 初期化済みとしてマーク
-    _pageInitStudent['monthly'] = s.name;
     showToast(`${s.name} さんに切り替えました`);
   }
 }
 // ===== ページ編集保護 =====
-// 手動編集されたページは init をスキップして DOM を保持する
-const _pageDirty = {};        // pageId → true if user has ever entered edit mode
-const _pageInitStudent = {};  // pageId → student name (init tracking)
-
-function _resetPageInitTracking() {
-  Object.keys(_pageInitStudent).forEach(k => delete _pageInitStudent[k]);
-  Object.keys(_pageDirty).forEach(k => delete _pageDirty[k]);
-}
-
-// 編集済みページなら true（init をスキップすべき）
-function _isPageProtected(pageId) {
-  return !!_pageDirty[pageId];
-}
+// showPage は表示/非表示のみ。コンテンツ再描画は一切行わない。
+// 各ページの初期化は生徒ロード時に一括実行する。
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
-
-  const curName = currentStudent ? currentStudent.name : null;
 
   // ナビボタン active
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -3511,40 +3493,18 @@ function showPage(name) {
   const idx = btnMap[name];
   if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
 
-  // ダッシュボードは常に再描画（編集ボタンがないため）
+  // ダッシュボードだけは生徒リスト更新（編集対象外）
   if (name === 'dashboard') { renderStudentList(); renderDashboardWidgets(); }
 
-  // 編集済みページ → ドロップダウンだけ更新し、コンテンツは再描画しない
-  if (_isPageProtected(name)) {
-    if (name === 'weekly-plan') renderWpStudentSelect();
-    if (name === 'monthly') renderMonthlyStudentSelect();
-    window.scrollTo({ top:0, behavior:'smooth' });
-    return;
-  }
-
-  // 未編集ページ → 通常の初期化（同一生徒なら省略）
-  if (name === 'monthly') renderMonthlyStudentSelect();
-
-  if (name === 'weekly-plan') {
-    renderWpStudentSelect();
-    if (_pageInitStudent['weekly-plan'] !== curName) {
-      _pageInitStudent['weekly-plan'] = curName;
-      setTimeout(wpInit, 50);
-    }
-  }
-  if (name === 'tests') {
-    if (_pageInitStudent['tests'] !== curName) {
-      _pageInitStudent['tests'] = curName;
-      setTimeout(testInit, 50);
-    }
-  }
-  if (name === 'monthly') {
-    if (_pageInitStudent['monthly'] !== curName) {
-      _pageInitStudent['monthly'] = curName;
-      setTimeout(monthlyInit, 50);
-    }
-  }
   window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+// 生徒ロード時に全ページを一括初期化する関数
+function _initAllPagesForStudent() {
+  renderWpStudentSelect();
+  renderMonthlyStudentSelect();
+  wpInit();
+  monthlyInit();
 }
 
 function switchTab(name) {
@@ -3784,7 +3744,6 @@ async function generateRoadmap() {
 
   currentStudent = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
-  _resetPageInitTracking();
 
   // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
@@ -3792,6 +3751,7 @@ async function generateRoadmap() {
   setTimeout(() => {
     loading.classList.remove('show');
     renderRoadmap();
+    _initAllPagesForStudent();
     showPage('roadmap');
     updateStepIndicator();
     renderStudentList();
@@ -4475,8 +4435,8 @@ function loadStudentRoadmap(name) {
       univInfo: univData ? univData[1] : { cat: 'national', dev: 65, subjects: [] },
       levelVal: p.level, devVal: p.dev, months, goalYear
     };
-    _resetPageInitTracking();
     renderRoadmap();
+    _initAllPagesForStudent();
     showPage('roadmap');
     showToast(`${p.name} さんのロードマップを表示しました`);
   }, 1200);
@@ -5870,9 +5830,6 @@ function togglePageEdit(pageId) {
   PAGE_EDIT_STATE[pageId] = !isEditing;
 
   if (!isEditing) {
-    // 編集モードON → ページを「編集済み」としてマーク
-    _pageDirty[pageId] = true;
-
     // 編集ON：テキストを含む要素を全てeditableに
     const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT, {
       acceptNode: n => {
@@ -5937,8 +5894,6 @@ function togglePageEdit(pageId) {
 
 function resetPageEdit(pageId) {
   if (!confirm('編集内容を破棄して元の状態に戻しますか？')) return;
-  // 編集状態をクリア
-  delete _pageDirty[pageId];
   const page = document.getElementById('page-' + pageId);
   page.querySelectorAll('[contenteditable]').forEach(el => {
     if (el.dataset.editOrig !== undefined && el.dataset.editOrig !== '') {
@@ -6727,7 +6682,6 @@ function renderWpStudentSelect() {
 
 // 3ヶ月プラン用：生徒選択時にcurrentStudentを切り替え
 function wpSelectStudent(name) {
-  delete _pageDirty['weekly-plan']; // 明示的に生徒変更 → 編集保護を解除
   if (!name) { wpInit(); return; }
   const s = _allStudents.find(x => x.name === name);
   if (s) { currentStudent = s; }
@@ -6735,7 +6689,6 @@ function wpSelectStudent(name) {
 }
 
 function wpInit() {
-  if (_isPageProtected('weekly-plan')) return; // 編集済みページは再描画しない
   renderWpStudentSelect();
   const s = currentStudent || {devVal:63, univName:'東京大学', univInfo:{dev:72,cat:'national'}, stream:'bunkei', grade:'high3'};
   const badge = document.getElementById('wp-goal-badge');
@@ -7168,7 +7121,6 @@ let currentTestWeek = null;
 let testAnswerVisible = {};
 
 function testInit() {
-  if (_isPageProtected('tests')) return; // 編集済みページは再描画しない
   if (Object.keys(testData).length > 0) renderTestList();
 }
 
@@ -8110,7 +8062,6 @@ let monthlyScores = {};
 let monthlyAnsVisible = false;
 
 function monthlyInit() {
-  if (_isPageProtected('monthly')) return; // 編集済みページは再描画しない
   const s = currentStudent || {devVal:63, univInfo:{dev:72}, months:11};
   document.getElementById('ms-initial').textContent = s.devVal || 63;
   document.getElementById('ms-target').textContent = s.univInfo?.dev || 72;
