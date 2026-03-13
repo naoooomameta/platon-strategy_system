@@ -1425,7 +1425,6 @@ function updateSubCheckStyle(cb) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <button class="btn btn-secondary" onclick="togglePageEdit('roadmap')" id="edit-toggle-roadmap" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printPage('roadmap','合格ロードマップ')" style="font-size:13px;">🖨️ PDF保存</button>
-        <button class="btn btn-teal" onclick="saveStudentToList(currentStudent).then(()=>showToast('ロードマップを保存しました ✓'))">💾 保存する</button>
       </div>
     </div>
 
@@ -6173,12 +6172,10 @@ function togglePageEdit(pageId) {
       page.querySelector('.container').prepend(banner);
     }
     banner.style.display = 'flex';
-    btn.textContent = '✅ 編集完了';
-    btn.style.background = '#e0f4f0';
-    btn.style.color = 'var(--teal)';
+    btn.style.display = 'none'; // バナーに編集完了ボタンがあるのでヘッダーのは非表示
     showToast('編集モードON：テキストをクリックで編集できます');
   } else {
-    // 編集OFF
+    // 編集OFF → 自動保存
     page.querySelectorAll('[contenteditable="true"]').forEach(el => {
       el.contentEditable = 'false';
       el.style.outline = '';
@@ -6189,7 +6186,20 @@ function togglePageEdit(pageId) {
     btn.textContent = '✏️ 手動編集';
     btn.style.background = '';
     btn.style.color = '';
-    showToast('編集内容を保存しました');
+    btn.style.display = '';
+
+    // DOM編集をデータに同期 → Supabaseへ保存
+    _syncEditedFieldsToData();
+    if (currentStudent) {
+      saveStudentToList(currentStudent).then(function() {
+        showToast('編集内容を保存しました ✓');
+      }).catch(function(e) {
+        console.warn('保存エラー:', e);
+        showToast('編集内容を保存しました（ローカル）');
+      });
+    } else {
+      showToast('編集内容を保存しました');
+    }
   }
 }
 
