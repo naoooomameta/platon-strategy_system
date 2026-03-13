@@ -3099,8 +3099,12 @@ _sb.auth.onAuthStateChange(async function(event, session) {
     // 初回ログイン時のみダッシュボード表示（TOKEN_REFRESHED等では切り替えない）
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
       try {
-        showPage('dashboard');
-        console.log('[DEBUG] Dashboard shown (initial)');
+        var _initPage = 'dashboard';
+        if (event === 'INITIAL_SESSION') {
+          try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
+        }
+        showPage(_initPage);
+        console.log('[DEBUG] Page shown (initial):', _initPage);
       } catch(e) {
         console.error('[DEBUG] showPage error:', e);
       }
@@ -3131,7 +3135,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       // リロード時：最後に開いていた生徒を自動復元
       _restoreLastStudent();
 
-      showPage('dashboard');
+      // 最後に開いていたページを復元（なければダッシュボード）
+      var lastPage = 'dashboard';
+      try { lastPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e) {}
+      showPage(lastPage);
     }
   } catch(e) {
     console.error('[DEBUG] DOMContentLoaded auth check error:', e);
@@ -3749,6 +3756,9 @@ function showPage(name) {
   }
 
   window.scrollTo({ top:0, behavior:'smooth' });
+
+  // 現在のページをlocalStorageに保存（リロード時復元用）
+  try { localStorage.setItem('platon_lastPage', name); } catch(e) {}
 }
 
 // 生徒切替の中央ルーター
