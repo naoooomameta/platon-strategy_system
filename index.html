@@ -3638,6 +3638,8 @@ function _cacheSaveCurrentStudent() {
   cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
   cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
   cache._monthlyAnsVisible = monthlyAnsVisible;
+  // 参考書データもキャッシュ
+  cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
   _studentCache[cacheKey] = cache;
   console.log('[CACHE] 保存:', cacheKey);
 }
@@ -3663,6 +3665,8 @@ function _cacheRestoreStudent(s) {
   monthlyScores = cache._monthlyScores || {};
   monthlyTestData = cache._monthlyTestData || null;
   monthlyAnsVisible = cache._monthlyAnsVisible || false;
+  // 参考書データを復元
+  window._roadmapBooksAll = cache._roadmapBooksAll || null;
   // Chart.jsを再構築（canvasは復元済みだがインスタンスは未作成）
   try { renderGapChart(); } catch(e) { console.warn('gap chart rebuild error:', e); }
   try {
