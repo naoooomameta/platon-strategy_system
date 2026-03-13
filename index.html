@@ -3127,12 +3127,44 @@ document.addEventListener('DOMContentLoaded', async function() {
         appBody.style.visibility = 'visible';
       }
       await _loadStudentsFromSupabase();
+
+      // リロード時：最後に開いていた生徒を自動復元
+      _restoreLastStudent();
+
       showPage('dashboard');
     }
   } catch(e) {
     console.error('[DEBUG] DOMContentLoaded auth check error:', e);
   }
 });
+
+// ページ離脱・リロード前にキャッシュを保存
+window.addEventListener('beforeunload', function() {
+  _cacheSaveCurrentStudent();
+});
+
+// 最後に開いていた生徒をlocalStorageから復元
+function _restoreLastStudent() {
+  try {
+    var lastKey = localStorage.getItem('platon_lastStudent');
+    if (!lastKey || _allStudents.length === 0) return;
+    var student = _allStudents.find(function(s) {
+      return (s._id && s._id === lastKey) || s.name === lastKey;
+    });
+    if (!student) return;
+    currentStudent = student;
+    if (_cacheRestoreStudent(student)) {
+      renderWpStudentSelect();
+      renderMonthlyStudentSelect();
+      renderPredStudentSelect();
+      console.log('[RESTORE] 最後の生徒を復元:', lastKey);
+    } else {
+      // キャッシュがなければフル描画
+      renderRoadmap();
+      _initAllPagesForStudent();
+    }
+  } catch(e) { console.warn('[RESTORE] 復元失敗:', e); }
+}
 
 // ===== Supabase直接REST APIヘルパー =====
 function _getAccessToken() {
@@ -3641,6 +3673,13 @@ function _cacheSaveCurrentStudent() {
   // 参考書データもキャッシュ
   cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
   _studentCache[cacheKey] = cache;
+
+  // localStorageにも永続化（リロード耐性）
+  try {
+    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
+    localStorage.setItem('platon_lastStudent', cacheKey);
+  } catch(e) { console.warn('[CACHE] localStorage保存失敗:', e); }
+
   console.log('[CACHE] 保存:', cacheKey);
 }
 
@@ -3648,6 +3687,18 @@ function _cacheSaveCurrentStudent() {
 function _cacheRestoreStudent(s) {
   var cacheKey = s._id || s.name;
   var cache = _studentCache[cacheKey];
+
+  // メモリにない場合はlocalStorageからロード
+  if (!cache) {
+    try {
+      var stored = localStorage.getItem('platon_cache_' + cacheKey);
+      if (stored) {
+        cache = JSON.parse(stored);
+        _studentCache[cacheKey] = cache; // メモリにも保持
+      }
+    } catch(e) { console.warn('[CACHE] localStorage読込失敗:', e); }
+  }
+
   if (!cache) return false;
   var restored = false;
   _CACHE_PAGES.forEach(function(pid) {
@@ -6246,8 +6297,9 @@ function togglePageEdit(pageId) {
     btn.style.color = '';
     btn.style.display = '';
 
-    // DOM編集をデータに同期 → Supabaseへ保存
+    // DOM編集をデータに同期 → キャッシュ＆Supabaseへ保存
     _syncEditedFieldsToData();
+    _cacheSaveCurrentStudent(); // localStorage にも保存
     if (currentStudent) {
       saveStudentToList(currentStudent).then(function() {
         showToast('編集内容を保存しました ✓');
@@ -7149,6 +7201,7 @@ function renderWpSubjectPlan(sub) {
 
 function wpSave() {
   _syncEditedFieldsToData();
+  _cacheSaveCurrentStudent(); // localStorage にも保存
   if (currentStudent) {
     saveStudentToList(currentStudent).then(function() {
       showToast('学習プランを保存しました ✓');
