@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 戦略管理システム v4.2</title>
+<title>プラトン 戦略管理システム v4.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -902,7 +902,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.2</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.3</span>
       </div>
     </div>
   </div>
@@ -913,6 +913,7 @@
     <button class="nav-btn" onclick="showPage('weekly-plan')">1ヶ月プラン</button>
     <button class="nav-btn" onclick="showPage('tests')">確認テスト</button>
     <button class="nav-btn" onclick="showPage('monthly')">実力診断</button>
+    <button class="nav-btn" onclick="showPage('prediction')">推移予測</button>
     <div style="display:flex;align-items:center;gap:6px;padding-right:12px;">
     <span style="font-size:11px;color:#999;">🔑 Gemini Key</span>
     <input type="password" id="platon-api-key-input" placeholder="AIza..."
@@ -1948,6 +1949,77 @@ function updateSubCheckStyle(cb) {
         </div>
       </div>
       <div id="monthly-test-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: PREDICTION ===== -->
+<div class="page" id="page-prediction">
+  <div class="container">
+    <div style="margin-bottom:1.5rem;padding-top:.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="section-title">偏差値推移予測</div>
+        <div class="section-desc">現在の学力から受験期までの偏差値推移を予測し、毎月の実績を記録して追跡します</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+        <select id="pred-student-sel" onchange="predSelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
+          <option value="">── 生徒を選択 ──</option>
+        </select>
+        <button class="btn btn-secondary" onclick="printPage('prediction','偏差値推移予測レポート')" style="font-size:13px;">📄 PDF保存</button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
+      <div style="background:var(--paper);border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:4px;">入塾時偏差値</div>
+        <div style="font-size:36px;font-weight:700;color:var(--ink);font-family:'Noto Serif JP',serif;" id="pred-initial">—</div>
+      </div>
+      <div style="background:var(--paper);border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:4px;">現在の推定偏差値</div>
+        <div style="font-size:36px;font-weight:700;color:var(--teal);font-family:'Noto Serif JP',serif;" id="pred-current">—</div>
+      </div>
+      <div style="background:var(--paper);border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:4px;">3ヶ月後の予測</div>
+        <div style="font-size:36px;font-weight:700;color:var(--gold);font-family:'Noto Serif JP',serif;" id="pred-3month">—</div>
+      </div>
+      <div style="background:linear-gradient(135deg,var(--ink),var(--ink-light));border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.06em;margin-bottom:4px;">合格目標偏差値</div>
+        <div style="font-size:36px;font-weight:700;color:var(--gold);font-family:'Noto Serif JP',serif;" id="pred-target">—</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:6px;">
+        <div class="card-title" style="margin-bottom:0;">受験期までの偏差値推移予測</div>
+        <div style="font-size:11px;color:var(--text-muted);">月次実績を入力するとグラフに反映されます</div>
+      </div>
+      <div id="pred-banner" style="background:var(--paper);border-radius:8px;padding:10px 16px;margin-bottom:1rem;font-size:12px;color:var(--text-muted);display:none;"></div>
+      <div class="chart-container" style="height:300px;"><canvas id="pred-chart"></canvas></div>
+    </div>
+
+    <!-- 月次実績入力 -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+        <div class="card-title" style="margin-bottom:0;">📋 月次実績の入力</div>
+        <button class="btn btn-teal" onclick="predUpdateActuals()" style="font-size:12px;">📊 実績をグラフに反映</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:1rem;">模試や実力テストの偏差値を記録すると、グラフに実績線が追加されます</div>
+      <div id="pred-month-inputs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;"></div>
+    </div>
+
+    <!-- 分析 -->
+    <div class="card" id="pred-analysis-card" style="display:none;">
+      <div class="card-title">📊 分析コメント</div>
+      <div id="pred-analysis" style="font-size:14px;line-height:1.9;color:var(--ink);"></div>
+    </div>
+
+    <!-- 初期状態 -->
+    <div id="pred-empty" style="text-align:center;padding:3rem;color:var(--text-muted);">
+      <div style="font-size:40px;margin-bottom:10px;">📈</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px;">生徒を選択してください</div>
+      <div style="font-size:12px;">登録済みの生徒を選択すると、偏差値推移予測が自動生成されます</div>
     </div>
   </div>
 </div>
@@ -3028,7 +3100,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.2] ファイル読み込み完了 - タイムラインドラッグ対応', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('%c[PLATON v4.3] 偏差値推移予測ページ統合版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -3117,6 +3189,7 @@ async function _loadStudentsFromSupabase() {
   renderStudentList();
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
+  renderPredStudentSelect();
 }
 
 // DBのスネークケース → JSのキャメルケースに変換
@@ -3180,6 +3253,7 @@ async function saveStudentToList(s) {
   renderStudentList();
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
+  renderPredStudentSelect();
 
   // ② REST APIでSupabaseへ保存
   try {
@@ -3458,7 +3532,7 @@ function monthlySelectStudent(name) {
 // ===== 生徒別ページキャッシュ =====
 // 生徒を切り替える前に全ページのHTMLを保存し、戻ったときに復元する
 var _studentCache = {}; // { "生徒名": { roadmap: html, weekly: html, tests: html, monthly: html, monthlyScores: {}, monthlyTestData: null } }
-var _CACHE_PAGES = ['roadmap', 'weekly-plan', 'tests', 'monthly'];
+var _CACHE_PAGES = ['roadmap', 'weekly-plan', 'tests', 'monthly', 'prediction'];
 
 // ロードマップ上の手動編集をcurrentStudentと_allStudentsに書き戻す
 function _syncEditedFieldsToData() {
@@ -3524,6 +3598,7 @@ function _cacheSaveCurrentStudent() {
   // グラフインスタンスを破棄（HTML復元後に再構築する）
   if (deviationChart) { deviationChart.destroy(); deviationChart = null; }
   if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
+  if (predChartInst) { predChartInst.destroy(); predChartInst = null; }
   // 月次データもキャッシュ
   cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
   cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
@@ -3559,6 +3634,7 @@ function _cacheRestoreStudent(s) {
     var s = currentStudent || {};
     buildMonthlyChart(s, monthlyScores);
   } catch(e) { console.warn('monthly chart rebuild error:', e); }
+  try { if (predChartInst) { predChartInst = null; } predBuildChart(); } catch(e) { console.warn('pred chart rebuild error:', e); }
   console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
@@ -3569,7 +3645,7 @@ function showPage(name) {
   if (pg) pg.classList.add('active');
 
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
-  var btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5 };
+  var btnMap = { 'dashboard':0, 'new-student':1, 'roadmap':2, 'weekly-plan':3, 'tests':4, 'monthly':5, 'prediction':6 };
   var idx = btnMap[name];
   if (idx !== undefined) {
     var btns = document.querySelectorAll('.nav-btn');
@@ -3601,6 +3677,7 @@ function _switchToStudent(s, forceRender) {
     // 復元成功 → ドロップダウンだけ更新
     renderWpStudentSelect();
     renderMonthlyStudentSelect();
+    renderPredStudentSelect();
     return;
   }
   // キャッシュなし → 全ページをフル描画
@@ -3612,9 +3689,11 @@ function _switchToStudent(s, forceRender) {
 function _initAllPagesForStudent() {
   renderWpStudentSelect();
   renderMonthlyStudentSelect();
+  renderPredStudentSelect();
   wpInit();
   testInit();
   monthlyInit();
+  predInit();
 }
 
 function switchTab(name) {
@@ -8506,6 +8585,240 @@ function toggleMonthlyAns() {
 }
 // ======================================================
 // ===== 月次実力診断 =====================================
+
+
+// ======================================================
+// ===== 偏差値推移予測 ===================================
+var predChartInst = null;
+var predActuals = {};  // { monthIndex: devValue }
+
+function renderPredStudentSelect() {
+  var sel = document.getElementById('pred-student-sel');
+  if (!sel) return;
+  var gradeLabel = { high1:'高1', high2:'高2', high3:'高3', ronin:'浪人' };
+  var currentVal = sel.value;
+  sel.innerHTML = '<option value="">── 生徒を選択 ──</option>';
+  _allStudents.forEach(function(s) {
+    var gl = gradeLabel[s.grade] || '';
+    var sl = s.stream === 'rikei' ? '理系' : '文系';
+    var opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name + '（' + gl + '・' + sl + '）';
+    if (currentStudent && s.name === currentStudent.name) opt.selected = true;
+    else if (s.name === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function predSelectStudent(name) {
+  if (!name) return;
+  var s = _allStudents.find(function(x) { return x.name === name; });
+  if (!s) return;
+  _switchToStudent(s, false);
+  showPage('prediction');
+}
+
+function predInit() {
+  var s = currentStudent;
+  if (!s || !s.univInfo) {
+    document.getElementById('pred-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('pred-empty').style.display = 'none';
+  renderPredStudentSelect();
+
+  var initial = s.devVal || 50;
+  var target = (s.univInfo && s.univInfo.dev) || 65;
+  var current = initial; // 実績があれば後で上書き
+
+  // 月数を算出
+  var now = new Date();
+  var months = s.months || 11;
+  months = Math.min(months, 24);
+
+  // ラベル & 予測
+  var labels = [];
+  var forecast = [];
+  for (var i = 0; i <= months; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    labels.push(d.getFullYear() + '/' + (d.getMonth()+1) + '月');
+    var p = i / months;
+    forecast.push(Math.round(current + (target - current) * Math.pow(p, 0.65)));
+  }
+
+  // 月次テスト実績をpredActualsに自動反映
+  if (monthlyScores && Object.keys(monthlyScores).length > 0) {
+    Object.keys(monthlyScores).forEach(function(key) {
+      // key = "YYYY-MM"
+      var parts = key.split('-');
+      var y = parseInt(parts[0]), m = parseInt(parts[1]);
+      var diff = (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
+      if (diff >= 0 && diff <= months && monthlyScores[key].dev) {
+        predActuals[diff] = monthlyScores[key].dev;
+      }
+    });
+  }
+
+  // 最新の実績でcurrentを更新
+  var latestIdx = -1, latestVal = current;
+  Object.keys(predActuals).forEach(function(k) {
+    var idx = parseInt(k);
+    if (idx > latestIdx && predActuals[k]) { latestIdx = idx; latestVal = predActuals[k]; }
+  });
+  if (latestIdx >= 0) current = latestVal;
+
+  // KPI
+  document.getElementById('pred-initial').textContent = s.devVal || '—';
+  document.getElementById('pred-current').textContent = current;
+  document.getElementById('pred-target').textContent = target;
+  var pred3 = forecast[Math.min(3, forecast.length - 1)];
+  if (latestIdx >= 0) {
+    var remaining = months - latestIdx;
+    pred3 = remaining > 0 ? Math.round(latestVal + (target - latestVal) * Math.pow(Math.min(3, remaining) / remaining, 0.65)) : latestVal;
+  }
+  document.getElementById('pred-3month').textContent = pred3;
+
+  // バナー
+  var banner = document.getElementById('pred-banner');
+  var parts = ['<strong>' + s.name + '</strong>'];
+  if (s.univName) parts.push('志望：' + s.univName + (s.dept1 ? ' ' + s.dept1 : ''));
+  parts.push('偏差値 ' + (s.devVal || '—') + ' → 目標 ' + target + '（差 +' + Math.max(0, target - (s.devVal||0)) + '）');
+  parts.push('受験まで <strong>' + months + 'ヶ月</strong>');
+  banner.innerHTML = parts.join('　｜　');
+  banner.style.display = 'block';
+
+  // 月次入力欄
+  var inputHtml = '';
+  for (var i = 0; i <= months; i++) {
+    var hasVal = predActuals[i] !== undefined;
+    inputHtml += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:' + (hasVal ? '#e8f5f2' : 'var(--paper)') + ';border-radius:8px;border:1.5px solid ' + (hasVal ? 'var(--teal)' : 'var(--border)') + ';">'
+      + '<span style="font-size:12px;font-weight:700;color:var(--ink);min-width:70px;">' + labels[i] + '</span>'
+      + '<input type="number" class="pred-mi" data-pidx="' + i + '" min="25" max="80" placeholder="—"'
+      + (hasVal ? ' value="' + predActuals[i] + '"' : '')
+      + ' style="flex:1;max-width:80px;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:14px;font-family:\'DM Mono\',monospace;text-align:center;background:white;outline:none;">'
+      + '<span style="font-size:11px;color:var(--text-muted);">偏差値</span>'
+      + '</div>';
+  }
+  document.getElementById('pred-month-inputs').innerHTML = inputHtml;
+
+  // データを保存してグラフ構築
+  window._predLabels = labels;
+  window._predForecast = forecast;
+  window._predMonths = months;
+  predBuildChart();
+  predRenderAnalysis();
+}
+
+function predBuildChart() {
+  var canvas = document.getElementById('pred-chart');
+  if (!canvas) return;
+  if (predChartInst) { predChartInst.destroy(); predChartInst = null; }
+  var labels = window._predLabels;
+  var forecast = window._predForecast;
+  if (!labels || !forecast) return;
+
+  var s = currentStudent || {};
+  var target = (s.univInfo && s.univInfo.dev) || 65;
+  var initial = s.devVal || 50;
+
+  var actualData = labels.map(function(_, i) {
+    return predActuals[i] !== undefined ? predActuals[i] : null;
+  });
+
+  var minVal = Math.min(initial, forecast[0] || initial) - 5;
+  var maxVal = Math.max(target + 5, 75);
+
+  predChartInst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label:'予測推移', data:forecast, borderColor:'#2a7f6f', backgroundColor:'rgba(42,127,111,.08)',
+          borderWidth:2, pointRadius:4, pointBackgroundColor:'#2a7f6f', tension:.4, fill:true },
+        { label:'目標 ' + target, data:Array(labels.length).fill(target),
+          borderColor:'#c84b31', borderWidth:1.5, borderDash:[6,4], pointRadius:0, fill:false },
+        { label:'実績', data:actualData, borderColor:'#c9a84c', backgroundColor:'#c9a84c',
+          borderWidth:2.5, pointRadius:7, pointBackgroundColor:'#c9a84c', pointBorderColor:'#fff',
+          pointBorderWidth:2, tension:.3, fill:false, spanGaps:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ font:{family:"'Noto Sans JP',sans-serif",size:11}, boxWidth:14, padding:16 }}},
+      scales:{
+        y:{ min:Math.max(25,minVal), max:Math.min(82,maxVal),
+            grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{family:"'Noto Sans JP',sans-serif",size:10}}},
+        x:{ grid:{color:'rgba(0,0,0,.03)'},
+            ticks:{font:{family:"'Noto Sans JP',sans-serif",size:10},maxRotation:45}}
+      }
+    }
+  });
+}
+
+function predUpdateActuals() {
+  predActuals = {};
+  document.querySelectorAll('.pred-mi').forEach(function(el) {
+    var v = parseInt(el.value);
+    if (!isNaN(v) && v > 0) predActuals[parseInt(el.dataset.pidx)] = v;
+  });
+  predInit(); // KPI・グラフ・分析を全て再構築
+  showToast('実績をグラフに反映しました ✓');
+}
+
+function predRenderAnalysis() {
+  var s = currentStudent;
+  if (!s) return;
+  var card = document.getElementById('pred-analysis-card');
+  var el = document.getElementById('pred-analysis');
+  var target = (s.univInfo && s.univInfo.dev) || 65;
+  var current = s.devVal || 50;
+  var gap = target - current;
+  var months = window._predMonths || 11;
+  var monthsPerPoint = gap > 0 ? (months / gap).toFixed(1) : '—';
+  var actualCount = Object.keys(predActuals).length;
+
+  var html = '<div style="background:var(--paper);border-left:4px solid var(--gold);border-radius:0 10px 10px 0;padding:1rem 1.2rem;margin-bottom:1rem;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px;">📋 予測サマリー</div>';
+  html += '<div style="font-size:13px;line-height:1.9;">';
+  html += '<strong>' + s.name + '</strong> さんは、';
+  if (s.univName) html += '志望校 <strong>' + s.univName + '</strong>（目標偏差値 ' + target + '）に向けて、';
+  html += '現在の偏差値 <strong>' + current + '</strong> から <strong>+' + gap + '</strong> の上昇が必要です。<br>';
+  html += '受験まで <strong>' + months + 'ヶ月</strong>。偏差値1ポイントあたり約 <strong>' + monthsPerPoint + 'ヶ月</strong> のペースが目安です。';
+  if (gap <= 5) {
+    html += '<br><span style="color:var(--teal);font-weight:700;">✅ 目標偏差値との差が小さく、現在のペースを維持すれば合格圏内です。</span>';
+  } else if (gap <= 12) {
+    html += '<br><span style="color:var(--gold);font-weight:700;">⚡ 着実な積み上げで十分到達可能な範囲です。毎月の実力テストで進捗を確認しましょう。</span>';
+  } else {
+    html += '<br><span style="color:var(--accent);font-weight:700;">🔥 挑戦的な目標です。基礎固めを最優先に、毎日課題サービスをフル活用してください。</span>';
+  }
+  html += '</div></div>';
+
+  if (actualCount > 0) {
+    var latestIdx = -1, latestVal = 0;
+    Object.keys(predActuals).forEach(function(k) {
+      var idx = parseInt(k);
+      if (idx > latestIdx) { latestIdx = idx; latestVal = predActuals[k]; }
+    });
+    var diff = latestVal - current;
+    var forecast = window._predForecast || [];
+    var vs = latestVal - (forecast[latestIdx] || current);
+    var labels = window._predLabels || [];
+
+    html += '<div style="background:#e8f5f2;border-left:4px solid var(--teal);border-radius:0 10px 10px 0;padding:1rem 1.2rem;">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px;">📈 実績分析（' + actualCount + '件の記録）</div>';
+    html += '<div style="font-size:13px;line-height:1.9;">';
+    html += '最新実績：<strong>' + (labels[latestIdx] || '') + '</strong> 時点で偏差値 <strong>' + latestVal + '</strong>';
+    html += '（入塾時比 <strong style="color:' + (diff >= 0 ? 'var(--teal)' : 'var(--accent)') + ';">' + (diff >= 0 ? '+' : '') + diff + '</strong>）<br>';
+    html += '予測との比較：' + (vs >= 0
+      ? '<span style="color:var(--teal);font-weight:700;">予測を +' + vs + ' 上回っています 🎉</span>'
+      : '<span style="color:var(--accent);font-weight:700;">予測を ' + vs + ' 下回っています。学習量の見直しを検討しましょう。</span>');
+    html += '</div></div>';
+  }
+
+  el.innerHTML = html;
+  card.style.display = 'block';
+}
+// ===== 偏差値推移予測 =====================================
 
 
 </script>
