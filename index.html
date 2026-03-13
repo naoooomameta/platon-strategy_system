@@ -1705,7 +1705,7 @@ function updateSubCheckStyle(cb) {
           <button onclick="changeWpWeek(1)" style="width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);background:white;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">›</button>
         </div>
       </div>
-      <div id="wp-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+      <div id="wp-week-grid-wrap"></div>
     </div>
   </div>
 </div>
@@ -7076,155 +7076,146 @@ function buildWpSubjectTabs() {
   el.innerHTML = subs.map((sub,i) =>
     `<button class="tab ${i===0?'active':''}" onclick="selectWpSub('${sub}',this)" style="font-size:12px;">${sub}</button>`
   ).join('');
-  renderWpSubjectPlan(subs[0]);
+
+  // 全科目のプランを一括描画（最初の科目だけ表示）
+  var planContainer = document.getElementById('wp-subject-plan');
+  if (!planContainer) return;
+  var allHtml = '';
+  subs.forEach(function(sub, i) {
+    allHtml += '<div class="wp-sub-panel" data-wp-sub="' + sub + '" style="' + (i > 0 ? 'display:none;' : '') + '">';
+    allHtml += _buildWpSubjectHtml(sub);
+    allHtml += '</div>';
+  });
+  planContainer.innerHTML = allHtml;
 }
 
 function selectWpSub(sub, btn) {
   document.querySelectorAll('#wp-subject-tabs .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  renderWpSubjectPlan(sub);
+  // DOM再構築せず表示切替のみ（手動編集を保持）
+  document.querySelectorAll('.wp-sub-panel').forEach(function(panel) {
+    panel.style.display = panel.dataset.wpSub === sub ? '' : 'none';
+  });
 }
 
-function renderWpSubjectPlan(sub) {
+function _buildWpSubjectHtml(sub) {
   const plans = WP_PLANS[sub] || WP_PLANS['英語'];
-  const el = document.getElementById('wp-subject-plan');
-  if (!el) return;
-  const m = plans[0]; // 1ヶ月目フェーズのデータを使用
-
-  // 週ごとのタスク自動生成（1ヶ月4週展開）
+  const m = plans[0];
   const books = m.books || [];
   const weeklyParts = m.weekly.split('＋').map(s => s.trim());
   const weeks = [
-    {
-      label: 'Week 1',
-      period: '1〜7日目',
-      theme: '導入・基礎固め',
-      books: books.slice(0, Math.ceil(books.length / 2)),
-      task: weeklyParts[0] || m.weekly,
-      note: 'まず教材を通読し、全体像をつかむ',
-      color: '#c84b31',
-      bg: '#fef0ee',
-      border: '#f0c0b8',
-    },
-    {
-      label: 'Week 2',
-      period: '8〜14日目',
-      theme: '反復・定着',
-      books: books.slice(0, Math.ceil(books.length / 2)),
-      task: weeklyParts[0] || m.weekly,
-      note: 'Week1の内容を反復し、ミスパターンを潰す',
-      color: '#c9a84c',
-      bg: '#fdf8ee',
-      border: '#f0e0a0',
-    },
-    {
-      label: 'Week 3',
-      period: '15〜21日目',
-      theme: '演習・強化',
-      books: books.length > 1 ? books.slice(Math.ceil(books.length / 2)) : books,
-      task: weeklyParts[1] || weeklyParts[0] || m.weekly,
-      note: '問題演習で得点力を高める',
-      color: '#2a7f6f',
-      bg: '#eef5f3',
-      border: '#b0d8d0',
-    },
-    {
-      label: 'Week 4',
-      period: '22〜月末',
-      theme: '総復習・確認テスト',
-      books: books.length > 1 ? books.slice(Math.ceil(books.length / 2)) : books,
-      task: weeklyParts[weeklyParts.length - 1] || m.weekly,
-      note: '月末確認テストで到達度を確認',
-      color: '#4a6fa5',
-      bg: '#eef2f8',
-      border: '#b0c4de',
-      isTest: true,
-      test: m.test,
-    },
+    { label:'Week 1', period:'1〜7日目', theme:'導入・基礎固め',
+      books:books.slice(0,Math.ceil(books.length/2)), task:weeklyParts[0]||m.weekly,
+      note:'まず教材を通読し、全体像をつかむ', color:'#c84b31', bg:'#fef0ee', border:'#f0c0b8' },
+    { label:'Week 2', period:'8〜14日目', theme:'反復・定着',
+      books:books.slice(0,Math.ceil(books.length/2)), task:weeklyParts[0]||m.weekly,
+      note:'Week1の内容を反復し、ミスパターンを潰す', color:'#c9a84c', bg:'#fdf8ee', border:'#f0e0a0' },
+    { label:'Week 3', period:'15〜21日目', theme:'演習・強化',
+      books:books.length>1?books.slice(Math.ceil(books.length/2)):books, task:weeklyParts[1]||weeklyParts[0]||m.weekly,
+      note:'問題演習で得点力を高める', color:'#2a7f6f', bg:'#eef5f3', border:'#b0d8d0' },
+    { label:'Week 4', period:'22〜月末', theme:'総復習・確認テスト',
+      books:books.length>1?books.slice(Math.ceil(books.length/2)):books, task:weeklyParts[weeklyParts.length-1]||m.weekly,
+      note:'月末確認テストで到達度を確認', color:'#4a6fa5', bg:'#eef2f8', border:'#b0c4de', isTest:true, test:m.test },
   ];
-
-  el.innerHTML = `
-    <div style="margin-bottom:10px;">
-      <span style="font-size:11px;font-weight:700;color:var(--text-muted);">🎯 今月の目標：</span>
-      <span style="font-size:12px;font-weight:700;color:var(--ink);">${m.goal}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-      ${weeks.map(w => `
-        <div style="background:${w.bg};border-radius:10px;padding:.9rem;border-top:3px solid ${w.color};border:1.5px solid ${w.border};border-top-width:3px;">
-          <div style="font-size:10px;font-weight:700;color:${w.color};letter-spacing:.06em;margin-bottom:2px;">${w.label}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">${w.period}</div>
-          <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;border-bottom:1px solid ${w.border};padding-bottom:6px;">${w.theme}</div>
-          <div style="margin-bottom:8px;">
-            ${w.books.map(b => `<div style="font-size:10px;padding:2px 0;color:var(--ink);"><span style="color:${w.color};">▸</span> ${b}</div>`).join('')}
-          </div>
-          <div style="background:white;border-radius:5px;padding:4px 7px;font-size:10px;color:var(--ink);margin-bottom:6px;">
-            <strong>課題：</strong>${w.task}
-          </div>
-          ${w.isTest
-            ? `<div style="background:${w.color};border-radius:5px;padding:4px 7px;font-size:10px;color:white;font-weight:700;">📝 ${w.test}</div>`
-            : `<div style="font-size:9px;color:var(--text-muted);font-style:italic;">${w.note}</div>`
-          }
+  return `<div style="margin-bottom:10px;">
+    <span style="font-size:11px;font-weight:700;color:var(--text-muted);">🎯 今月の目標：</span>
+    <span style="font-size:12px;font-weight:700;color:var(--ink);">${m.goal}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+    ${weeks.map(w => `
+      <div style="background:${w.bg};border-radius:10px;padding:.9rem;border-top:3px solid ${w.color};border:1.5px solid ${w.border};border-top-width:3px;">
+        <div style="font-size:10px;font-weight:700;color:${w.color};letter-spacing:.06em;margin-bottom:2px;">${w.label}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">${w.period}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;border-bottom:1px solid ${w.border};padding-bottom:6px;">${w.theme}</div>
+        <div style="margin-bottom:8px;">
+          ${w.books.map(b => `<div style="font-size:10px;padding:2px 0;color:var(--ink);"><span style="color:${w.color};">▸</span> ${b}</div>`).join('')}
         </div>
-      `).join('')}
-    </div>`;
+        <div style="background:white;border-radius:5px;padding:4px 7px;font-size:10px;color:var(--ink);margin-bottom:6px;">
+          <strong>課題：</strong>${w.task}
+        </div>
+        ${w.isTest
+          ? `<div style="background:${w.color};border-radius:5px;padding:4px 7px;font-size:10px;color:white;font-weight:700;">📝 ${w.test}</div>`
+          : `<div style="font-size:9px;color:var(--text-muted);font-style:italic;">${w.note}</div>`
+        }
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+// 旧関数は互換性のため残す（直接呼ばれる箇所がないようガード）
+function renderWpSubjectPlan(sub) {
+  // selectWpSubで表示切替するため、ここでは何もしない
 }
 
 function renderWpWeekGrid() {
-  const lblEl = document.getElementById('wp-week-label');
-  const badgeEl = document.getElementById('wp-week-badge');
-  const gridEl = document.getElementById('wp-week-grid');
-  if (!lblEl || !gridEl) return;
+  var wrapEl = document.getElementById('wp-week-grid-wrap');
+  if (!wrapEl) return;
 
-  const now = new Date();
-  const monday = new Date(now);
-  const day = now.getDay();
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + wpWeekIdx * 7);
+  var now = new Date();
+  var subs = getWpSubs();
+  var phaseIdx = 0;
 
-  const month = Math.floor(wpWeekIdx / 4) + 1;
-  const wInM = (wpWeekIdx % 4) + 1;
-  lblEl.textContent = `${monday.getMonth()+1}月${monday.getDate()}日（月）〜の週`;
-  badgeEl.textContent = `第${wpWeekIdx+1}週 / 全4週`;
+  var allHtml = '';
+  for (var wi = 0; wi < 4; wi++) {
+    var monday = new Date(now);
+    var dayN = now.getDay();
+    monday.setDate(now.getDate() - (dayN === 0 ? 6 : dayN - 1) + wi * 7);
 
-  const subs = getWpSubs();
-  const phaseIdx = 0;  // 1ヶ月プランは基礎期のみ
-  const phaseLabel = ['基礎','標準','演習'][phaseIdx];
+    var assign = [
+      [subs[0], subs[1]],
+      [subs[2]||subs[1], subs[0]],
+      [subs[1], subs[3]||subs[2]||subs[1]],
+      [subs[0], subs[2]||subs[1]],
+      [subs[1], subs[4]||subs[3]||subs[2]],
+      ['復習・弱点補強'],
+      ['📝 確認テスト'],
+    ];
 
-  // 曜日別科目割り当て（月〜金は2科目ずつ、土は復習、日は確認テスト）
-  const assign = [
-    [subs[0], subs[1]],
-    [subs[2]||subs[1], subs[0]],
-    [subs[1], subs[3]||subs[2]||subs[1]],
-    [subs[0], subs[2]||subs[1]],
-    [subs[1], subs[4]||subs[3]||subs[2]],
-    ['復習・弱点補強'],
-    ['📝 確認テスト'],
-  ];
+    var gridHtml = DAYS.map(function(dayName, di) {
+      var d = new Date(monday);
+      d.setDate(monday.getDate() + di);
+      var isToday = d.toDateString() === now.toDateString();
+      var isWknd = di >= 5;
+      var tasks = assign[di] || [];
 
-  gridEl.innerHTML = DAYS.map((dayName, di) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + di);
-    const isToday = d.toDateString() === now.toDateString();
-    const isWknd = di >= 5;
-    const tasks = assign[di] || [];
+      var taskHtml = tasks.map(function(t) {
+        if (t === '復習・弱点補強') return '<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:#1a1a2e18;color:var(--ink);font-weight:600;margin-bottom:3px;">📚 復習・弱点補強</div>';
+        if (t.startsWith('📝')) return '<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:var(--ink);color:white;font-weight:700;margin-bottom:3px;">' + t + '</div>';
+        var c = DAY_COLORS[t] || 'var(--ink)';
+        var plan = WP_PLANS[t] ? WP_PLANS[t][phaseIdx] : null;
+        var task = plan ? plan.weekly.split('＋')[0].trim() : t;
+        return '<div style="font-size:10px;padding:4px 6px;border-radius:5px;margin-bottom:3px;background:' + c + '18;color:' + c + ';font-weight:600;line-height:1.5;"><strong>' + t + '</strong><br>' + task + '</div>';
+      }).join('');
 
-    return `<div style="background:${isToday?'#e8f5f2':isWknd?'#fdf8f0':'white'};
-      border:${isToday?'2px solid var(--teal)':'1.5px solid var(--border)'};
-      border-radius:10px;padding:10px;min-height:155px;transition:.2s;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span style="font-size:11px;font-weight:700;color:${isWknd?'var(--accent)':'var(--text-muted)'};">${dayName}</span>
-        <span style="font-size:10px;color:var(--text-muted);">${d.getMonth()+1}/${d.getDate()}</span>
-      </div>
-      ${isToday?'<div style="font-size:9px;background:var(--teal);color:white;border-radius:4px;padding:1px 5px;margin-bottom:4px;font-weight:700;display:inline-block;">TODAY</div>':''}
-      ${tasks.map(t => {
-        if (t === '復習・弱点補強') return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:#1a1a2e18;color:var(--ink);font-weight:600;margin-bottom:3px;">📚 復習・弱点補強</div>`;
-        if (t.startsWith('📝')) return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;background:var(--ink);color:white;font-weight:700;margin-bottom:3px;">${t}</div>`;
-        const c = DAY_COLORS[t] || 'var(--ink)';
-        const plan = WP_PLANS[t]?.[phaseIdx];
-        const task = plan ? plan.weekly.split('＋')[0].trim() : t;
-        return `<div style="font-size:10px;padding:4px 6px;border-radius:5px;margin-bottom:3px;background:${c}18;color:${c};font-weight:600;line-height:1.5;"><strong>${t}</strong><br>${task}</div>`;
-      }).join('')}
-    </div>`;
-  }).join('');
+      return '<div style="background:' + (isToday?'#e8f5f2':isWknd?'#fdf8f0':'white') + ';'
+        + 'border:' + (isToday?'2px solid var(--teal)':'1.5px solid var(--border)') + ';'
+        + 'border-radius:10px;padding:10px;min-height:155px;transition:.2s;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+        + '<span style="font-size:11px;font-weight:700;color:' + (isWknd?'var(--accent)':'var(--text-muted)') + ';">' + dayName + '</span>'
+        + '<span style="font-size:10px;color:var(--text-muted);">' + (d.getMonth()+1) + '/' + d.getDate() + '</span>'
+        + '</div>'
+        + (isToday ? '<div style="font-size:9px;background:var(--teal);color:white;border-radius:4px;padding:1px 5px;margin-bottom:4px;font-weight:700;display:inline-block;">TODAY</div>' : '')
+        + taskHtml
+        + '</div>';
+    }).join('');
+
+    allHtml += '<div class="wp-week-panel" data-wp-week="' + wi + '" style="display:' + (wi !== wpWeekIdx ? 'none' : 'grid') + ';grid-template-columns:repeat(7,1fr);gap:6px;">'
+      + gridHtml + '</div>';
+  }
+  wrapEl.innerHTML = allHtml;
+  _updateWpWeekLabel();
+}
+
+function _updateWpWeekLabel() {
+  var lblEl = document.getElementById('wp-week-label');
+  var badgeEl = document.getElementById('wp-week-badge');
+  if (!lblEl) return;
+  var now = new Date();
+  var monday = new Date(now);
+  var dayN = now.getDay();
+  monday.setDate(now.getDate() - (dayN === 0 ? 6 : dayN - 1) + wpWeekIdx * 7);
+  lblEl.textContent = (monday.getMonth()+1) + '月' + monday.getDate() + '日（月）〜の週';
+  if (badgeEl) badgeEl.textContent = '第' + (wpWeekIdx+1) + '週 / 全4週';
 }
 
 
@@ -7477,7 +7468,11 @@ function printWeeklyPlanPDF() {
 
 function changeWpWeek(d) {
   wpWeekIdx = Math.max(0, Math.min(3, wpWeekIdx + d));
-  renderWpWeekGrid();
+  // DOM再構築せず表示切替のみ（手動編集を保持）
+  document.querySelectorAll('.wp-week-panel').forEach(function(panel) {
+    panel.style.display = parseInt(panel.dataset.wpWeek) === wpWeekIdx ? 'grid' : 'none';
+  });
+  _updateWpWeekLabel();
 }
 
 // ======================================================
