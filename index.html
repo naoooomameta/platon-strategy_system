@@ -4194,7 +4194,7 @@ function renderRoadmapBooksRows(books) {
     const isNow = absMonth === nowAbs;
     // 年セパレーター
     if (yr !== lastYear) {
-      html += `<div style="display:flex;align-items:center;gap:10px;margin:${lastYear?'20px':'4px'} 0 12px;">
+      html += `<div class="rb-year-sep" style="display:flex;align-items:center;gap:10px;margin:${lastYear?'20px':'4px'} 0 12px;">
         <div style="flex:1;height:1px;background:var(--border);"></div>
         <span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">── ${yr}年 ──</span>
         <div style="flex:1;height:1px;background:var(--border);"></div>
@@ -4202,7 +4202,7 @@ function renderRoadmapBooksRows(books) {
       lastYear = yr;
     }
     // 月ヘッダー
-    html += `<div style="display:flex;gap:0;margin-bottom:10px;">
+    html += `<div class="rb-month-group" style="display:flex;gap:0;margin-bottom:10px;">
       <div style="width:52px;flex-shrink:0;padding-top:2px;">
         <div style="font-size:13px;font-weight:700;color:${isNow?'var(--accent)':'var(--ink)'};">${JAmonths[mo]}</div>
         ${isNow ? '<div style="font-size:9px;font-weight:700;background:var(--accent);color:white;border-radius:4px;padding:1px 5px;display:inline-block;margin-top:2px;">今月</div>' : ''}
@@ -4215,7 +4215,7 @@ function renderRoadmapBooksRows(books) {
       const endAbs  = b.endY * 12 + b.endM;
       const isUrgent = (endAbs - nowAbs) <= 2;
       const dlColor  = isUrgent ? '#c84b31' : '#2a7f6f';
-      html += `<div style="background:white;border:1.5px solid ${col}33;border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;">
+      html += `<div class="rb-card" data-rb-filter="${b._filterKey||b.sub||'all'}" style="background:white;border:1.5px solid ${col}33;border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${col};"></div>
         <div style="padding-left:6px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px;">
@@ -4261,8 +4261,24 @@ function filterRoadmapBooks(sub, btn) {
   });
   if (btn) { btn.style.background = btn.style.borderColor; btn.style.color = 'white'; }
 
-  const all = window._roadmapBooksAll || [];
-  renderRoadmapBooksRows(sub === 'all' ? all : all.filter(b => b._filterKey === sub || b.sub === sub));
+  // DOM再構築せず、CSSで表示/非表示を切替（手動編集を保持）
+  var timeline = document.getElementById('roadmap-books-timeline');
+  if (!timeline) return;
+
+  // 全カードの表示/非表示
+  timeline.querySelectorAll('.rb-card').forEach(function(card) {
+    if (sub === 'all') {
+      card.style.display = '';
+    } else {
+      card.style.display = (card.dataset.rbFilter === sub) ? '' : 'none';
+    }
+  });
+
+  // 表示中のカードが0個の月グループを非表示
+  timeline.querySelectorAll('.rb-month-group').forEach(function(group) {
+    var visibleCards = group.querySelectorAll('.rb-card:not([style*="display: none"])');
+    group.style.display = visibleCards.length > 0 ? '' : 'none';
+  });
 }
 
 // ===== 科目名短縮（タイムライン・ギャップ分析 共通） =====
