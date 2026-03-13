@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラトン 戦略管理システム v4.4</title>
+<title>プラトン 戦略管理システム v4.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
@@ -902,7 +902,7 @@
       </div>
       <div>
         <div class="logo-text">プラトン 大学受験 戦略管理システム</div>
-        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.4</span>
+        <span class="logo-sub">PLATON EXAM STRATEGY MANAGEMENT — v4.5</span>
       </div>
     </div>
   </div>
@@ -1876,7 +1876,7 @@ function updateSubCheckStyle(cb) {
     <div style="margin-bottom:1.5rem;padding-top:.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title">月次実力診断テスト</div>
-        <div class="section-desc">月末実力診断・採点・推定偏差値の算出と受験期までの推移予測</div>
+        <div class="section-desc">各科目100点満点で採点入力し、推定偏差値を算出します</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
         <select id="monthly-student-sel" onchange="monthlySelectStudent(this.value)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:white;color:var(--ink);">
@@ -1884,7 +1884,6 @@ function updateSubCheckStyle(cb) {
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('monthly')" id="edit-toggle-monthly" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printPage('monthly','実力診断レポート')" style="font-size:13px;">📄 PDF保存</button>
-        <button class="btn btn-primary" onclick="genMonthlyTest()">📊 今月の診断テストを作成</button>
       </div>
     </div>
 
@@ -1922,8 +1921,8 @@ function updateSubCheckStyle(cb) {
         <div id="monthly-scoring">
           <div style="padding:2rem;text-align:center;color:var(--text-muted);">
             <div style="font-size:36px;margin-bottom:10px;">📋</div>
-            <div style="font-size:13px;font-weight:700;margin-bottom:6px;">月次テストを作成してください</div>
-            <div style="font-size:12px;">「今月の診断テストを作成」ボタンで自動生成します</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px;">生徒を選択してください</div>
+            <div style="font-size:12px;">登録済みの生徒を選択すると、対策科目に応じた採点フォームが表示されます</div>
           </div>
         </div>
       </div>
@@ -1936,19 +1935,6 @@ function updateSubCheckStyle(cb) {
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- テスト本体 -->
-    <div class="card" id="monthly-test-content" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-        <div class="card-title" style="margin-bottom:0;">今月の実力診断テスト</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-          <button class="btn btn-secondary" onclick="toggleMonthlyAns()" id="btn-monthly-ans" style="font-size:12px;">🔑 解答・解説を表示</button>
-          <button class="btn btn-secondary" onclick="exportPDFModal(monthlyTestData,false)" style="font-size:12px;">📄 生徒用を出力</button>
-          <button class="btn btn-teal" onclick="exportPDFModal(monthlyTestData,true)" style="font-size:12px;">🔑 解答版を出力</button>
-        </div>
-      </div>
-      <div id="monthly-test-body"></div>
     </div>
   </div>
 </div>
@@ -3100,7 +3086,7 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.4] 推移予測データ永続化・ダッシュボード連携版', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('%c[PLATON v4.5] 月次診断テスト手動採点版（100点満点・mainSubjects連動）', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
   console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
@@ -6132,7 +6118,7 @@ const PAGE_EDITABLE_SELECTORS = {
   'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks > div div:last-child'],
   'weekly-plan':  ['.wp-phase-title', '.wp-phase-desc', '.wp-month-label', '.wp-week-title', '.wp-week-desc', '.wp-task-text', '.wp-book-name'],
   'tests':        ['.test-q-text', '.test-answer-text', '.test-explain-text'],
-  'monthly':      ['#monthly-scoring', '#monthly-deviation', '#monthly-test-body']
+  'monthly':      ['#monthly-scoring', '#monthly-deviation']
 };
 
 // ページ全体の「テキストノード直親」にcontenteditable付与
@@ -8378,132 +8364,125 @@ let monthlyScores = {};
 let monthlyAnsVisible = false;
 
 function monthlyInit() {
-  const s = currentStudent || {devVal:63, univInfo:{dev:72}, months:11};
-  document.getElementById('ms-initial').textContent = s.devVal || 63;
-  document.getElementById('ms-target').textContent = s.univInfo?.dev || 72;
-  if (!monthlyChartInst) buildMonthlyChart(s, {});
+  var s = currentStudent;
+  if (!s) return;
+  document.getElementById('ms-initial').textContent = s.devVal || '—';
+  document.getElementById('ms-target').textContent = (s.univInfo && s.univInfo.dev) || '—';
+  if (!monthlyChartInst) buildMonthlyChart(s, monthlyScores || {});
+  // 生徒が選択されていたら採点フォームを自動表示
+  if (s.mainSubjects && s.mainSubjects.length > 0) {
+    renderMonthlyScoringForm(s);
+  }
 }
 
-function genMonthlyTest() {
-  const s = currentStudent || {name:'田中 悠斗', stream:'rikei', univName:'東京大学', univInfo:{dev:72}, devVal:63};
-  const subs = s.stream === 'rikei' ? ['英語','数学','物理','化学'] : ['英語','数学','国語','社会'];
-  const now = new Date();
-  const monthStr = `${now.getFullYear()}年${now.getMonth()+1}月`;
-  // 月ごとにオフセットを変えて問題が毎月異なるようにする
-  const offset = now.getMonth() * 3;
+// AI生成は廃止。genMonthlyTestは互換性のため空で残す
+function genMonthlyTest() {}
 
+function renderMonthlyScoringForm(s) {
+  if (!s) return;
+  // 全科目リスト（生徒登録の主要対策科目チェックボックスと同一）
+  var ALL_SUBJECTS = ['英語R','英語L','数学1A','数学2BC','現代文','古文','漢文','日本史','世界史','地理','公民','理科基礎','情報'];
+  // 生徒に登録された科目を使用（なければデフォルト）
+  var subs = (s.mainSubjects && s.mainSubjects.length > 0)
+    ? s.mainSubjects
+    : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語R','数学1A','現代文']);
+
+  var now = new Date();
+  var monthStr = now.getFullYear() + '年' + (now.getMonth()+1) + '月';
+
+  // monthlyTestData を構築（100点満点/科目）
   monthlyTestData = {
-    title: `${monthStr} 実力診断テスト`,
-    duration: 60,
-    subjects: subs.map(sub => {
-      const bank  = getEffectiveQB(sub);
-      const total = bank.q.length;
-      return {
-        name: sub,
-        questions: [0, 1, 2].map((_, i) => {
-          const qi = (offset + i) % total;
-          return { no: i+1, question: bank.q[qi], answer: bank.a[qi], explanation: bank.e[qi], points: 10 };
-        })
-      };
+    title: monthStr + ' 実力診断テスト',
+    duration: 0,
+    subjects: subs.map(function(sub) {
+      return { name: sub, questions: [{ no:1, question:'', answer:'', explanation:'', points:100 }] };
     })
   };
 
-  const btn = document.querySelector('[onclick="genMonthlyTest()"]');
-  if (btn) { btn.textContent = '📊 今月の診断テストを作成'; btn.disabled = false; }
-  renderMonthlyScoringForm(s);
-  renderMonthlyTestBody();
-  document.getElementById('monthly-test-content').style.display = 'block';
-  showToast('月次実力診断テストを作成しました ✓');
-}
-
-
-function renderMonthlyScoringForm(s) {
-  if (!monthlyTestData) return;
-  const el = document.getElementById('monthly-scoring');
-  let html = `<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;">${monthlyTestData.title}</div>`;
-  monthlyTestData.subjects.forEach(subj => {
-    const max = subj.questions.reduce((a,q) => a+(q.points||10), 0);
-    html += `<div style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-        <label style="font-size:12px;font-weight:700;color:var(--ink);">${subj.name}</label>
-        <span style="font-size:11px;color:var(--text-muted);">満点 ${max}点</span>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input type="number" id="ms-score-${subj.name}" min="0" max="${max}" placeholder="得点を入力"
-          style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;"
-          oninput="calcMonthlyDev()">
-        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">/ ${max}</span>
-      </div>
-    </div>`;
+  var el = document.getElementById('monthly-scoring');
+  var html = '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;">' + monthStr + ' 実力診断テスト</div>';
+  subs.forEach(function(sub) {
+    html += '<div style="margin-bottom:10px;">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+      + '<label style="font-size:12px;font-weight:700;color:var(--ink);">' + sub + '</label>'
+      + '<span style="font-size:11px;color:var(--text-muted);">満点 100点</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+      + '<input type="number" id="ms-score-' + sub + '" min="0" max="100" placeholder="得点を入力"'
+      + ' style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;"'
+      + ' oninput="calcMonthlyDev()">'
+      + '<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">/ 100</span>'
+      + '</div></div>';
   });
-  html += `<button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="calcMonthlyDev()">📊 偏差値を算出する</button>`;
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="calcMonthlyDev()">📊 偏差値を算出する</button>';
   el.innerHTML = html;
 }
 
 function calcMonthlyDev() {
   if (!monthlyTestData) return;
-  const s = currentStudent || {devVal:63, univInfo:{dev:72}, months:11};
-  let total = 0, max = 0;
-  monthlyTestData.subjects.forEach(subj => {
-    const m = subj.questions.reduce((a,q)=>a+(q.points||10),0);
-    const v = parseInt(document.getElementById(`ms-score-${subj.name}`)?.value || 0);
-    total += isNaN(v) ? 0 : v;
+  var s = currentStudent;
+  if (!s) return;
+  var total = 0, max = 0;
+  monthlyTestData.subjects.forEach(function(subj) {
+    var m = 100; // 各科目100点満点
+    var inp = document.getElementById('ms-score-' + subj.name);
+    var v = inp ? parseInt(inp.value) : 0;
+    total += (isNaN(v) ? 0 : v);
     max += m;
   });
   if (max === 0) return;
 
-  const pct = total / max;
-  const base = s.devVal || 63;
-  const estimated = Math.min(80, Math.max(35, Math.round(base + (pct - 0.5) * 30)));
-  const target = s.univInfo?.dev || 72;
-  const pred3m = Math.min(target, estimated + Math.round((target - estimated) * 0.4));
+  var pct = total / max;
+  var base = s.devVal || 50;
+  var estimated = Math.min(80, Math.max(35, Math.round(base + (pct - 0.5) * 30)));
+  var target = (s.univInfo && s.univInfo.dev) || 65;
+  var pred3m = Math.min(target, estimated + Math.round((target - estimated) * 0.4));
 
   document.getElementById('ms-current').textContent = estimated;
   document.getElementById('ms-3month').textContent = pred3m;
 
-  const key = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-  monthlyScores[key] = {dev:estimated, raw:total, max};
+  var key = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+  monthlyScores[key] = {dev:estimated, raw:total, max:max};
 
   renderMonthlyBreakdown(estimated, total, max, s);
   buildMonthlyChart(s, monthlyScores);
-  showToast(`推定偏差値 ${estimated} を算出しました ✓`);
+  showToast('推定偏差値 ' + estimated + ' を算出しました ✓');
 }
 
 function renderMonthlyBreakdown(dev, score, max, s) {
-  const el = document.getElementById('monthly-deviation');
-  const pct = Math.round(score / max * 100);
-  const target = s.univInfo?.dev || 72;
-  const col = dev >= target ? 'var(--teal)' : dev >= target-5 ? 'var(--gold)' : 'var(--accent)';
-  const diff = dev - (s.devVal || 63);
-  const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
+  var el = document.getElementById('monthly-deviation');
+  var pct = Math.round(score / max * 100);
+  var target = (s.univInfo && s.univInfo.dev) || 65;
+  var col = dev >= target ? 'var(--teal)' : dev >= target-5 ? 'var(--gold)' : 'var(--accent)';
+  var diff = dev - (s.devVal || 50);
+  var diffStr = diff >= 0 ? '+' + diff : '' + diff;
 
-  let rows = '';
+  var rows = '';
   if (monthlyTestData) {
-    monthlyTestData.subjects.forEach(subj => {
-      const sm = subj.questions.reduce((a,q)=>a+(q.points||10),0);
-      const sv = parseInt(document.getElementById(`ms-score-${subj.name}`)?.value || 0);
-      const sp = Math.round((isNaN(sv)?0:sv)/sm*100);
-      const sc = sp >= 70 ? '#2a7f6f' : sp >= 50 ? '#c9a84c' : '#c84b31';
-      rows += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
-        <span style="font-size:12px;font-weight:600;">${subj.name}</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${sp}%;background:${sc};border-radius:3px;"></div></div>
-          <span style="font-size:12px;font-weight:700;color:${sc};min-width:32px;text-align:right;">${sp}%</span>
-        </div>
-      </div>`;
+    monthlyTestData.subjects.forEach(function(subj) {
+      var inp = document.getElementById('ms-score-' + subj.name);
+      var sv = inp ? parseInt(inp.value) : 0;
+      sv = isNaN(sv) ? 0 : sv;
+      var sp = Math.round(sv / 100 * 100);
+      var sc = sp >= 70 ? '#2a7f6f' : sp >= 50 ? '#c9a84c' : '#c84b31';
+      rows += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">'
+        + '<span style="font-size:12px;font-weight:600;">' + subj.name + '</span>'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + sp + '%;background:' + sc + ';border-radius:3px;"></div></div>'
+        + '<span style="font-size:12px;font-weight:700;color:' + sc + ';min-width:32px;text-align:right;">' + sp + '%</span>'
+        + '</div></div>';
     });
   }
 
-  el.innerHTML = `<div style="text-align:center;margin-bottom:1.2rem;">
-    <div style="font-size:54px;font-weight:700;font-family:'Noto Serif JP',serif;color:${col};line-height:1;">${dev}</div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">今月の推定偏差値</div>
-    <div style="display:inline-flex;gap:14px;font-size:12px;margin-top:6px;">
-      <span style="color:${col};font-weight:700;">入塾時比 ${diffStr}</span>
-      <span style="color:var(--text-muted);">正答率 ${pct}%（${score}/${max}点）</span>
-    </div>
-  </div>
-  <div style="border-top:1px solid var(--border);padding-top:10px;">${rows}</div>`;
+  el.innerHTML = '<div style="text-align:center;margin-bottom:1.2rem;">'
+    + '<div style="font-size:54px;font-weight:700;font-family:\'Noto Serif JP\',serif;color:' + col + ';line-height:1;">' + dev + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">今月の推定偏差値</div>'
+    + '<div style="display:inline-flex;gap:14px;font-size:12px;margin-top:6px;">'
+    + '<span style="color:' + col + ';font-weight:700;">入塾時比 ' + diffStr + '</span>'
+    + '<span style="color:var(--text-muted);">正答率 ' + pct + '%（' + score + '/' + max + '点）</span>'
+    + '</div></div>'
+    + '<div style="border-top:1px solid var(--border);padding-top:10px;">' + rows + '</div>';
 }
 
 function buildMonthlyChart(s, scores) {
@@ -8559,52 +8538,9 @@ function buildMonthlyChart(s, scores) {
   });
 }
 
-function renderMonthlyTestBody() {
-  if (!monthlyTestData) return;
-  const el = document.getElementById('monthly-test-body');
-  let qNum = 0, html = '';
-  monthlyTestData.subjects.forEach(subj => {
-    let qh = '';
-    subj.questions.forEach(q => {
-      qNum++;
-      qh += `<div style="margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--border);">
-        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:6px;">
-          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--ink);color:white;
-            font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${qNum}</div>
-          <div style="font-size:13px;line-height:1.8;white-space:pre-line;flex:1;">${q.question}</div>
-        </div>
-        <div style="margin:4px 0 0 36px;font-size:11px;color:var(--text-muted);">（${q.points}点）</div>
-        <div id="mans-${qNum}" style="display:none;margin-top:8px;margin-left:36px;">
-          <div style="background:#e8f5f2;border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:5px;">
-            <div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:3px;">✅ 模範解答</div>
-            <div style="font-size:12px;line-height:1.8;white-space:pre-line;">${q.answer}</div>
-          </div>
-          <div style="background:#fdf8f0;border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 12px;">
-            <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:3px;">📖 解説・学習ポイント</div>
-            <div style="font-size:12px;line-height:1.7;">${q.explanation}</div>
-          </div>
-        </div>
-      </div>`;
-    });
-    html += `<div style="margin-bottom:1.5rem;">
-      <div style="font-size:12px;font-weight:700;color:white;background:var(--ink);
-        padding:5px 14px;border-radius:6px 6px 0 0;display:inline-block;">${subj.name}</div>
-      <div style="border:1.5px solid var(--border);border-radius:0 10px 10px 10px;padding:1rem;">${qh}</div>
-    </div>`;
-  });
-  el.innerHTML = html;
-}
-
-function toggleMonthlyAns() {
-  monthlyAnsVisible = !monthlyAnsVisible;
-  const total = document.querySelectorAll('[id^="mans-"]').length;
-  for (let i = 1; i <= total; i++) {
-    const el = document.getElementById(`mans-${i}`);
-    if (el) el.style.display = monthlyAnsVisible ? 'block' : 'none';
-  }
-  const btn = document.getElementById('btn-monthly-ans');
-  if (btn) btn.textContent = monthlyAnsVisible ? '🔒 解答・解説を隠す' : '🔑 解答・解説を表示';
-}
+// renderMonthlyTestBody / toggleMonthlyAns は AI生成廃止のため不要
+function renderMonthlyTestBody() {}
+function toggleMonthlyAns() {}
 // ======================================================
 // ===== 月次実力診断 =====================================
 
