@@ -1678,7 +1678,7 @@ function updateSubCheckStyle(cb) {
         </select>
         <button class="btn btn-secondary" onclick="togglePageEdit('weekly-plan')" id="edit-toggle-weekly-plan" style="font-size:13px;">✏️ 手動編集</button>
         <button class="btn btn-secondary" onclick="printPage('weekly-plan','1ヶ月プラン')" style="font-size:13px;">📄 PDF保存</button>
-        <button class="btn btn-primary" onclick="wpInit()">🗓 プランを更新</button>
+        <button class="btn btn-primary" onclick="wpSave()">💾 プランを保存</button>
       </div>
     </div>
 
@@ -7145,6 +7145,20 @@ function _buildWpSubjectHtml(sub) {
 // 旧関数は互換性のため残す（直接呼ばれる箇所がないようガード）
 function renderWpSubjectPlan(sub) {
   // selectWpSubで表示切替するため、ここでは何もしない
+}
+
+function wpSave() {
+  _syncEditedFieldsToData();
+  if (currentStudent) {
+    saveStudentToList(currentStudent).then(function() {
+      showToast('学習プランを保存しました ✓');
+    }).catch(function(e) {
+      console.warn('保存エラー:', e);
+      showToast('学習プランを保存しました（ローカル）');
+    });
+  } else {
+    showToast('生徒を選択してください');
+  }
 }
 
 function renderWpWeekGrid() {
