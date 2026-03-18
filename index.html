@@ -3077,153 +3077,124 @@ document.addEventListener('keydown', function(e) {
 });
 
 // 認証状態の監視
-// ★ onAuthStateChange はログイン/ログアウトのUI切替のみ行う
-// 　 初期化・復元・showPageはすべて DOMContentLoaded に一本化
 _sb.auth.onAuthStateChange(async function(event, session) {
-  console.log('[DEBUG] onAuthStateChange:', event);
+  console.log('[DEBUG] onAuthStateChange:', event, session ? 'session=OK' : 'session=NULL');
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
+  console.log('[DEBUG] loginScreen found:', !!loginScreen, 'appBody found:', !!appBody);
   if (session) {
     if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) { appBody.style.display = ''; appBody.style.visibility = 'visible'; appBody.style.opacity = '1'; }
-    // SIGNED_IN = 新規ログイン時のみ初期化（リロード時は DOMContentLoaded が処理済み）
-    if (event === 'SIGNED_IN') {
-      if (!window._appInitialized) {
-        await _initApp();
+    if (appBody) {
+      appBody.style.display = '';
+      appBody.style.visibility = 'visible';
+      appBody.style.opacity = '1';
+      console.log('[DEBUG] appBody display set to visible');
+    }
+    try {
+      await _loadStudentsFromSupabase();
+      console.log('[DEBUG] Students loaded successfully');
+    } catch(e) {
+      console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
+    }
+    // ★ SIGNED_IN / INITIAL_SESSION どちらも lastPage に復元する
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      try {
+        var _initPage = 'dashboard';
+        try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
+        showPage(_initPage);
+        console.log('[DEBUG] Page shown (initial):', _initPage);
+      } catch(e) {
+        console.error('[DEBUG] showPage error:', e);
       }
     }
   } else {
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appBody) appBody.style.display = 'none';
-    window._appInitialized = false;
   }
 });
 
-// ★ アプリ唯一の初期化エントリーポイント
-var _appInitialized = false;
-
-async function _initApp() {
-  if (_appInitialized) return;
-  _appInitialized = true;
-  console.log('[INIT] _initApp start');
-
-  const loginScreen = document.getElementById('login-screen');
-  const appBody = document.getElementById('app-body');
-  if (loginScreen) loginScreen.style.display = 'none';
-  if (appBody) { appBody.style.display = ''; appBody.style.visibility = 'visible'; appBody.style.opacity = '1'; }
-
-  // ★ 生徒データを1回だけロード
-  await _loadStudentsFromSupabase();
-
-  // ★ 最後に開いていたページとlocalStorageから確実に取得
-  var lastPage = 'dashboard';
-  try { lastPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e) {}
-
-  // ★ 最後に開いていた生徒を復元
-  _restoreLastStudent();
-
-  // ★ 元いたページへ遷移
-  showPage(lastPage);
-
-  // APIキー復元
-  try {
-    var el = document.getElementById('platon-api-key-input');
-    var k = localStorage.getItem('platon_api_key');
-    if (el && k) el.value = k;
-  } catch(e) {}
-
-  console.log('[INIT] _initApp done → page:', lastPage);
-}
-
+// ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.5]', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
-  const token = _getAccessToken();
-  if (token) {
-    await _initApp();
+  console.log('%c[PLATON v4.5] 月次診断テスト手動採点版（100点満点・mainSubjects連動）', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
+  console.log('[DEBUG] DOMContentLoaded fired');
+  try {
+    const token = _getAccessToken();
+    console.log('[DEBUG] DOMContentLoaded session check:', token ? 'OK' : 'NULL');
+    if (token) {
+      const loginScreen = document.getElementById('login-screen');
+      const appBody = document.getElementById('app-body');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appBody) {
+        appBody.style.display = '';
+        appBody.style.visibility = 'visible';
+      }
+      await _loadStudentsFromSupabase();
+
+      // リロード時：最後に開いていた生徒を自動復元
+      _restoreLastStudent();
+
+      // 最後に開いていたページを復元（なければダッシュボード）
+      var lastPage = 'dashboard';
+      try { lastPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e) {}
+      showPage(lastPage);
+    }
+  } catch(e) {
+    console.error('[DEBUG] DOMContentLoaded auth check error:', e);
   }
 });
 
-// ★ beforeunload: 確実にすべての状態を保存
+// ★ beforeunload: すべての状態を確実に保存
 window.addEventListener('beforeunload', function() {
-  // ① 現在のページを保存
-  var activePage = document.querySelector('.page.active');
-  if (activePage) {
-    var pid = (activePage.id || '').replace('page-', '');
-    if (pid) try { localStorage.setItem('platon_lastPage', pid); } catch(e) {}
-  }
-  // ② 現在の生徒キーを保存
-  if (currentStudent) {
-    var studentKey = currentStudent._id || currentStudent.name;
-    try { localStorage.setItem('platon_lastStudent', studentKey); } catch(e) {}
-    // ③ _idと名前の両方で保存
-    if (currentStudent.name && currentStudent._id && currentStudent._id !== currentStudent.name) {
-      try { localStorage.setItem('platon_lastStudent_name', currentStudent.name); } catch(e) {}
-    }
-  }
-  // ④ アドバイスをDOMから抽出して保存
+  // アドバイスをDOMから直接取得して保存
   try {
-    if (typeof _extractAdviceFromDOM === 'function') {
-      var adv = _extractAdviceFromDOM();
-      if (adv && typeof _saveAdviceData === 'function') _saveAdviceData(adv);
+    var summaryEl = document.getElementById('advice-summary');
+    var contentEl = document.getElementById('advice-content');
+    if (summaryEl && contentEl && contentEl.style.display !== 'none') {
+      var summary = (summaryEl.innerText || summaryEl.textContent || '').trim();
+      if (summary && currentStudent) {
+        // 科目別
+        var subs = [];
+        document.querySelectorAll('#advice-subjects > div').forEach(function(card) {
+          var n = card.querySelector('div[style*="font-weight:700"]');
+          var a = card.querySelector('[data-subject-advice]');
+          var b = card.querySelector('span');
+          if (n && a) {
+            var lbl = b ? (b.innerText||'').trim() : '';
+            subs.push({ name:(n.innerText||'').trim(), advice:(a.innerText||'').trim(),
+              priority: lbl==='要強化'?'high': lbl==='良好'?'low':'medium' });
+          }
+        });
+        // タスク
+        var tasks = [];
+        document.querySelectorAll('#advice-tasks > div').forEach(function(div) {
+          var t = div.querySelector('div:last-child');
+          var txt = t ? (t.innerText||'').trim() : '';
+          if (txt && txt.length > 3) tasks.push(txt);
+        });
+        _adviceSave({ summary: summary, subjects: subs, tasks: tasks });
+      }
     }
   } catch(e) {}
-  // ⑤ ページHTMLをすべてキャッシュ保存
   _cacheSaveCurrentStudent();
 });
 
-// ★ 最後に開いていた生徒をlocalStorageから確実に復元
+// 最後に開いていた生徒をlocalStorageから復元
 function _restoreLastStudent() {
   try {
-    if (_allStudents.length === 0) return;
-
-    // _idキーと名前キーの両方を試みる
-    var lastKey  = localStorage.getItem('platon_lastStudent') || '';
-    var lastName = localStorage.getItem('platon_lastStudent_name') || '';
-
+    var lastKey = localStorage.getItem('platon_lastStudent');
+    if (!lastKey || _allStudents.length === 0) return;
     var student = _allStudents.find(function(s) {
-      return (lastKey  && (s._id === lastKey  || s.name === lastKey)) ||
-             (lastName && (s._id === lastName || s.name === lastName));
+      return (s._id && s._id === lastKey) || s.name === lastKey;
     });
-    if (!student) {
-      console.log('[RESTORE] 生徒が見つからない key:', lastKey, 'name:', lastName);
-      return;
-    }
+    if (!student) return;
     currentStudent = student;
-    console.log('[RESTORE] 生徒を特定:', student.name, '_id:', student._id);
-
-    // ★ キャッシュキーを _id と name 両方で試みる
-    var restored = _cacheRestoreStudent(student);
-    if (!restored && student._id && student.name) {
-      // フォールバック: name キーで再試行
-      var tmpKey = student.name;
-      var storedByName = null;
-      try { storedByName = localStorage.getItem('platon_cache_' + tmpKey); } catch(e) {}
-      if (storedByName) {
-        try {
-          var cacheByName = JSON.parse(storedByName);
-          // _idキーでも保存して統一
-          try { localStorage.setItem('platon_cache_' + (student._id || student.name), storedByName); } catch(e) {}
-          // 一時的に name でも復元試行
-          var fakeSForRestore = Object.assign({}, student, { _id: null });
-          restored = _cacheRestoreStudent(fakeSForRestore);
-          console.log('[RESTORE] nameキーフォールバック:', restored);
-        } catch(e) {}
-      }
-    }
-
-    if (restored) {
+    if (_cacheRestoreStudent(student)) {
       renderWpStudentSelect();
       renderMonthlyStudentSelect();
       renderPredStudentSelect();
-      // ★ アドバイスもキャッシュに含まれているが念のためlocalStorageからも確認
-      if (currentStudent) {
-        var adv = _loadAdviceData(currentStudent);
-        if (adv) currentStudent.adviceData = adv;
-      }
-      console.log('[RESTORE] キャッシュ復元成功:', student.name);
+      console.log('[RESTORE] 最後の生徒を復元:', lastKey);
     } else {
-      // キャッシュがない → フル描画
-      console.log('[RESTORE] キャッシュなし → フル描画:', student.name);
+      // キャッシュがなければフル描画
       renderRoadmap();
       _initAllPagesForStudent();
     }
@@ -3611,7 +3582,25 @@ function _renderProgressSummary(students) {
   }).join('');
 }
 
-// ★ 2つ目のDOMContentLoadedは削除（_initAppに一本化済み）
+document.addEventListener('DOMContentLoaded', async function(){
+  const loginScreen = document.getElementById('login-screen');
+  const appBody = document.getElementById('app-body');
+
+  // 既存セッション確認（localStorageから直接）
+  const token = _getAccessToken();
+  if (token) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = '';
+    await _loadStudentsFromSupabase();
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appBody) appBody.style.display = 'none';
+  }
+
+  var el = document.getElementById('platon-api-key-input');
+  var k = localStorage.getItem('platon_api_key');
+  if (el && k) el.value = k;
+});
 
 
 // 月次ページ生徒選択
@@ -3708,8 +3697,10 @@ function _cacheSaveCurrentStudent() {
       cache[pid] = container.innerHTML;
     }
   });
-  // ★ グラフのcanvasをDataURLとしてキャッシュに保存してから破棄
-  // （beforeunload時にdestroy前にHTMLを保存する）
+  // グラフインスタンスを破棄（HTML復元後に再構築する）
+  if (deviationChart) { deviationChart.destroy(); deviationChart = null; }
+  if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
+  if (predChartInst) { predChartInst.destroy(); predChartInst = null; }
   // 月次データもキャッシュ
   cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
   cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
@@ -3718,20 +3709,13 @@ function _cacheSaveCurrentStudent() {
   cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
   _studentCache[cacheKey] = cache;
 
-  // ★ localStorageに確実に永続化（_idと名前の両キーで保存）
+  // localStorageにも永続化（リロード耐性）
   try {
-    var cacheStr = JSON.stringify(cache);
-    // メインキー（_id優先）
-    localStorage.setItem('platon_cache_' + cacheKey, cacheStr);
+    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
     localStorage.setItem('platon_lastStudent', cacheKey);
-    // ★ 名前キーでも保存（リロード後の_idキー不一致対策）
-    if (currentStudent.name && currentStudent.name !== cacheKey) {
-      localStorage.setItem('platon_cache_' + currentStudent.name, cacheStr);
-      localStorage.setItem('platon_lastStudent_name', currentStudent.name);
-    }
   } catch(e) { console.warn('[CACHE] localStorage保存失敗:', e); }
 
-  console.log('[CACHE] 保存:', cacheKey, '/ name:', currentStudent.name);
+  console.log('[CACHE] 保存:', cacheKey);
 }
 
 // キャッシュからページを復元。成功したらtrue
@@ -3739,22 +3723,15 @@ function _cacheRestoreStudent(s) {
   var cacheKey = s._id || s.name;
   var cache = _studentCache[cacheKey];
 
-  // ★ メモリにない場合はlocalStorageから検索（_idキー → 名前キーの順）
+  // メモリにない場合はlocalStorageからロード
   if (!cache) {
-    var keysToTry = [cacheKey];
-    if (s.name && s.name !== cacheKey) keysToTry.push(s.name);
-    for (var ki = 0; ki < keysToTry.length; ki++) {
-      try {
-        var stored = localStorage.getItem('platon_cache_' + keysToTry[ki]);
-        if (stored) {
-          cache = JSON.parse(stored);
-          _studentCache[cacheKey] = cache;
-          _studentCache[keysToTry[ki]] = cache;
-          console.log('[CACHE] localStorage復元: key=', keysToTry[ki]);
-          break;
-        }
-      } catch(e) { console.warn('[CACHE] localStorage読込失敗:', e); }
-    }
+    try {
+      var stored = localStorage.getItem('platon_cache_' + cacheKey);
+      if (stored) {
+        cache = JSON.parse(stored);
+        _studentCache[cacheKey] = cache; // メモリにも保持
+      }
+    } catch(e) { console.warn('[CACHE] localStorage読込失敗:', e); }
   }
 
   if (!cache) return false;
@@ -3783,20 +3760,15 @@ function _cacheRestoreStudent(s) {
     buildMonthlyChart(s, monthlyScores);
   } catch(e) { console.warn('monthly chart rebuild error:', e); }
   try { if (predChartInst) { predChartInst = null; } predBuildChart(); } catch(e) { console.warn('pred chart rebuild error:', e); }
-  // ★ アドバイスを復元（キャッシュ内 or localStorage）
-  try {
-    if (cache._adviceData && cache._adviceData.summary) {
-      if (currentStudent) currentStudent.adviceData = cache._adviceData;
+  // ★ キャッシュ復元後にアドバイスをlocalStorageから復元
+  setTimeout(function() {
+    if (!currentStudent) return;
+    var contentEl = document.getElementById('advice-content');
+    if (contentEl && contentEl.style.display === 'none') {
+      var adv = _adviceLoad(currentStudent);
+      if (adv) _adviceRestore(adv);
     }
-    // アドバイスDOMに直接適用（advice-contentが隠れていれば復元）
-    setTimeout(function() {
-      var contentEl = document.getElementById('advice-content');
-      if (contentEl && contentEl.style.display === 'none' && currentStudent) {
-        var adv = currentStudent.adviceData || (typeof _loadAdviceData === 'function' ? _loadAdviceData(currentStudent) : null);
-        if (adv && typeof _restoreAdviceToDOM === 'function') _restoreAdviceToDOM(adv);
-      }
-    }, 200);
-  } catch(e) {}
+  }, 200);
 
   console.log('[CACHE] 復元:', cacheKey);
   return true;
@@ -3815,42 +3787,15 @@ function showPage(name) {
     if (btns[idx]) btns[idx].classList.add('active');
   }
 
+  // ダッシュボードのみ：表示前にDOM編集をデータに書き戻してから生徒リスト再描画
   if (name === 'dashboard') {
     _syncEditedFieldsToData();
     renderStudentList();
   }
 
-  // ★ ロードマップページ: キャッシュ済みなら再描画しない。チャートとアドバイスのみ再接続
-  if (name === 'roadmap' && currentStudent) {
-    setTimeout(function() {
-      // グラフが消えていたら再構築
-      try {
-        if (!deviationChart || !document.getElementById('deviation-chart')._chart) {
-          renderGapChart();
-        }
-      } catch(e) { try { renderGapChart(); } catch(e2) {} }
-      // アドバイスが表示されていなければ復元
-      try {
-        var contentEl = document.getElementById('advice-content');
-        if (!contentEl || contentEl.style.display === 'none') {
-          var adv = _loadAdviceData(currentStudent);
-          if (adv) { _restoreAdviceToDOM(adv); }
-        }
-      } catch(e) {}
-    }, 80);
-  }
-
-  // ★ 1ヶ月プランページ: 週グリッドが空なら再構築
-  if (name === 'weekly-plan' && currentStudent) {
-    setTimeout(function() {
-      var grid = document.getElementById('wp-week-grid-wrap');
-      if (grid && grid.children.length === 0) wpInit();
-    }, 80);
-  }
-
   window.scrollTo({ top:0, behavior:'smooth' });
 
-  // ★ 現在のページを確実に保存
+  // 現在のページをlocalStorageに保存（リロード時復元用）
   try { localStorage.setItem('platon_lastPage', name); } catch(e) {}
 }
 
@@ -4180,8 +4125,16 @@ function renderRoadmap() {
   renderGapStats();
   renderGapChart();
   renderRoadmapBooks();
-  // アドバイスを自動生成
-  setTimeout(function() { generateAdvice(); }, 300);
+
+  // ★ 保存済みアドバイスがあれば即座に復元、なければAI生成
+  setTimeout(function() {
+    var saved = _adviceLoad(currentStudent);
+    if (saved) {
+      _adviceRestore(saved);
+    } else {
+      generateAdvice();
+    }
+  }, 300);
 }
 
 function renderRoadmapBooks() {
@@ -5017,6 +4970,69 @@ function toggleSubjectEdit() {
   }
 }
 
+// ===== アドバイス永続化 =====
+
+// アドバイスをlocalStorageに保存
+function _adviceSave(obj) {
+  if (!obj || !obj.summary || !currentStudent) return;
+  try {
+    var json = JSON.stringify(obj);
+    // _id と name 両方のキーで保存（リロード後キー不一致対策）
+    var keys = [];
+    if (currentStudent._id)   keys.push('platon_advice_' + currentStudent._id);
+    if (currentStudent.name)  keys.push('platon_advice_' + currentStudent.name);
+    keys.forEach(function(k) { localStorage.setItem(k, json); });
+    // studentオブジェクトにもキャッシュ
+    currentStudent._adviceData = obj;
+    console.log('[ADVICE] 保存完了:', currentStudent.name);
+  } catch(e) { console.warn('[ADVICE] 保存失敗:', e); }
+}
+
+// localStorageからアドバイスを読み込む
+function _adviceLoad(s) {
+  if (!s) return null;
+  // まずstudentオブジェクト内キャッシュを確認
+  if (s._adviceData && s._adviceData.summary) return s._adviceData;
+  // localStorage を _id → name の順で検索
+  var keys = [];
+  if (s._id)  keys.push('platon_advice_' + s._id);
+  if (s.name) keys.push('platon_advice_' + s.name);
+  for (var i = 0; i < keys.length; i++) {
+    try {
+      var stored = localStorage.getItem(keys[i]);
+      if (stored) {
+        var obj = JSON.parse(stored);
+        if (obj && obj.summary) {
+          s._adviceData = obj; // キャッシュ
+          console.log('[ADVICE] 読込成功: key=', keys[i]);
+          return obj;
+        }
+      }
+    } catch(e) {}
+  }
+  return null;
+}
+
+// 保存済みアドバイスをDOMに表示する（AI生成なし）
+function _adviceRestore(obj) {
+  if (!obj || !obj.summary) return false;
+  // renderAdvice は保存も行うので再利用 → ただし循環を避けるため _suppressSave フラグを使う
+  window._adviceSuppressSave = true;
+  renderAdvice(obj, []);
+  window._adviceSuppressSave = false;
+  // UI状態を整える
+  var emptyEl   = document.getElementById('advice-empty');
+  var loadingEl = document.getElementById('advice-loading');
+  var contentEl = document.getElementById('advice-content');
+  var genBtn    = document.getElementById('advice-gen-btn');
+  if (emptyEl)   emptyEl.style.display   = 'none';
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (contentEl) contentEl.style.display = 'block';
+  if (genBtn)    { genBtn.disabled = false; genBtn.textContent = '🔄 戦略を再分析'; }
+  console.log('[ADVICE] DOM復元完了');
+  return true;
+}
+
 function saveAdvice() {
   // 編集中のものを確定
   ['advice-summary'].forEach(id => {
@@ -5027,7 +5043,34 @@ function saveAdvice() {
       el.style.border = '';
     }
   });
-  showToast('戦略アドバイスを保存しました');
+  // DOMから現在の内容を取得してlocalStorageへ保存
+  var summaryEl = document.getElementById('advice-summary');
+  var summary = summaryEl ? (summaryEl.innerText || summaryEl.textContent || '').trim() : '';
+  if (!summary) { showToast('保存するアドバイスがありません'); return; }
+
+  // 科目別アドバイスを取得
+  var subjects = [];
+  document.querySelectorAll('#advice-subjects > div').forEach(function(card) {
+    var nameEl  = card.querySelector('div[style*="font-weight:700"]');
+    var advEl   = card.querySelector('[data-subject-advice]');
+    var badgeEl = card.querySelector('span');
+    if (nameEl && advEl) {
+      var lbl = badgeEl ? (badgeEl.innerText||'').trim() : '';
+      var pri = lbl === '要強化' ? 'high' : lbl === '良好' ? 'low' : 'medium';
+      subjects.push({ name: (nameEl.innerText||'').trim(), advice: (advEl.innerText||'').trim(), priority: pri });
+    }
+  });
+
+  // タスクを取得
+  var tasks = [];
+  document.querySelectorAll('#advice-tasks > div').forEach(function(div) {
+    var textEl = div.querySelector('div:last-child');
+    var t = textEl ? (textEl.innerText||'').trim() : '';
+    if (t && t.length > 3) tasks.push(t);
+  });
+
+  _adviceSave({ summary: summary, subjects: subjects, tasks: tasks });
+  showToast('戦略アドバイスを保存しました ✓');
 }
 
 
@@ -6911,6 +6954,11 @@ function renderAdvice(parsed, subjects) {
     </div>`;
   });
   document.getElementById('advice-tasks').innerHTML = taskHtml;
+
+  // ★ 描画完了後に自動保存（_suppressSave フラグで循環を防ぐ）
+  if (!window._adviceSuppressSave) {
+    _adviceSave({ summary: parsed.summary, subjects: parsed.subjects || [], tasks: parsed.tasks || [] });
+  }
 }
 
 function generateFallbackAdvice(s, subjects, gap) {
