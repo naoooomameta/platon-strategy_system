@@ -3096,13 +3096,12 @@ _sb.auth.onAuthStateChange(async function(event, session) {
     } catch(e) {
       console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
     }
-    // 初回ログイン時のみダッシュボード表示（TOKEN_REFRESHED等では切り替えない）
+    // ★ SIGNED_IN / INITIAL_SESSION どちらも最後にいたページに復元する
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
       try {
+        // localStorage から最後のページを取得（なければ dashboard）
         var _initPage = 'dashboard';
-        if (event === 'INITIAL_SESSION') {
-          try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
-        }
+        try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
         showPage(_initPage);
         console.log('[DEBUG] Page shown (initial):', _initPage);
       } catch(e) {
@@ -3132,12 +3131,14 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
       await _loadStudentsFromSupabase();
 
-      // リロード時：最後に開いていた生徒を自動復元
-      _restoreLastStudent();
-
-      // 最後に開いていたページを復元（なければダッシュボード）
+      // ★ 最後に開いていたページを先に取得（生徒復元の後に使う）
       var lastPage = 'dashboard';
       try { lastPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e) {}
+
+      // リロード時：最後に開いていた生徒を自動復元（キャッシュ含む）
+      _restoreLastStudent();
+
+      // ★ 復元後に正しいページを表示（DOMContentLoaded では必ずlastPageへ）
       showPage(lastPage);
     }
   } catch(e) {
@@ -3145,8 +3146,28 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
-// ページ離脱・リロード前にキャッシュを保存
+// ★ ページ離脱・リロード前にキャッシュを確実に保存
 window.addEventListener('beforeunload', function() {
+  // 現在のページを保存（showPage で既に保存されているが念のため）
+  var activePage = document.querySelector('.page.active');
+  if (activePage) {
+    var pageId = activePage.id ? activePage.id.replace('page-', '') : '';
+    if (pageId) {
+      try { localStorage.setItem('platon_lastPage', pageId); } catch(e) {}
+    }
+  }
+  // 現在の生徒キーを保存
+  if (currentStudent) {
+    try { localStorage.setItem('platon_lastStudent', currentStudent._id || currentStudent.name); } catch(e) {}
+  }
+  // アドバイスをDOMから抽出して保存
+  try {
+    if (typeof _extractAdviceFromDOM === 'function') {
+      var advObj = _extractAdviceFromDOM();
+      if (advObj && typeof _saveAdviceData === 'function') _saveAdviceData(advObj);
+    }
+  } catch(e) {}
+  // 全キャッシュを保存
   _cacheSaveCurrentStudent();
 });
 
@@ -3160,17 +3181,47 @@ function _restoreLastStudent() {
     });
     if (!student) return;
     currentStudent = student;
+
     if (_cacheRestoreStudent(student)) {
+      // ★ キャッシュ復元成功後も各ページのプルダウン・状態を確実に再初期化する
       renderWpStudentSelect();
       renderMonthlyStudentSelect();
       renderPredStudentSelect();
-      console.log('[RESTORE] 最後の生徒を復元:', lastKey);
+      // ★ 最後にいたページに合わせてページ固有の処理を実行
+      var lastPage = '';
+      try { lastPage = localStorage.getItem('platon_lastPage') || ''; } catch(e2) {}
+      _reInitPageAfterRestore(lastPage);
+      console.log('[RESTORE] 最後の生徒を復元:', lastKey, '→ page:', lastPage);
     } else {
       // キャッシュがなければフル描画
       renderRoadmap();
       _initAllPagesForStudent();
     }
   } catch(e) { console.warn('[RESTORE] 復元失敗:', e); }
+}
+
+// ★ リロード後のページ固有再初期化（キャッシュ復元後に呼ぶ）
+function _reInitPageAfterRestore(pageName) {
+  try {
+    if (pageName === 'roadmap') {
+      // ロードマップ：チャート再構築 + アドバイス復元
+      try { renderGapChart(); } catch(e) {}
+      var saved = currentStudent ? _loadAdviceData(currentStudent) : null;
+      if (saved) {
+        _restoreAdviceToDOM(saved);
+      } else if (currentStudent) {
+        // アドバイスがなければ生成
+        setTimeout(function(){ generateAdvice(); }, 500);
+      }
+    } else if (pageName === 'weekly-plan') {
+      wpInit();
+    } else if (pageName === 'monthly') {
+      monthlyInit();
+    } else if (pageName === 'prediction') {
+      predInit();
+    }
+    // tests は testInit() でよいが状態はキャッシュで復元済み
+  } catch(e) { console.warn('[RE-INIT] ページ再初期化失敗:', pageName, e); }
 }
 
 // ===== Supabase直接REST APIヘルパー =====
@@ -3753,6 +3804,31 @@ function showPage(name) {
   if (name === 'dashboard') {
     _syncEditedFieldsToData();
     renderStudentList();
+  }
+
+  // ★ ロードマップページ表示時：チャートとアドバイスを確実に復元
+  if (name === 'roadmap' && currentStudent) {
+    // Chart.jsインスタンスが破棄されている場合は再構築
+    setTimeout(function() {
+      try {
+        var chartCanvas = document.getElementById('deviation-chart');
+        if (chartCanvas && (!deviationChart || !deviationChart.data)) {
+          renderGapChart();
+        }
+      } catch(e) {}
+      // アドバイスの復元（表示されていなければ保存済みデータで復元）
+      try {
+        var contentEl = document.getElementById('advice-content');
+        var emptyEl   = document.getElementById('advice-empty');
+        var isShown   = contentEl && contentEl.style.display !== 'none';
+        if (!isShown) {
+          var saved = _loadAdviceData(currentStudent);
+          if (saved) {
+            _restoreAdviceToDOM(saved);
+          }
+        }
+      } catch(e) {}
+    }, 50);
   }
 
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -4747,26 +4823,6 @@ function updateGapBar(si) {
         ${avgGap > 0 ? '+' : ''}${avgGap} <span style="font-size:13px;font-weight:400;">偏差値</span>
       </div>`;
   }
-
-  // ★ 右側の折れ線グラフと infoボックス を入力値に連動させる
-  if (currentStudent && cnt > 0) {
-    const avgCur = Math.round(sumCur / cnt);
-    const avgTar = Math.round(sumTar / cnt);
-
-    // currentStudentのdevVal・目標偏差値を更新（グラフ再描画に使用）
-    currentStudent.devVal = avgCur;
-    if (!currentStudent.univInfo) currentStudent.univInfo = {};
-    currentStudent.univInfo.dev = avgTar;
-
-    // infoボックスの表示も更新
-    const currentDevEl = document.getElementById('info-current-dev');
-    const targetDevEl  = document.getElementById('info-target-dev');
-    if (currentDevEl) currentDevEl.textContent = `現状 ${avgCur}（模試）`;
-    if (targetDevEl)  targetDevEl.textContent   = avgTar;
-
-    // 偏差値推移予測グラフを再描画
-    try { renderGapChart(); } catch(e) {}
-  }
 }
 
 // ===== CHART =====
@@ -4827,8 +4883,8 @@ function renderGapChart() {
       },
       scales: {
         y: {
-          min: Math.max(20, s.devVal - 12),
-          max: Math.min(82, s.univInfo.dev + 8),
+          min: Math.max(20, s.devVal - 10),
+          max: s.univInfo.dev + 5,
           grid: { color: 'rgba(0,0,0,0.05)' },
           ticks: { font: { family: "'DM Mono', monospace", size: 11 } }
         },
