@@ -3323,13 +3323,7 @@ async function saveStudentToList(s) {
     } else {
       const result = await _sbRestPost('students', row);
       const idx2 = _allStudents.findIndex(x => x.name === s.name);
-      if (idx2 >= 0 && result && result[0]) {
-        _allStudents[idx2]._id = result[0].id;
-        // ★ currentStudentの_idも更新（キャッシュキー一致のために必須）
-        if (currentStudent && currentStudent.name === s.name) {
-          currentStudent._id = result[0].id;
-        }
-      }
+      if (idx2 >= 0 && result && result[0]) _allStudents[idx2]._id = result[0].id;
       console.log('[DEBUG] Inserted student:', s.name, 'id:', result && result[0] && result[0].id);
     }
     showToast(s.name + ' を保存しました ✓');
@@ -3687,20 +3681,10 @@ function _cacheSaveCurrentStudent() {
   cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
   _studentCache[cacheKey] = cache;
 
-  // ★ 名前キーでも同じキャッシュを保存（_idと名前のキー不一致対策）
-  if (currentStudent._id && currentStudent.name && currentStudent._id !== currentStudent.name) {
-    _studentCache[currentStudent.name] = cache;
-  }
-
   // localStorageにも永続化（リロード耐性）
   try {
-    var cacheStr = JSON.stringify(cache);
-    localStorage.setItem('platon_cache_' + cacheKey, cacheStr);
+    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
     localStorage.setItem('platon_lastStudent', cacheKey);
-    // ★ _idと名前の両方のキーで保存（どちらでも復元できるように）
-    if (currentStudent._id && currentStudent.name && currentStudent._id !== currentStudent.name) {
-      localStorage.setItem('platon_cache_' + currentStudent.name, cacheStr);
-    }
   } catch(e) { console.warn('[CACHE] localStorage保存失敗:', e); }
 
   console.log('[CACHE] 保存:', cacheKey);
@@ -3717,31 +3701,9 @@ function _cacheRestoreStudent(s) {
       var stored = localStorage.getItem('platon_cache_' + cacheKey);
       if (stored) {
         cache = JSON.parse(stored);
-        _studentCache[cacheKey] = cache;
+        _studentCache[cacheKey] = cache; // メモリにも保持
       }
     } catch(e) { console.warn('[CACHE] localStorage読込失敗:', e); }
-  }
-
-  // ★ _idキーで見つからない場合は名前キーでも探す（新規登録直後のキー不一致対策）
-  if (!cache && s._id && s.name) {
-    var nameKey = s.name;
-    if (!_studentCache[nameKey]) {
-      try {
-        var storedByName = localStorage.getItem('platon_cache_' + nameKey);
-        if (storedByName) {
-          cache = JSON.parse(storedByName);
-          // 見つかったら_idキーでも保存してキーを統一する
-          _studentCache[cacheKey] = cache;
-          _studentCache[nameKey] = cache;
-          try {
-            localStorage.setItem('platon_cache_' + cacheKey, storedByName);
-          } catch(e2) {}
-          console.log('[CACHE] 名前キーでフォールバック復元:', nameKey, '→', cacheKey);
-        }
-      } catch(e) { console.warn('[CACHE] フォールバック読込失敗:', e); }
-    } else {
-      cache = _studentCache[nameKey];
-    }
   }
 
   if (!cache) return false;
@@ -3770,11 +3732,6 @@ function _cacheRestoreStudent(s) {
     buildMonthlyChart(s, monthlyScores);
   } catch(e) { console.warn('monthly chart rebuild error:', e); }
   try { if (predChartInst) { predChartInst = null; } predBuildChart(); } catch(e) { console.warn('pred chart rebuild error:', e); }
-  // ★ wpWeekIdxをlocalStorageから復元（ナビゲーション位置を保持）
-  try {
-    var storedIdx = localStorage.getItem('platon_wpWeekIdx_' + cacheKey);
-    if (storedIdx !== null) wpWeekIdx = parseInt(storedIdx) || 0;
-  } catch(e) {}
   console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
@@ -4790,6 +4747,26 @@ function updateGapBar(si) {
         ${avgGap > 0 ? '+' : ''}${avgGap} <span style="font-size:13px;font-weight:400;">偏差値</span>
       </div>`;
   }
+
+  // ★ 右側の折れ線グラフと infoボックス を入力値に連動させる
+  if (currentStudent && cnt > 0) {
+    const avgCur = Math.round(sumCur / cnt);
+    const avgTar = Math.round(sumTar / cnt);
+
+    // currentStudentのdevVal・目標偏差値を更新（グラフ再描画に使用）
+    currentStudent.devVal = avgCur;
+    if (!currentStudent.univInfo) currentStudent.univInfo = {};
+    currentStudent.univInfo.dev = avgTar;
+
+    // infoボックスの表示も更新
+    const currentDevEl = document.getElementById('info-current-dev');
+    const targetDevEl  = document.getElementById('info-target-dev');
+    if (currentDevEl) currentDevEl.textContent = `現状 ${avgCur}（模試）`;
+    if (targetDevEl)  targetDevEl.textContent   = avgTar;
+
+    // 偏差値推移予測グラフを再描画
+    try { renderGapChart(); } catch(e) {}
+  }
 }
 
 // ===== CHART =====
@@ -4850,8 +4827,8 @@ function renderGapChart() {
       },
       scales: {
         y: {
-          min: Math.max(20, s.devVal - 10),
-          max: s.univInfo.dev + 5,
+          min: Math.max(20, s.devVal - 12),
+          max: Math.min(82, s.univInfo.dev + 8),
           grid: { color: 'rgba(0,0,0,0.05)' },
           ticks: { font: { family: "'DM Mono', monospace", size: 11 } }
         },
@@ -7365,14 +7342,6 @@ function wpSave() {
   }
 }
 
-// ★ wpWeekIdxをキャッシュから復元（再ロード後にナビゲーションがずれるのを防ぐ）
-function _restoreWpWeekIdx() {
-  try {
-    var stored = localStorage.getItem('platon_wpWeekIdx_' + (currentStudent && (currentStudent._id || currentStudent.name)));
-    if (stored !== null) wpWeekIdx = parseInt(stored) || 0;
-  } catch(e) {}
-}
-
 function renderWpWeekGrid() {
   var wrapEl = document.getElementById('wp-week-grid-wrap');
   if (!wrapEl) return;
@@ -7699,11 +7668,6 @@ function changeWpWeek(d) {
     panel.style.display = parseInt(panel.dataset.wpWeek) === wpWeekIdx ? 'grid' : 'none';
   });
   _updateWpWeekLabel();
-  // ★ 現在の週インデックスをlocalStorageに記録（キャッシュ復元後のナビ位置保持）
-  try {
-    var key = currentStudent ? (currentStudent._id || currentStudent.name) : '';
-    if (key) localStorage.setItem('platon_wpWeekIdx_' + key, wpWeekIdx);
-  } catch(e) {}
 }
 
 // ======================================================
