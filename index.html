@@ -4207,10 +4207,13 @@ function renderRoadmapBooks() {
   if (subtitle) subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
 
   if (filterWrap) {
+    // ★ data-color属性を付与してアクティブ状態の色切替を確実に行う
     filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
-      style="padding:4px 12px;border-radius:20px;border:1.5px solid var(--ink);background:var(--ink);color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>`
+      data-color="#1a1a2e"
+      style="padding:4px 12px;border-radius:20px;border:1.5px solid #1a1a2e;background:#1a1a2e;color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>`
       + filterEntries.map(function(e){
           return `<button onclick="filterRoadmapBooks('${e.key}',this)"
+            data-color="${e.color}"
             style="padding:4px 12px;border-radius:20px;border:1.5px solid ${e.color};background:white;color:${e.color};font-size:11px;cursor:pointer;font-family:inherit;">${e.label}</button>`;
         }).join('');
   }
@@ -4315,29 +4318,42 @@ function renderRoadmapBooksRows(books) {
 }
 
 function filterRoadmapBooks(sub, btn) {
-  // ボタンのアクティブ状態切替
+  // ★ data-color属性を使って色を確実に取得（borderColorショートハンド問題対策）
   const wrap = document.getElementById('roadmap-books-filter');
   if (wrap) wrap.querySelectorAll('button').forEach(b => {
-    b.style.background = 'white'; b.style.color = b.style.borderColor;
+    var col = b.dataset.color || '#1a1a2e';
+    b.style.background = 'white';
+    b.style.color = col;
+    b.style.borderColor = col;
   });
-  if (btn) { btn.style.background = btn.style.borderColor; btn.style.color = 'white'; }
+  if (btn) {
+    var activeCol = btn.dataset.color || '#1a1a2e';
+    btn.style.background = activeCol;
+    btn.style.color = 'white';
+    btn.style.borderColor = activeCol;
+  }
+  // 現在の選択フィルターを記憶（再描画後に復元するため）
+  window._currentRoadmapFilter = sub;
 
-  // DOM再構築せず、CSSで表示/非表示を切替（手動編集を保持）
+  // DOM再構築せず、CSSクラスで表示/非表示を切替（手動編集を保持）
   var timeline = document.getElementById('roadmap-books-timeline');
   if (!timeline) return;
 
-  // 全カードの表示/非表示
+  // 全カードの表示/非表示（classList使用でselectorの文字列マッチ問題を回避）
   timeline.querySelectorAll('.rb-card').forEach(function(card) {
     if (sub === 'all') {
+      card.classList.remove('rb-hidden');
       card.style.display = '';
     } else {
-      card.style.display = (card.dataset.rbFilter === sub) ? '' : 'none';
+      var match = (card.dataset.rbFilter === sub);
+      card.classList.toggle('rb-hidden', !match);
+      card.style.display = match ? '' : 'none';
     }
   });
 
   // 表示中のカードが0個の月グループを非表示
   timeline.querySelectorAll('.rb-month-group').forEach(function(group) {
-    var visibleCards = group.querySelectorAll('.rb-card:not([style*="display: none"])');
+    var visibleCards = group.querySelectorAll('.rb-card:not(.rb-hidden)');
     group.style.display = visibleCards.length > 0 ? '' : 'none';
   });
 }
@@ -6713,19 +6729,9 @@ function printPage(pageId, title) {
 }
 
 // ===== 模試アップロード =====
-// 多重起動防止フラグ
-let _adviceRunning = false;
-
 async function generateAdvice() {
   const s = currentStudent;
   if (!s) return;
-
-  // 多重起動防止（前の生成が終わっていない場合は無視）
-  if (_adviceRunning) return;
-  _adviceRunning = true;
-
-  // ★ 生成開始時点の生徒IDを記憶（非同期完了後の生徒切替バグ対策）
-  const _targetStudentId = s._id || s.name;
 
   const emptyEl   = document.getElementById('advice-empty');
   const loadingEl = document.getElementById('advice-loading');
@@ -6785,22 +6791,12 @@ ${subjectStr}
 
   try {
     const text = await callGemini(prompt);
-    // ★ 非同期完了後に生徒が切り替わっていたら何もしない
-    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
-    if (_nowId !== _targetStudentId) return;
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     renderAdvice(parsed, subjects);
   } catch (err) {
-    // ★ エラー時も同様チェック
-    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
-    if (_nowId !== _targetStudentId) return;
     renderAdvice(generateFallbackAdvice(s, subjects, gap), subjects);
   } finally {
-    _adviceRunning = false;
-    // ★ 生徒が変わっていたらUIを触らない
-    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
-    if (_nowId !== _targetStudentId) return;
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
     genBtn.disabled = false;
@@ -9194,12 +9190,24 @@ function submitAddBook() {
   if(fw&&!fw.querySelector('[data-fkey="'+subject+'"]')){
     var fb=document.createElement('button');
     fb.setAttribute('data-fkey',subject);
+    // ★ data-color属性を付与（filterRoadmapBooksのアクティブ状態切替で使用）
+    fb.setAttribute('data-color', meta.color);
     fb.textContent=subject;
     fb.style.cssText='padding:4px 12px;border-radius:20px;border:1.5px solid '+meta.color+';background:white;color:'+meta.color+';font-size:11px;cursor:pointer;font-family:inherit;';
     fb.onclick=(function(s,btn){return function(){filterRoadmapBooks(s,btn);};})(subject,fb);
     fw.appendChild(fb);
   }
   renderRoadmapBooksRows(window._roadmapBooksAll);
+  // ★ 手動追加後、現在のフィルター選択状態を再適用する
+  if(window._currentRoadmapFilter && window._currentRoadmapFilter !== 'all') {
+    var activeBtn = fw ? fw.querySelector('[data-fkey="'+window._currentRoadmapFilter+'"]') : null;
+    if(!activeBtn && fw) {
+      fw.querySelectorAll('button').forEach(function(b){
+        if(b.textContent === window._currentRoadmapFilter) activeBtn = b;
+      });
+    }
+    filterRoadmapBooks(window._currentRoadmapFilter, activeBtn);
+  }
   closeAddBookModal();
   if(typeof showToast==='function') showToast('参考書を追加しました ✓');
   document.getElementById('ab-name').value='';
