@@ -6713,9 +6713,19 @@ function printPage(pageId, title) {
 }
 
 // ===== 模試アップロード =====
+// 多重起動防止フラグ
+let _adviceRunning = false;
+
 async function generateAdvice() {
   const s = currentStudent;
   if (!s) return;
+
+  // 多重起動防止（前の生成が終わっていない場合は無視）
+  if (_adviceRunning) return;
+  _adviceRunning = true;
+
+  // ★ 生成開始時点の生徒IDを記憶（非同期完了後の生徒切替バグ対策）
+  const _targetStudentId = s._id || s.name;
 
   const emptyEl   = document.getElementById('advice-empty');
   const loadingEl = document.getElementById('advice-loading');
@@ -6775,12 +6785,22 @@ ${subjectStr}
 
   try {
     const text = await callGemini(prompt);
+    // ★ 非同期完了後に生徒が切り替わっていたら何もしない
+    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
+    if (_nowId !== _targetStudentId) return;
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     renderAdvice(parsed, subjects);
   } catch (err) {
+    // ★ エラー時も同様チェック
+    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
+    if (_nowId !== _targetStudentId) return;
     renderAdvice(generateFallbackAdvice(s, subjects, gap), subjects);
   } finally {
+    _adviceRunning = false;
+    // ★ 生徒が変わっていたらUIを触らない
+    const _nowId = currentStudent ? (currentStudent._id || currentStudent.name) : null;
+    if (_nowId !== _targetStudentId) return;
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
     genBtn.disabled = false;
