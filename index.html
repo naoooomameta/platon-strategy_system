@@ -4209,8 +4209,10 @@ function renderRoadmapBooks() {
       const fKey = m.label;
       if (!seen[fKey]) { seen[fKey] = true; filterEntries.push({ key: fKey, label: m.label, color: m.color }); }
       const candidates = getBooksForSubject(subjectName, m);
-      console.log('[RB-DEBUG]', subjectName, '→ candidates:', candidates.length, 'books:', candidates.map(function(c){return c.name}).slice(0,3));
+      var _beforeLen = scheduledBooks.length;
       scheduleBooks(candidates, fKey, m.label, m.color);
+      var _afterLen = scheduledBooks.length;
+      console.log('[RB-DEBUG]', subjectName, '→ candidates:', candidates.length, 'scheduled:', (_afterLen - _beforeLen), 'books:', candidates.map(function(c){return c.name}).slice(0,3));
     });
   } else {
     // ── フォールバック：志望校科目ベース ──
@@ -4230,6 +4232,34 @@ function renderRoadmapBooks() {
   }
 
   if (subtitle) subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
+
+  // ★★★ デバッグ: 画面上に直接表示 ★★★
+  var _dbgEl = document.getElementById('rb-debug-panel');
+  if (!_dbgEl) {
+    _dbgEl = document.createElement('div');
+    _dbgEl.id = 'rb-debug-panel';
+    _dbgEl.style.cssText = 'margin:8px 0;padding:10px;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;';
+    var parent = document.getElementById('roadmap-books-filter');
+    if (parent) parent.parentNode.insertBefore(_dbgEl, parent);
+  }
+  var _dbgLines = [];
+  _dbgLines.push('=== RB DEBUG ===');
+  _dbgLines.push('mainSubjects type: ' + typeof s.mainSubjects);
+  _dbgLines.push('mainSubjects: ' + JSON.stringify(s.mainSubjects));
+  _dbgLines.push('stream: ' + s.stream + ' | levelVal: ' + s.levelVal + ' | maxLv: ' + maxLv + ' | totalWeeks: ' + totalWeeks);
+  var _bkCount = {};
+  scheduledBooks.forEach(function(b) { _bkCount[b._filterKey] = (_bkCount[b._filterKey]||0) + 1; });
+  _dbgLines.push('scheduledBooks total: ' + scheduledBooks.length);
+  _dbgLines.push('Books per filterKey: ' + JSON.stringify(_bkCount));
+  _dbgLines.push('filterEntries: ' + filterEntries.map(function(e){return e.key}).join(', '));
+  // 英語R/英語Lの候補を直接チェック
+  var _engRmap = SUBJECT_MAP['英語R'];
+  if (_engRmap) {
+    var _engTest = ALL_TEXTBOOKS.filter(function(b){ return b.sub===_engRmap.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=maxLv && _engRmap.cats.includes(b.category); });
+    _dbgLines.push('英語R直接テスト: candidates=' + _engTest.length + ' (stream='+s.stream+', maxLv='+maxLv+')');
+    if (_engTest.length > 0) _dbgLines.push('  先頭3冊: ' + _engTest.slice(0,3).map(function(b){return b.name+'(lv'+b.level+',dur'+b.dur+')'}).join(', '));
+  }
+  _dbgEl.textContent = _dbgLines.join('\n');
 
   if (filterWrap) {
     // ★ data-color 属性を付与（filterRoadmapBooks でのアクティブ色切替に使用）
