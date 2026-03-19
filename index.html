@@ -811,8 +811,8 @@
     .btn { font-size: 12px; padding: 9px 12px; }
   }
 
-  /* ===== 参考書フィルター =====*/
-  .rb-hidden { display: none !important; }
+  /* ===== 参考書フィルター ===== */
+  .rb-filter-hidden { display: none !important; }
 
   /* ===== FADE IN ===== */
   @keyframes fadeInUp {
@@ -4210,7 +4210,7 @@ function renderRoadmapBooks() {
   if (subtitle) subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
 
   if (filterWrap) {
-    // ★ data-color 属性を付与してアクティブ状態の色管理を確実にする
+    // ★ data-color属性でボタンの色を保持（borderColorショートハンド読み取り不可バグ対策）
     filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
       data-color="#1a1a2e"
       style="padding:4px 12px;border-radius:20px;border:1.5px solid #1a1a2e;background:#1a1a2e;color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>`
@@ -4321,20 +4321,18 @@ function renderRoadmapBooksRows(books) {
 }
 
 function filterRoadmapBooks(sub, btn) {
-  // ★ 現在のフィルター状態を記録（手動追加後の再適用に使う）
-  window._currentRoadmapFilter = sub;
-
-  // ボタンのアクティブ状態切替
-  // ★ data-color属性で色を確実に取得（border ショートハンドバグ回避）
-  const wrap = document.getElementById('roadmap-books-filter');
-  if (wrap) wrap.querySelectorAll('button').forEach(function(b) {
-    var col = b.dataset.color || b.style.color || '#1a1a2e';
-    b.style.background = 'white';
-    b.style.color = col;
-    b.style.borderColor = col;
-  });
+  // ★ data-color属性で色を確実に取得（borderColorショートハンドは空文字を返すため使えない）
+  var wrap = document.getElementById('roadmap-books-filter');
+  if (wrap) {
+    wrap.querySelectorAll('button').forEach(function(b) {
+      var col = b.dataset.color || '#1a1a2e';
+      b.style.background = 'white';
+      b.style.color = col;
+      b.style.borderColor = col;
+    });
+  }
   if (btn) {
-    var activeCol = btn.dataset.color || btn.style.color || '#1a1a2e';
+    var activeCol = btn.dataset.color || '#1a1a2e';
     btn.style.background = activeCol;
     btn.style.color = 'white';
     btn.style.borderColor = activeCol;
@@ -4343,23 +4341,34 @@ function filterRoadmapBooks(sub, btn) {
   var timeline = document.getElementById('roadmap-books-timeline');
   if (!timeline) return;
 
-  // ★ classベースで表示/非表示を管理（style文字列マッチングバグ回避）
+  // ★ カードの表示/非表示（classで管理してselectorバグを回避）
   timeline.querySelectorAll('.rb-card').forEach(function(card) {
     if (sub === 'all') {
-      card.classList.remove('rb-hidden');
+      card.classList.remove('rb-filter-hidden');
     } else {
       if (card.dataset.rbFilter === sub) {
-        card.classList.remove('rb-hidden');
+        card.classList.remove('rb-filter-hidden');
       } else {
-        card.classList.add('rb-hidden');
+        card.classList.add('rb-filter-hidden');
       }
     }
   });
 
-  // 表示中カードが0の月グループを非表示（classベースで判定）
+  // ★ 表示カードが0の月グループを非表示（classベースで判定）
   timeline.querySelectorAll('.rb-month-group').forEach(function(group) {
-    var visible = group.querySelectorAll('.rb-card:not(.rb-hidden)').length;
+    var visible = group.querySelectorAll('.rb-card:not(.rb-filter-hidden)').length;
     group.style.display = visible > 0 ? '' : 'none';
+  });
+
+  // 年セパレーターの表示/非表示も整合させる
+  var lastVisible = null;
+  timeline.childNodes.forEach(function(node) {
+    if (!node.classList) return;
+    if (node.classList.contains('rb-year-sep')) {
+      // 次の月グループが表示されるかを確認して後で調整
+      node.style.display = '';
+      lastVisible = node;
+    }
   });
 }
 
@@ -9195,32 +9204,13 @@ function submitAddBook() {
   if(fw&&!fw.querySelector('[data-fkey="'+subject+'"]')){
     var fb=document.createElement('button');
     fb.setAttribute('data-fkey',subject);
-    // ★ data-color 属性を付与（filterRoadmapBooks でのアクティブ状態切替に必要）
-    fb.setAttribute('data-color', meta.color);
+    fb.setAttribute('data-color', meta.color); // ★ アクティブ状態管理に必要
     fb.textContent=subject;
     fb.style.cssText='padding:4px 12px;border-radius:20px;border:1.5px solid '+meta.color+';background:white;color:'+meta.color+';font-size:11px;cursor:pointer;font-family:inherit;';
     fb.onclick=(function(s,btn){return function(){filterRoadmapBooks(s,btn);};})(subject,fb);
     fw.appendChild(fb);
   }
-
-  // ★ 全冊を再描画
   renderRoadmapBooksRows(window._roadmapBooksAll);
-
-  // ★ 再描画後にフィルター状態を再適用（フィルターがリセットされるのを防ぐ）
-  var currentFilter = window._currentRoadmapFilter || 'all';
-  if (fw) {
-    // アクティブなボタンを探して再適用
-    var activeBtn = null;
-    if (currentFilter === 'all') {
-      activeBtn = fw.querySelector('button:first-child');
-    } else {
-      fw.querySelectorAll('button').forEach(function(b) {
-        if (b.dataset.fkey === currentFilter || b.textContent === currentFilter) activeBtn = b;
-      });
-    }
-    filterRoadmapBooks(currentFilter, activeBtn);
-  }
-
   closeAddBookModal();
   if(typeof showToast==='function') showToast('参考書を追加しました ✓');
   document.getElementById('ab-name').value='';
