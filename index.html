@@ -3248,6 +3248,16 @@ async function _loadStudentsFromSupabase() {
 
 // DBのスネークケース → JSのキャメルケースに変換
 function _rowToStudent(row) {
+  // ★ Supabaseから返るJSON文字列をオブジェクト/配列にパース
+  var mainSub = row.main_subjects;
+  if (typeof mainSub === 'string') { try { mainSub = JSON.parse(mainSub); } catch(e) { mainSub = []; } }
+  var subDev = row.sub_devs;
+  if (typeof subDev === 'string') { try { subDev = JSON.parse(subDev); } catch(e) { subDev = {}; } }
+  var univInf = row.univ_info;
+  if (typeof univInf === 'string') { try { univInf = JSON.parse(univInf); } catch(e) { univInf = {}; } }
+  var devHist = row.dev_history;
+  if (typeof devHist === 'string') { try { devHist = JSON.parse(devHist); } catch(e) { devHist = {}; } }
+
   return {
     _id: row.id,
     name: row.name,
@@ -3255,18 +3265,18 @@ function _rowToStudent(row) {
     stream: row.stream,
     univName: row.univ_name,
     dept1: row.dept1,
-    univInfo: row.univ_info,
+    univInfo: univInf,
     devVal: row.dev_val,
     months: row.months,
     enrolled: row.enrolled,
     goalYear: row.goal_year,
     goalMonth: row.goal_month,
     roadmapCount: row.roadmap_count || 0,
-    mainSubjects: row.main_subjects,
-    subDevs: row.sub_devs,
+    mainSubjects: mainSub,
+    subDevs: subDev,
     levelVal: row.level_val,
     examMonth: row.exam_month,
-    devHistory: row.dev_history || {},  // {"YYYY-MM": 偏差値}
+    devHistory: devHist,
   };
 }
 
@@ -4181,14 +4191,25 @@ function renderRoadmapBooks() {
     });
   }
 
+  // ★ デバッグ: mainSubjects の型と内容を確認
+  console.log('[RB-DEBUG] s.mainSubjects type:', typeof s.mainSubjects, 'value:', s.mainSubjects);
+  console.log('[RB-DEBUG] s.levelVal:', s.levelVal, 'maxLv:', maxLv, 'totalWeeks:', totalWeeks);
+  console.log('[RB-DEBUG] s.stream:', s.stream);
+
+  // ★ 安全対策: mainSubjects が文字列の場合は配列にパース
+  if (typeof s.mainSubjects === 'string') {
+    try { s.mainSubjects = JSON.parse(s.mainSubjects); } catch(e) { s.mainSubjects = []; }
+  }
+
   if (s.mainSubjects && s.mainSubjects.length > 0) {
     // ── 主要対策科目モード ──
     s.mainSubjects.forEach(function(subjectName) {
       const m = SUBJECT_MAP[subjectName];
-      if (!m) return;
+      if (!m) { console.log('[RB-DEBUG] SUBJECT_MAP miss for:', subjectName); return; }
       const fKey = m.label;
       if (!seen[fKey]) { seen[fKey] = true; filterEntries.push({ key: fKey, label: m.label, color: m.color }); }
       const candidates = getBooksForSubject(subjectName, m);
+      console.log('[RB-DEBUG]', subjectName, '→ candidates:', candidates.length, 'books:', candidates.map(function(c){return c.name}).slice(0,3));
       scheduleBooks(candidates, fKey, m.label, m.color);
     });
   } else {
@@ -4223,6 +4244,8 @@ function renderRoadmapBooks() {
   }
 
   window._roadmapBooksAll = scheduledBooks;
+  console.log('[RB-DEBUG] Total scheduled books:', scheduledBooks.length, 'filterEntries:', filterEntries.map(function(e){return e.key}));
+  console.log('[RB-DEBUG] Books by filterKey:', scheduledBooks.reduce(function(acc,b){ acc[b._filterKey]=(acc[b._filterKey]||0)+1; return acc; }, {}));
   renderRoadmapBooksRows(scheduledBooks);
 }
 
