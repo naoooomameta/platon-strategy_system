@@ -3184,6 +3184,16 @@ function _getAccessToken() {
     return parsed.access_token || (parsed.session && parsed.session.access_token) || null;
   } catch(e) { return null; }
 }
+// ログイン中ユーザーのIDを取得（生徒データの所有者識別に使用）
+function _getCurrentUserId() {
+  try {
+    const raw = localStorage.getItem('platon-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    var user = parsed.user || (parsed.session && parsed.session.user);
+    return user ? user.id : null;
+  } catch(e) { return null; }
+}
 function _sbHeaders() {
   const token = _getAccessToken();
   console.log('[DEBUG] _sbHeaders token:', token ? 'found (' + token.substring(0,20) + '...)' : 'NULL');
@@ -3233,9 +3243,12 @@ async function _sbRestDelete(table, id) {
 async function _loadStudentsFromSupabase() {
   console.log('[DEBUG] _loadStudentsFromSupabase called');
   try {
-    const data = await _sbRestGet('students');
+    var uid = _getCurrentUserId();
+    var query = 'select=*&order=created_at.asc';
+    if (uid) query += '&user_id=eq.' + uid;
+    const data = await _sbRestGet('students', query);
     _allStudents = (data || []).map(_rowToStudent);
-    console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase');
+    console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase (user_id:', uid, ')');
   } catch(e) {
     console.warn('DB読込エラー:', e.message);
     _allStudents = [];
@@ -3282,7 +3295,7 @@ function _rowToStudent(row) {
 
 // JSのキャメルケース → DBのスネークケースに変換
 function _studentToRow(s) {
-  return {
+  var row = {
     name: s.name,
     grade: s.grade,
     stream: s.stream,
@@ -3302,6 +3315,10 @@ function _studentToRow(s) {
     dev_history: s.devHistory || {},
     updated_at: new Date().toISOString(),
   };
+  // user_id を付与（新規作成時のみ。既存レコードのPATCH時は上書きしない）
+  var uid = _getCurrentUserId();
+  if (uid) row.user_id = uid;
+  return row;
 }
 
 async function saveStudentToList(s) {
@@ -4098,6 +4115,7 @@ function renderRoadmap() {
   renderTimeline();
   renderGapStats();
   renderGapChart();
+  window._currentRoadmapFilter = 'all';
   renderRoadmapBooks();
   // アドバイスを自動生成
   setTimeout(function() { generateAdvice(); }, 300);
@@ -4113,8 +4131,13 @@ function renderRoadmapBooks() {
 
   // 対策科目リスト（mainSubjects優先、なければ志望校科目）
   const univSubjectToSub = {
-    '英語':'eng','数学':'math','国語':'jpn',
-    '理科':'sci','理科2科目':'sci','社会':'soc','社会2科目':'soc','小論文':'jpn'
+    '英語':'eng','英語R':'eng','英語L':'eng',
+    '英語リーディング':'eng','英語リスニング':'eng',
+    '数学':'math','数学1A':'math','数学2BC':'math',
+    '国語':'jpn','現代文':'jpn','古文':'jpn','漢文':'jpn',
+    '理科':'sci','理科2科目':'sci','物理':'sci','化学':'sci','生物':'sci','地学':'sci','理科基礎':'sci',
+    '社会':'soc','社会2科目':'soc','日本史':'soc','世界史':'soc','地理':'soc','公民':'soc',
+    '小論文':'jpn','情報':'etc'
   };
   const SUBJECT_MAP = {
     '英語R':         { sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],  label:'英語R',   color:'#2a7f6f' },
@@ -4143,12 +4166,13 @@ function renderRoadmapBooks() {
 
   const now = new Date();
   const startMonth = now.getFullYear() * 12 + now.getMonth();
-  const examMonth  = (s.goalYear || now.getFullYear() + 1) * 12 + (s.goalMonth ?? 1);
-  const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33));
+  const examMonth  = (s.goalYear || now.getFullYear() + 1) * 12 + (s.goalMonth != null ? s.goalMonth : 1);
+  const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33)) || 48;
   const JAmonths   = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
   const minLv = 1;  // 全レベルを対象
-  const maxLv = Math.min(5, s.levelVal + 2);
+  var _levelVal = (typeof s.levelVal === 'number' && !isNaN(s.levelVal)) ? s.levelVal : 2;
+  const maxLv = Math.min(5, _levelVal + 2);
 
   const scheduledBooks = [];
   const filterEntries  = [];
@@ -4191,11 +4215,6 @@ function renderRoadmapBooks() {
     });
   }
 
-  // ★ デバッグ: mainSubjects の型と内容を確認
-  console.log('[RB-DEBUG] s.mainSubjects type:', typeof s.mainSubjects, 'value:', s.mainSubjects);
-  console.log('[RB-DEBUG] s.levelVal:', s.levelVal, 'maxLv:', maxLv, 'totalWeeks:', totalWeeks);
-  console.log('[RB-DEBUG] s.stream:', s.stream);
-
   // ★ 安全対策: mainSubjects が文字列の場合は配列にパース
   if (typeof s.mainSubjects === 'string') {
     try { s.mainSubjects = JSON.parse(s.mainSubjects); } catch(e) { s.mainSubjects = []; }
@@ -4209,10 +4228,7 @@ function renderRoadmapBooks() {
       const fKey = m.label;
       if (!seen[fKey]) { seen[fKey] = true; filterEntries.push({ key: fKey, label: m.label, color: m.color }); }
       const candidates = getBooksForSubject(subjectName, m);
-      var _beforeLen = scheduledBooks.length;
       scheduleBooks(candidates, fKey, m.label, m.color);
-      var _afterLen = scheduledBooks.length;
-      console.log('[RB-DEBUG]', subjectName, '→ candidates:', candidates.length, 'scheduled:', (_afterLen - _beforeLen), 'books:', candidates.map(function(c){return c.name}).slice(0,3));
     });
   } else {
     // ── フォールバック：志望校科目ベース ──
@@ -4231,35 +4247,11 @@ function renderRoadmapBooks() {
     });
   }
 
-  if (subtitle) subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
+  if (subtitle) subtitle.textContent = `${s.goalYear || ''}年${JAmonths[s.goalMonth != null ? s.goalMonth : 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
 
-  // ★★★ デバッグ: 画面上に直接表示 ★★★
+  // 既存のデバッグパネルがあれば削除
   var _dbgEl = document.getElementById('rb-debug-panel');
-  if (!_dbgEl) {
-    _dbgEl = document.createElement('div');
-    _dbgEl.id = 'rb-debug-panel';
-    _dbgEl.style.cssText = 'margin:8px 0;padding:10px;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;';
-    var parent = document.getElementById('roadmap-books-filter');
-    if (parent) parent.parentNode.insertBefore(_dbgEl, parent);
-  }
-  var _dbgLines = [];
-  _dbgLines.push('=== RB DEBUG ===');
-  _dbgLines.push('mainSubjects type: ' + typeof s.mainSubjects);
-  _dbgLines.push('mainSubjects: ' + JSON.stringify(s.mainSubjects));
-  _dbgLines.push('stream: ' + s.stream + ' | levelVal: ' + s.levelVal + ' | maxLv: ' + maxLv + ' | totalWeeks: ' + totalWeeks);
-  var _bkCount = {};
-  scheduledBooks.forEach(function(b) { _bkCount[b._filterKey] = (_bkCount[b._filterKey]||0) + 1; });
-  _dbgLines.push('scheduledBooks total: ' + scheduledBooks.length);
-  _dbgLines.push('Books per filterKey: ' + JSON.stringify(_bkCount));
-  _dbgLines.push('filterEntries: ' + filterEntries.map(function(e){return e.key}).join(', '));
-  // 英語R/英語Lの候補を直接チェック
-  var _engRmap = SUBJECT_MAP['英語R'];
-  if (_engRmap) {
-    var _engTest = ALL_TEXTBOOKS.filter(function(b){ return b.sub===_engRmap.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=maxLv && _engRmap.cats.includes(b.category); });
-    _dbgLines.push('英語R直接テスト: candidates=' + _engTest.length + ' (stream='+s.stream+', maxLv='+maxLv+')');
-    if (_engTest.length > 0) _dbgLines.push('  先頭3冊: ' + _engTest.slice(0,3).map(function(b){return b.name+'(lv'+b.level+',dur'+b.dur+')'}).join(', '));
-  }
-  _dbgEl.textContent = _dbgLines.join('\n');
+  if (_dbgEl) _dbgEl.remove();
 
   if (filterWrap) {
     // ★ data-color 属性を付与（filterRoadmapBooks でのアクティブ色切替に使用）
@@ -4274,8 +4266,6 @@ function renderRoadmapBooks() {
   }
 
   window._roadmapBooksAll = scheduledBooks;
-  console.log('[RB-DEBUG] Total scheduled books:', scheduledBooks.length, 'filterEntries:', filterEntries.map(function(e){return e.key}));
-  console.log('[RB-DEBUG] Books by filterKey:', scheduledBooks.reduce(function(acc,b){ acc[b._filterKey]=(acc[b._filterKey]||0)+1; return acc; }, {}));
   renderRoadmapBooksRows(scheduledBooks);
 }
 
@@ -4375,6 +4365,12 @@ function renderRoadmapBooksRows(books) {
 }
 
 function filterRoadmapBooks(sub, btn) {
+  // ★ 同じフィルターを再クリックしたら「全科目」に戻す（トグル動作）
+  if (sub !== 'all' && window._currentRoadmapFilter === sub) {
+    sub = 'all';
+    btn = null; // 全科目ボタンをアクティブにする
+  }
+
   // ★ 現在のフィルター状態を記録（手動追加後の再適用のため）
   window._currentRoadmapFilter = sub;
 
@@ -4386,7 +4382,15 @@ function filterRoadmapBooks(sub, btn) {
     b.style.color = col;
     b.style.borderColor = col;
   });
-  if (btn) {
+  // 全科目ボタン or 選択されたボタンをアクティブに
+  if (sub === 'all' && wrap) {
+    var allBtn = wrap.querySelector('button');
+    if (allBtn) {
+      allBtn.style.background = '#1a1a2e';
+      allBtn.style.color = 'white';
+      allBtn.style.borderColor = '#1a1a2e';
+    }
+  } else if (btn) {
     var activeCol = btn.dataset.color || btn.style.color || '#1a1a2e';
     btn.style.background = activeCol;
     btn.style.color = 'white';
@@ -5526,9 +5530,13 @@ function exportPDF() {
 
   // ── 参考書ルート：受験月から逆算してスケジュール付き全件表示 ──
   const subjectToSub = {
-    '英語':'eng','数学':'math','国語':'jpn',
-    '理科':'sci','理科2科目':'sci','社会':'soc',
-    '社会2科目':'soc','小論文':'jpn','総合教養':'eng','実技':'etc'
+    '英語':'eng','英語R':'eng','英語L':'eng',
+    '英語リーディング':'eng','英語リスニング':'eng',
+    '数学':'math','数学1A':'math','数学2BC':'math',
+    '国語':'jpn','現代文':'jpn','古文':'jpn','漢文':'jpn',
+    '理科':'sci','理科2科目':'sci','物理':'sci','化学':'sci','生物':'sci','地学':'sci','理科基礎':'sci',
+    '社会':'soc','社会2科目':'soc','日本史':'soc','世界史':'soc','地理':'soc','公民':'soc',
+    '小論文':'jpn','総合教養':'eng','実技':'etc','情報':'etc'
   };
   const targetSubs = [...new Set(
     (s.univInfo.subjects || ['英語','国語','社会']).map(s2 => subjectToSub[s2] || null).filter(Boolean)
