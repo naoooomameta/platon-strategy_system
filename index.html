@@ -811,8 +811,7 @@
     .btn { font-size: 12px; padding: 9px 12px; }
   }
 
-  /* ===== 参考書フィルター ===== */
-  .rb-filter-hidden { display: none !important; }
+  .rb-hidden { display: none !important; }
 
   /* ===== FADE IN ===== */
   @keyframes fadeInUp {
@@ -1281,10 +1280,10 @@ function updateSubCheckStyle(cb) {
           <label>主要対策科目<span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">（対策する科目を選択）</span></label>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;" id="main-subject-checks">
             <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
-              <input type="checkbox" id="sub-eng-r" value="英語リーディング" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語R
+              <input type="checkbox" id="sub-eng-r" value="英語R" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語R
             </label>
             <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
-              <input type="checkbox" id="sub-eng-l" value="英語リスニング" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語L
+              <input type="checkbox" id="sub-eng-l" value="英語L" onchange="updateSubCheckStyle(this)" style="accent-color:var(--teal);">英語L
             </label>
             <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;background:white;transition:all .15s;" class="sub-check-label">
               <input type="checkbox" id="sub-math1a" value="数学1A" onchange="updateSubCheckStyle(this)" style="accent-color:var(--accent);">数学1A
@@ -4108,8 +4107,10 @@ function renderRoadmapBooks() {
     '理科':'sci','理科2科目':'sci','社会':'soc','社会2科目':'soc','小論文':'jpn'
   };
   const SUBJECT_MAP = {
-    '英語R':    { sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],       label:'英語R',   color:'#2a7f6f' },
-    '英語L':    { sub:'eng', cats:['リスニング'],                                 label:'英語L',   color:'#2a7f6f' },
+    '英語R':         { sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],  label:'英語R',   color:'#2a7f6f' },
+    '英語リーディング':{ sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],label:'英語R',   color:'#2a7f6f' },
+    '英語L':         { sub:'eng', cats:['リスニング'],                            label:'英語L',   color:'#2a7f6f' },
+    '英語リスニング': { sub:'eng', cats:['リスニング'],                            label:'英語L',   color:'#2a7f6f' },
     '数学1A':   { sub:'math', cats:['数学1A','共通テスト数学'],                   label:'数学1A',  color:'#c84b31' },
     '数学2BC':  { sub:'math', cats:['数学2B','数学3C'],                           label:'数学2BC', color:'#c84b31' },
     '現代文':   { sub:'jpn',  cats:['現代文'],                                    label:'現代文',  color:'#9a7a20' },
@@ -4210,7 +4211,7 @@ function renderRoadmapBooks() {
   if (subtitle) subtitle.textContent = `${s.goalYear}年${JAmonths[s.goalMonth ?? 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
 
   if (filterWrap) {
-    // ★ data-color属性でボタンの色を保持（borderColorショートハンド読み取り不可バグ対策）
+    // ★ data-color 属性を付与（filterRoadmapBooks でのアクティブ色切替に使用）
     filterWrap.innerHTML = `<button onclick="filterRoadmapBooks('all',this)"
       data-color="#1a1a2e"
       style="padding:4px 12px;border-radius:20px;border:1.5px solid #1a1a2e;background:#1a1a2e;color:white;font-size:11px;cursor:pointer;font-family:inherit;">全科目</button>`
@@ -4321,18 +4322,19 @@ function renderRoadmapBooksRows(books) {
 }
 
 function filterRoadmapBooks(sub, btn) {
-  // ★ data-color属性で色を確実に取得（borderColorショートハンドは空文字を返すため使えない）
-  var wrap = document.getElementById('roadmap-books-filter');
-  if (wrap) {
-    wrap.querySelectorAll('button').forEach(function(b) {
-      var col = b.dataset.color || '#1a1a2e';
-      b.style.background = 'white';
-      b.style.color = col;
-      b.style.borderColor = col;
-    });
-  }
+  // ★ 現在のフィルター状態を記録（手動追加後の再適用のため）
+  window._currentRoadmapFilter = sub;
+
+  // ★ data-color 属性で色を確実に取得（border ショートハンドバグ回避）
+  const wrap = document.getElementById('roadmap-books-filter');
+  if (wrap) wrap.querySelectorAll('button').forEach(function(b) {
+    var col = b.dataset.color || b.style.color || '#1a1a2e';
+    b.style.background = 'white';
+    b.style.color = col;
+    b.style.borderColor = col;
+  });
   if (btn) {
-    var activeCol = btn.dataset.color || '#1a1a2e';
+    var activeCol = btn.dataset.color || btn.style.color || '#1a1a2e';
     btn.style.background = activeCol;
     btn.style.color = 'white';
     btn.style.borderColor = activeCol;
@@ -4341,34 +4343,20 @@ function filterRoadmapBooks(sub, btn) {
   var timeline = document.getElementById('roadmap-books-timeline');
   if (!timeline) return;
 
-  // ★ カードの表示/非表示（classで管理してselectorバグを回避）
+  // ★ class ベースで表示切替（style 文字列マッチングバグ回避）
   timeline.querySelectorAll('.rb-card').forEach(function(card) {
     if (sub === 'all') {
-      card.classList.remove('rb-filter-hidden');
+      card.classList.remove('rb-hidden');
     } else {
-      if (card.dataset.rbFilter === sub) {
-        card.classList.remove('rb-filter-hidden');
-      } else {
-        card.classList.add('rb-filter-hidden');
-      }
+      var match = (card.dataset.rbFilter === sub);
+      card.classList.toggle('rb-hidden', !match);
     }
   });
 
-  // ★ 表示カードが0の月グループを非表示（classベースで判定）
+  // 表示中カードが0の月グループを非表示
   timeline.querySelectorAll('.rb-month-group').forEach(function(group) {
-    var visible = group.querySelectorAll('.rb-card:not(.rb-filter-hidden)').length;
+    var visible = group.querySelectorAll('.rb-card:not(.rb-hidden)').length;
     group.style.display = visible > 0 ? '' : 'none';
-  });
-
-  // 年セパレーターの表示/非表示も整合させる
-  var lastVisible = null;
-  timeline.childNodes.forEach(function(node) {
-    if (!node.classList) return;
-    if (node.classList.contains('rb-year-sep')) {
-      // 次の月グループが表示されるかを確認して後で調整
-      node.style.display = '';
-      lastVisible = node;
-    }
   });
 }
 
@@ -9204,13 +9192,30 @@ function submitAddBook() {
   if(fw&&!fw.querySelector('[data-fkey="'+subject+'"]')){
     var fb=document.createElement('button');
     fb.setAttribute('data-fkey',subject);
-    fb.setAttribute('data-color', meta.color); // ★ アクティブ状態管理に必要
+    // ★ data-color 属性を付与（アクティブ色切替のため）
+    fb.setAttribute('data-color', meta.color);
     fb.textContent=subject;
     fb.style.cssText='padding:4px 12px;border-radius:20px;border:1.5px solid '+meta.color+';background:white;color:'+meta.color+';font-size:11px;cursor:pointer;font-family:inherit;';
     fb.onclick=(function(s,btn){return function(){filterRoadmapBooks(s,btn);};})(subject,fb);
     fw.appendChild(fb);
   }
   renderRoadmapBooksRows(window._roadmapBooksAll);
+
+  // ★ 再描画後にフィルター状態を再適用（全科目表示に戻るのを防ぐ）
+  var curFilter = window._currentRoadmapFilter || 'all';
+  if (fw) {
+    var activeBtn = null;
+    if (curFilter === 'all') {
+      activeBtn = fw.querySelector('button:first-child');
+    } else {
+      fw.querySelectorAll('button').forEach(function(b) {
+        if ((b.dataset.fkey && b.dataset.fkey === curFilter) ||
+            b.textContent.trim() === curFilter) { activeBtn = b; }
+      });
+    }
+    filterRoadmapBooks(curFilter, activeBtn);
+  }
+
   closeAddBookModal();
   if(typeof showToast==='function') showToast('参考書を追加しました ✓');
   document.getElementById('ab-name').value='';
