@@ -3740,6 +3740,14 @@ function _cacheSaveCurrentStudent(destroyCharts) {
     subjects: _advVisible ? (document.getElementById('advice-subjects') || {}).innerHTML || '' : '',
     tasks: _advVisible ? (document.getElementById('advice-tasks') || {}).innerHTML || '' : ''
   };
+  // 週間スケジュール詳細をキャッシュ（生徒ごとに保持）
+  var _wpGridWrap = document.getElementById('wp-week-grid-wrap');
+  var _wpSubPlan  = document.getElementById('wp-subject-plan');
+  var _wpSubTabs  = document.getElementById('wp-subject-tabs');
+  if (_wpGridWrap && _wpGridWrap.innerHTML) cache._wpWeekGridHtml = _wpGridWrap.innerHTML;
+  if (_wpSubPlan && _wpSubPlan.innerHTML)   cache._wpSubPlanHtml  = _wpSubPlan.innerHTML;
+  if (_wpSubTabs && _wpSubTabs.innerHTML)   cache._wpSubTabsHtml  = _wpSubTabs.innerHTML;
+  cache._wpWeekIdx = wpWeekIdx;
   // currentStudent のデータもキャッシュ（Supabase未保存の編集を保持）
   cache._studentData = JSON.parse(JSON.stringify(currentStudent));
   _studentCache[cacheKey] = cache;
@@ -3818,6 +3826,35 @@ function _restoreAdviceFromCache(adviceData) {
     emptyEl.style.display   = 'block';
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = '🔄 戦略を再分析'; }
   }
+}
+
+// 週間スケジュールをキャッシュから復元。成功したらtrue
+function _restoreWpFromCache() {
+  if (!currentStudent) return false;
+  var cacheKey = currentStudent._id || currentStudent.name;
+  var cache = _studentCache[cacheKey];
+  if (!cache) {
+    try {
+      var stored = localStorage.getItem('platon_cache_' + cacheKey);
+      if (stored) cache = JSON.parse(stored);
+    } catch(e) {}
+  }
+  if (!cache || !cache._wpWeekGridHtml) return false;
+  var gridWrap = document.getElementById('wp-week-grid-wrap');
+  var subPlan  = document.getElementById('wp-subject-plan');
+  var subTabs  = document.getElementById('wp-subject-tabs');
+  if (gridWrap) gridWrap.innerHTML = cache._wpWeekGridHtml;
+  if (subPlan && cache._wpSubPlanHtml)  subPlan.innerHTML  = cache._wpSubPlanHtml;
+  if (subTabs && cache._wpSubTabsHtml)  subTabs.innerHTML  = cache._wpSubTabsHtml;
+  if (cache._wpWeekIdx !== undefined) {
+    wpWeekIdx = cache._wpWeekIdx;
+    document.querySelectorAll('.wp-week-panel').forEach(function(panel) {
+      panel.style.display = parseInt(panel.dataset.wpWeek) === wpWeekIdx ? 'grid' : 'none';
+    });
+    _updateWpWeekLabel();
+  }
+  console.log('[CACHE] 週間スケジュール復元:', cacheKey);
+  return true;
 }
 
 // 定期的にキャッシュを自動保存（30秒ごと）
@@ -7514,6 +7551,8 @@ function wpInit() {
   if (sel && s.name) {
     for (let o of sel.options) { if (o.value === s.name) { o.selected = true; break; } }
   }
+  // キャッシュから週間スケジュールを復元（手動編集を保持）
+  if (_restoreWpFromCache()) return;
   buildWpSubjectTabs();
   renderWpWeekGrid();
 }
