@@ -3079,26 +3079,34 @@ document.addEventListener('keydown', function(e) {
 });
 
 // 認証状態の監視
+var _initialLoadDone = false; // DOMContentLoadedで初期化済みフラグ
+
 _sb.auth.onAuthStateChange(async function(event, session) {
   console.log('[DEBUG] onAuthStateChange:', event, session ? 'session=OK' : 'session=NULL');
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
-  console.log('[DEBUG] loginScreen found:', !!loginScreen, 'appBody found:', !!appBody);
   if (session) {
     if (loginScreen) loginScreen.style.display = 'none';
     if (appBody) {
       appBody.style.display = '';
       appBody.style.visibility = 'visible';
       appBody.style.opacity = '1';
-      console.log('[DEBUG] appBody display set to visible');
+    }
+    // DOMContentLoadedで既に初期化済みなら重複ロードしない
+    if (_initialLoadDone && event === 'INITIAL_SESSION') {
+      console.log('[DEBUG] onAuthStateChange: skipped (already loaded by DOMContentLoaded)');
+      return;
     }
     try {
       await _loadStudentsFromSupabase();
+      // 生徒復元（SIGNED_IN時のみ。INITIAL_SESSIONはDOMContentLoadedで処理）
+      if (event === 'SIGNED_IN') {
+        _restoreLastStudent();
+      }
       console.log('[DEBUG] Students loaded successfully');
     } catch(e) {
       console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
     }
-    // 初回ログイン時のみダッシュボード表示（TOKEN_REFRESHED等では切り替えない）
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
       try {
         var _initPage = 'dashboard';
@@ -3106,7 +3114,6 @@ _sb.auth.onAuthStateChange(async function(event, session) {
           try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
         }
         showPage(_initPage);
-        console.log('[DEBUG] Page shown (initial):', _initPage);
       } catch(e) {
         console.error('[DEBUG] showPage error:', e);
       }
@@ -3120,10 +3127,8 @@ _sb.auth.onAuthStateChange(async function(event, session) {
 // ページ読み込み完了時にも認証チェック
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('%c[PLATON v4.5] 月次診断テスト手動採点版（100点満点・mainSubjects連動）', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
-  console.log('[DEBUG] DOMContentLoaded fired');
   try {
     const token = _getAccessToken();
-    console.log('[DEBUG] DOMContentLoaded session check:', token ? 'OK' : 'NULL');
     if (token) {
       const loginScreen = document.getElementById('login-screen');
       const appBody = document.getElementById('app-body');
@@ -3133,6 +3138,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         appBody.style.visibility = 'visible';
       }
       await _loadStudentsFromSupabase();
+      _initialLoadDone = true; // onAuthStateChangeの重複ロードを防止
 
       // リロード時：最後に開いていた生徒を自動復元
       _restoreLastStudent();
@@ -3734,35 +3740,29 @@ function _cacheSaveCurrentStudent(destroyCharts) {
   console.log('[CACHE] 保存:', cacheKey);
 }
 
-// localStorageへの保存（サイズ超過時はDOM HTMLを省いてデータのみ保存）
+// localStorageへの保存（データのみ。DOM HTMLはメモリキャッシュのみに保持）
+// ★ DOM HTMLを保存するとlocalStorageの5MB制限を圧迫し、
+//   Supabaseの認証トークン更新が失敗する原因になるため、データのみ保存する
 function _persistCacheToLocalStorage(cacheKey, cache) {
   try {
-    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
+    // _で始まるキー（データ変数）のみ保存（DOM HTMLは除外）
+    var dataOnly = {};
+    Object.keys(cache).forEach(function(k) {
+      if (k.charAt(0) === '_') dataOnly[k] = cache[k];
+    });
+    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(dataOnly));
     localStorage.setItem('platon_lastStudent', cacheKey);
   } catch(e) {
-    console.warn('[CACHE] localStorage保存失敗（フルHTML）、データのみで再試行:', e);
-    // サイズ超過の場合：DOM HTMLを除いてデータのみ保存
+    console.warn('[CACHE] localStorage保存失敗、古いキャッシュを削除してリトライ:', e);
     try {
-      var dataOnly = {};
+      _clearOldLocalStorageCache(cacheKey);
+      var dataOnly2 = {};
       Object.keys(cache).forEach(function(k) {
-        if (k.charAt(0) === '_') dataOnly[k] = cache[k]; // _で始まるキー（データ変数）のみ
+        if (k.charAt(0) === '_') dataOnly2[k] = cache[k];
       });
-      localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(dataOnly));
+      localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(dataOnly2));
       localStorage.setItem('platon_lastStudent', cacheKey);
-      console.log('[CACHE] データのみ保存成功');
-    } catch(e2) {
-      console.error('[CACHE] localStorage保存完全失敗:', e2);
-      // 古いキャッシュを削除してリトライ
-      try {
-        _clearOldLocalStorageCache(cacheKey);
-        var retryData = {};
-        Object.keys(cache).forEach(function(k) {
-          if (k.charAt(0) === '_') retryData[k] = cache[k];
-        });
-        localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(retryData));
-        localStorage.setItem('platon_lastStudent', cacheKey);
-      } catch(e3) { console.error('[CACHE] リトライも失敗:', e3); }
-    }
+    } catch(e2) { console.error('[CACHE] リトライも失敗:', e2); }
   }
 }
 
