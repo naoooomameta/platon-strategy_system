@@ -4346,7 +4346,21 @@ function renderRoadmapBooks() {
     });
   }
 
-  if (subtitle) subtitle.textContent = `${s.goalYear || ''}年${JAmonths[s.goalMonth != null ? s.goalMonth : 1]}受験まで逆算 ／ 全${scheduledBooks.length}冊`;
+  // 手動追加された参考書を既存データから復元してマージ
+  var manualBooks = [];
+  if (window._roadmapBooksAll && window._roadmapBooksAll.length > 0) {
+    manualBooks = window._roadmapBooksAll.filter(function(b) { return b._manual === true; });
+  }
+  // 手動追加書のフィルターボタンも追加
+  manualBooks.forEach(function(b) {
+    var fKey = b._filterKey || b.sub || 'etc';
+    if (!seen[fKey]) {
+      seen[fKey] = true;
+      filterEntries.push({ key: fKey, label: b._displayLabel || fKey, color: b._color || '#555' });
+    }
+  });
+
+  if (subtitle) subtitle.textContent = `${s.goalYear || ''}年${JAmonths[s.goalMonth != null ? s.goalMonth : 1]}受験まで逆算 ／ 全${scheduledBooks.length + manualBooks.length}冊`;
 
   // 既存のデバッグパネルがあれば削除
   var _dbgEl = document.getElementById('rb-debug-panel');
@@ -4364,8 +4378,10 @@ function renderRoadmapBooks() {
         }).join('');
   }
 
-  window._roadmapBooksAll = scheduledBooks;
-  renderRoadmapBooksRows(scheduledBooks);
+  // 手動追加書をマージして保存
+  var allBooks = scheduledBooks.concat(manualBooks);
+  window._roadmapBooksAll = allBooks;
+  renderRoadmapBooksRows(allBooks);
 }
 
 function renderRoadmapBooksRows(books) {
@@ -9411,6 +9427,8 @@ function submitAddBook() {
   }
 
   closeAddBookModal();
+  // 手動追加直後にキャッシュ保存（リロードでも消えないように）
+  _cacheSaveCurrentStudent(false);
   if(typeof showToast==='function') showToast('参考書を追加しました ✓');
   document.getElementById('ab-name').value='';
   document.getElementById('ab-subject').value='';
