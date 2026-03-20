@@ -3248,9 +3248,7 @@ async function _sbRestDelete(table, id) {
 async function _loadStudentsFromSupabase() {
   console.log('[DEBUG] _loadStudentsFromSupabase called');
   try {
-    var uid = _getCurrentUserId();
     var query = 'select=*&order=created_at.asc';
-    if (uid) query += '&user_id=eq.' + uid;
     const data = await _sbRestGet('students', query);
     _allStudents = (data || []).map(_rowToStudent);
     // currentStudentがある場合、新しい_allStudentsの該当エントリを同期
@@ -3333,9 +3331,6 @@ function _studentToRow(s) {
     dev_history: s.devHistory || {},
     updated_at: new Date().toISOString(),
   };
-  // user_id を付与（新規作成時のみ。既存レコードのPATCH時は上書きしない）
-  var uid = _getCurrentUserId();
-  if (uid) row.user_id = uid;
   return row;
 }
 
