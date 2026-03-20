@@ -3306,6 +3306,8 @@ function _rowToStudent(row) {
     levelVal: row.level_val,
     examMonth: row.exam_month,
     devHistory: devHist,
+    adviceData: row.advice_data || null,
+    wpData: row.wp_data || null,
   };
 }
 
@@ -3329,6 +3331,8 @@ function _studentToRow(s) {
     level_val: s.levelVal,
     exam_month: s.examMonth,
     dev_history: s.devHistory || {},
+    advice_data: s.adviceData || null,
+    wp_data: s.wpData || null,
     updated_at: new Date().toISOString(),
   };
   return row;
@@ -3809,7 +3813,7 @@ function _restoreAdviceFromCache(adviceData) {
   var genBtn     = document.getElementById('advice-gen-btn');
   if (!contentEl || !emptyEl) return;
 
-  if (adviceData && adviceData.visible) {
+  if (adviceData && (adviceData.visible || adviceData.summary)) {
     // キャッシュされたアドバイスを復元
     if (summaryEl)  summaryEl.innerHTML  = adviceData.summary || '';
     if (subjectsEl) subjectsEl.innerHTML = adviceData.subjects || '';
@@ -3831,6 +3835,9 @@ function _restoreAdviceFromCache(adviceData) {
 // 週間スケジュールをキャッシュから復元。成功したらtrue
 function _restoreWpFromCache() {
   if (!currentStudent) return false;
+
+  // 1. メモリキャッシュ → localStorage → Supabaseデータの優先順で探す
+  var gridHtml = null, subPlanHtml = null, subTabsHtml = null, weekIdx = null;
   var cacheKey = currentStudent._id || currentStudent.name;
   var cache = _studentCache[cacheKey];
   if (!cache) {
@@ -3839,15 +3846,28 @@ function _restoreWpFromCache() {
       if (stored) cache = JSON.parse(stored);
     } catch(e) {}
   }
-  if (!cache || !cache._wpWeekGridHtml) return false;
+  if (cache && cache._wpWeekGridHtml) {
+    gridHtml    = cache._wpWeekGridHtml;
+    subPlanHtml = cache._wpSubPlanHtml;
+    subTabsHtml = cache._wpSubTabsHtml;
+    weekIdx     = cache._wpWeekIdx;
+  } else if (currentStudent.wpData && currentStudent.wpData.gridHtml) {
+    // Supabaseから読み込んだデータで復元
+    gridHtml    = currentStudent.wpData.gridHtml;
+    subPlanHtml = currentStudent.wpData.subPlanHtml;
+    subTabsHtml = currentStudent.wpData.subTabsHtml;
+    weekIdx     = currentStudent.wpData.weekIdx;
+  }
+  if (!gridHtml) return false;
+
   var gridWrap = document.getElementById('wp-week-grid-wrap');
   var subPlan  = document.getElementById('wp-subject-plan');
   var subTabs  = document.getElementById('wp-subject-tabs');
-  if (gridWrap) gridWrap.innerHTML = cache._wpWeekGridHtml;
-  if (subPlan && cache._wpSubPlanHtml)  subPlan.innerHTML  = cache._wpSubPlanHtml;
-  if (subTabs && cache._wpSubTabsHtml)  subTabs.innerHTML  = cache._wpSubTabsHtml;
-  if (cache._wpWeekIdx !== undefined) {
-    wpWeekIdx = cache._wpWeekIdx;
+  if (gridWrap) gridWrap.innerHTML = gridHtml;
+  if (subPlan && subPlanHtml)  subPlan.innerHTML  = subPlanHtml;
+  if (subTabs && subTabsHtml)  subTabs.innerHTML  = subTabsHtml;
+  if (weekIdx !== undefined && weekIdx !== null) {
+    wpWeekIdx = weekIdx;
     document.querySelectorAll('.wp-week-panel').forEach(function(panel) {
       panel.style.display = parseInt(panel.dataset.wpWeek) === wpWeekIdx ? 'grid' : 'none';
     });
@@ -3906,8 +3926,9 @@ function _cacheRestoreStudent(s) {
   if (cache._currentTestWeek !== undefined) currentTestWeek = cache._currentTestWeek;
   // 参考書フィルター状態を復元
   if (cache._currentRoadmapFilter) window._currentRoadmapFilter = cache._currentRoadmapFilter;
-  // 戦略アドバイスデータを復元
-  _restoreAdviceFromCache(cache._adviceData);
+  // 戦略アドバイスデータを復元（キャッシュ優先、なければSupabaseデータ）
+  var _advData = cache._adviceData || (currentStudent && currentStudent.adviceData) || null;
+  _restoreAdviceFromCache(_advData);
   // currentStudentのデータを復元（DB未保存の編集も含む）
   if (cache._studentData) {
     Object.assign(currentStudent, cache._studentData);
@@ -4314,8 +4335,14 @@ function renderRoadmap() {
   renderGapChart();
   window._currentRoadmapFilter = 'all';
   renderRoadmapBooks();
-  // アドバイスを自動生成
-  setTimeout(function() { generateAdvice(); }, 300);
+  // アドバイスをSupabaseデータから復元、なければ自動生成
+  setTimeout(function() {
+    if (currentStudent && currentStudent.adviceData && currentStudent.adviceData.summary) {
+      _restoreAdviceFromCache(currentStudent.adviceData);
+    } else {
+      generateAdvice();
+    }
+  }, 300);
 }
 
 function renderRoadmapBooks() {
@@ -5256,7 +5283,28 @@ function saveAdvice() {
       el.style.border = '';
     }
   });
-  showToast('戦略アドバイスを保存しました');
+  // DOMからアドバイスデータを取得してcurrentStudentに保存
+  var summaryEl  = document.getElementById('advice-summary');
+  var subjectsEl = document.getElementById('advice-subjects');
+  var tasksEl    = document.getElementById('advice-tasks');
+  var contentEl  = document.getElementById('advice-content');
+  if (currentStudent && contentEl && contentEl.style.display !== 'none') {
+    currentStudent.adviceData = {
+      summary: summaryEl ? summaryEl.innerHTML : '',
+      subjects: subjectsEl ? subjectsEl.innerHTML : '',
+      tasks: tasksEl ? tasksEl.innerHTML : ''
+    };
+    // Supabaseに永続化
+    _cacheSaveCurrentStudent(false);
+    saveStudentToList(currentStudent).then(function() {
+      showToast('戦略アドバイスを保存しました ✓');
+    }).catch(function(e) {
+      console.warn('アドバイス保存エラー:', e);
+      showToast('戦略アドバイスを保存しました（ローカル）');
+    });
+  } else {
+    showToast('戦略アドバイスを保存しました');
+  }
 }
 
 
@@ -7144,6 +7192,14 @@ function renderAdvice(parsed, subjects) {
     </div>`;
   });
   document.getElementById('advice-tasks').innerHTML = taskHtml;
+  // 生成結果をcurrentStudentに保存（Supabase永続化の準備）
+  if (currentStudent) {
+    currentStudent.adviceData = {
+      summary: document.getElementById('advice-summary').innerHTML,
+      subjects: document.getElementById('advice-subjects').innerHTML,
+      tasks: taskHtml
+    };
+  }
 }
 
 function generateFallbackAdvice(s, subjects, gap) {
@@ -7637,6 +7693,18 @@ function renderWpSubjectPlan(sub) {
 
 function wpSave() {
   _syncEditedFieldsToData();
+  // 週間スケジュールデータをcurrentStudentに保存
+  if (currentStudent) {
+    var gridWrap = document.getElementById('wp-week-grid-wrap');
+    var subPlan  = document.getElementById('wp-subject-plan');
+    var subTabs  = document.getElementById('wp-subject-tabs');
+    currentStudent.wpData = {
+      gridHtml: gridWrap ? gridWrap.innerHTML : '',
+      subPlanHtml: subPlan ? subPlan.innerHTML : '',
+      subTabsHtml: subTabs ? subTabs.innerHTML : '',
+      weekIdx: wpWeekIdx
+    };
+  }
   _cacheSaveCurrentStudent(false); // localStorage にも保存
   if (currentStudent) {
     saveStudentToList(currentStudent).then(function() {
