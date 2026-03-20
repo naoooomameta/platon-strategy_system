@@ -3096,10 +3096,14 @@ document.addEventListener('keydown', function(e) {
 });
 
 // 認証状態の監視
-var _initialLoadDone = false; // DOMContentLoadedで初期化済みフラグ
+// ★ onAuthStateChange を唯一の初期化パスとする
+//   Supabaseがトークンを自動リフレッシュした上で INITIAL_SESSION を発火するため、
+//   常に有効なトークンでAPI呼び出しできる。
+//   DOMContentLoaded からの読み込みは行わない（期限切れトークンで失敗するリスクがあるため）。
+var _appInitialized = false; // 初回初期化完了フラグ（二重実行防止）
 
 _sb.auth.onAuthStateChange(async function(event, session) {
-  console.log('[DEBUG] onAuthStateChange:', event, session ? 'session=OK' : 'session=NULL');
+  console.log('[AUTH]', event, session ? 'session=OK' : 'session=NULL');
   const loginScreen = document.getElementById('login-screen');
   const appBody = document.getElementById('app-body');
   if (session) {
@@ -3109,64 +3113,35 @@ _sb.auth.onAuthStateChange(async function(event, session) {
       appBody.style.visibility = 'visible';
       appBody.style.opacity = '1';
     }
-    // DOMContentLoadedで既に初期化済みなら重複ロードしない
-    if (_initialLoadDone && event === 'INITIAL_SESSION') {
-      console.log('[DEBUG] onAuthStateChange: skipped (already loaded by DOMContentLoaded)');
-      return;
-    }
-    try {
-      await _loadStudentsFromSupabase();
-      // 生徒復元（SIGNED_IN時のみ。INITIAL_SESSIONはDOMContentLoadedで処理）
-      if (event === 'SIGNED_IN') {
-        _restoreLastStudent();
-      }
-      console.log('[DEBUG] Students loaded successfully');
-    } catch(e) {
-      console.error('[DEBUG] _loadStudentsFromSupabase error:', e);
-    }
+
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-      try {
-        var _initPage = 'dashboard';
-        if (event === 'INITIAL_SESSION') {
-          try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
-        }
-        showPage(_initPage);
-      } catch(e) {
-        console.error('[DEBUG] showPage error:', e);
+      // 既に初期化済みなら生徒リストの更新のみ
+      if (_appInitialized) {
+        try { await _loadStudentsFromSupabase(); } catch(e) {}
+        return;
       }
+      _appInitialized = true;
+
+      try {
+        await _loadStudentsFromSupabase();
+        console.log('[AUTH] Students loaded:', _allStudents.length);
+      } catch(e) {
+        console.error('[AUTH] _loadStudentsFromSupabase error:', e);
+      }
+      // リロード時：最後に開いていた生徒を自動復元
+      _restoreLastStudent();
+      // 最後に開いていたページを復元
+      var _initPage = 'dashboard';
+      try { _initPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e2) {}
+      showPage(_initPage);
+
+    } else if (event === 'TOKEN_REFRESHED') {
+      // トークン更新時は生徒リストのみ再読込（ページ切替なし）
+      try { await _loadStudentsFromSupabase(); } catch(e) {}
     }
   } else {
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appBody) appBody.style.display = 'none';
-  }
-});
-
-// ページ読み込み完了時にも認証チェック
-document.addEventListener('DOMContentLoaded', async function() {
-  console.log('%c[PLATON v4.5] 月次診断テスト手動採点版（100点満点・mainSubjects連動）', 'background:#2a7f6f;color:white;padding:4px 12px;font-size:14px;border-radius:4px;');
-  try {
-    const token = _getAccessToken();
-    if (token) {
-      const loginScreen = document.getElementById('login-screen');
-      const appBody = document.getElementById('app-body');
-      if (loginScreen) loginScreen.style.display = 'none';
-      if (appBody) {
-        appBody.style.display = '';
-        appBody.style.visibility = 'visible';
-      }
-      await _loadStudentsFromSupabase();
-      _initialLoadDone = true; // onAuthStateChangeの重複ロードを防止
-
-      // リロード時：最後に開いていた生徒を自動復元
-      _restoreLastStudent();
-
-      // 最後に開いていたページを復元（なければダッシュボード）
-      var lastPage = 'dashboard';
-      try { lastPage = localStorage.getItem('platon_lastPage') || 'dashboard'; } catch(e) {}
-      showPage(lastPage);
-    }
-  } catch(e) {
-    console.error('[DEBUG] DOMContentLoaded auth check error:', e);
   }
 });
 
