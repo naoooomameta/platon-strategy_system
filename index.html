@@ -3846,6 +3846,11 @@ function _cacheRestoreStudent(s) {
     console.log('[CACHE] データのみ復元（フル再描画）:', cacheKey);
     return true;
   }
+  // キャッシュから復元したDOMのクリーンアップ（旧バージョンの残骸除去）
+  try {
+    var _dbg = document.getElementById('rb-debug-panel');
+    if (_dbg) _dbg.remove();
+  } catch(e) {}
   // Chart.jsを再構築（canvasは復元済みだがインスタンスは未作成）
   try { renderGapChart(); } catch(e) { console.warn('gap chart rebuild error:', e); }
   try {
@@ -9411,19 +9416,10 @@ function submitAddBook() {
   }
   renderRoadmapBooksRows(window._roadmapBooksAll);
 
-  // ★ 再描画後にフィルター状態を再適用（全科目表示に戻るのを防ぐ）
-  var curFilter = window._currentRoadmapFilter || 'all';
+  // ★ 手動追加後は「全科目」フィルターに切替（追加した本が見えるように）
   if (fw) {
-    var activeBtn = null;
-    if (curFilter === 'all') {
-      activeBtn = fw.querySelector('button:first-child');
-    } else {
-      fw.querySelectorAll('button').forEach(function(b) {
-        if ((b.dataset.fkey && b.dataset.fkey === curFilter) ||
-            b.textContent.trim() === curFilter) { activeBtn = b; }
-      });
-    }
-    filterRoadmapBooks(curFilter, activeBtn);
+    var allBtn = fw.querySelector('button:first-child');
+    filterRoadmapBooks('all', allBtn);
   }
 
   closeAddBookModal();
