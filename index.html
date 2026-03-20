@@ -3905,6 +3905,9 @@ function _switchToStudent(s, forceRender) {
   // 前の生徒のページを保存（DOM編集→データ同期も含む）
   _cacheSaveCurrentStudent(true);
   currentStudent = s;
+  // 生徒切替時に参考書データをクリア（前の生徒の手動追加書が混入するのを防止）
+  window._roadmapBooksAll = null;
+  window._currentRoadmapFilter = 'all';
   // キャッシュから復元を試行
   if (!forceRender && _cacheRestoreStudent(s)) {
     // 復元成功 → ドロップダウンだけ更新
