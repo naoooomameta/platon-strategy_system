@@ -3730,6 +3730,16 @@ function _cacheSaveCurrentStudent(destroyCharts) {
   cache._currentTestWeek = (typeof currentTestWeek !== 'undefined') ? currentTestWeek : null;
   // 参考書フィルター状態もキャッシュ
   cache._currentRoadmapFilter = window._currentRoadmapFilter || 'all';
+  // 戦略アドバイスデータをキャッシュ（生徒ごとに保持）
+  var _advContent = document.getElementById('advice-content');
+  var _advEmpty   = document.getElementById('advice-empty');
+  var _advVisible = _advContent && _advContent.style.display !== 'none';
+  cache._adviceData = {
+    visible: _advVisible,
+    summary: _advVisible ? (document.getElementById('advice-summary') || {}).innerHTML || '' : '',
+    subjects: _advVisible ? (document.getElementById('advice-subjects') || {}).innerHTML || '' : '',
+    tasks: _advVisible ? (document.getElementById('advice-tasks') || {}).innerHTML || '' : ''
+  };
   // currentStudent のデータもキャッシュ（Supabase未保存の編集を保持）
   cache._studentData = JSON.parse(JSON.stringify(currentStudent));
   _studentCache[cacheKey] = cache;
@@ -3781,6 +3791,35 @@ function _clearOldLocalStorageCache(keepKey) {
   } catch(e) {}
 }
 
+// 戦略アドバイスをキャッシュから復元（またはリセット）
+function _restoreAdviceFromCache(adviceData) {
+  var contentEl  = document.getElementById('advice-content');
+  var emptyEl    = document.getElementById('advice-empty');
+  var summaryEl  = document.getElementById('advice-summary');
+  var subjectsEl = document.getElementById('advice-subjects');
+  var tasksEl    = document.getElementById('advice-tasks');
+  var genBtn     = document.getElementById('advice-gen-btn');
+  if (!contentEl || !emptyEl) return;
+
+  if (adviceData && adviceData.visible) {
+    // キャッシュされたアドバイスを復元
+    if (summaryEl)  summaryEl.innerHTML  = adviceData.summary || '';
+    if (subjectsEl) subjectsEl.innerHTML = adviceData.subjects || '';
+    if (tasksEl)    tasksEl.innerHTML     = adviceData.tasks || '';
+    contentEl.style.display = 'block';
+    emptyEl.style.display   = 'none';
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = '🔄 戦略を再分析'; }
+  } else {
+    // アドバイス未生成 → 初期状態にリセット
+    if (summaryEl)  summaryEl.innerHTML  = '';
+    if (subjectsEl) subjectsEl.innerHTML = '';
+    if (tasksEl)    tasksEl.innerHTML     = '';
+    contentEl.style.display = 'none';
+    emptyEl.style.display   = 'block';
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = '🔄 戦略を再分析'; }
+  }
+}
+
 // 定期的にキャッシュを自動保存（30秒ごと）
 setInterval(function() {
   if (currentStudent && document.visibilityState !== 'hidden') {
@@ -3830,6 +3869,8 @@ function _cacheRestoreStudent(s) {
   if (cache._currentTestWeek !== undefined) currentTestWeek = cache._currentTestWeek;
   // 参考書フィルター状態を復元
   if (cache._currentRoadmapFilter) window._currentRoadmapFilter = cache._currentRoadmapFilter;
+  // 戦略アドバイスデータを復元
+  _restoreAdviceFromCache(cache._adviceData);
   // currentStudentのデータを復元（DB未保存の編集も含む）
   if (cache._studentData) {
     Object.assign(currentStudent, cache._studentData);
@@ -3908,6 +3949,8 @@ function _switchToStudent(s, forceRender) {
   // 生徒切替時に参考書データをクリア（前の生徒の手動追加書が混入するのを防止）
   window._roadmapBooksAll = null;
   window._currentRoadmapFilter = 'all';
+  // 生徒切替時にアドバイスを一旦リセット（前の生徒のアドバイスが残るのを防止）
+  _restoreAdviceFromCache(null);
   // キャッシュから復元を試行
   if (!forceRender && _cacheRestoreStudent(s)) {
     // 復元成功 → ドロップダウンだけ更新
