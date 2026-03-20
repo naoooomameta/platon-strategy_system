@@ -3149,7 +3149,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // ページ離脱・リロード前にキャッシュを保存
 window.addEventListener('beforeunload', function() {
-  _cacheSaveCurrentStudent();
+  _cacheSaveCurrentStudent(true);
+});
+
+// タブが非表示になった時もキャッシュを保存（モバイルでのタブ切替対応）
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') {
+    _cacheSaveCurrentStudent(false);
+  }
 });
 
 // 最後に開いていた生徒をlocalStorageから復元
@@ -3684,12 +3691,13 @@ function _syncEditedFieldsToData() {
 }
 
 // 現在の生徒の全ページをキャッシュに保存
-function _cacheSaveCurrentStudent() {
+// destroyCharts=true のときだけグラフインスタンスを破棄（beforeunload/生徒切替時のみ）
+function _cacheSaveCurrentStudent(destroyCharts) {
   if (!currentStudent) return;
   // まずDOMの手動編集をデータに書き戻す
   _syncEditedFieldsToData();
   var cacheKey = currentStudent._id || currentStudent.name;
-  var cache = {};
+  var cache = _studentCache[cacheKey] || {};
   _CACHE_PAGES.forEach(function(pid) {
     var page = document.getElementById('page-' + pid);
     if (!page) return;
@@ -3699,25 +3707,86 @@ function _cacheSaveCurrentStudent() {
     }
   });
   // グラフインスタンスを破棄（HTML復元後に再構築する）
-  if (deviationChart) { deviationChart.destroy(); deviationChart = null; }
-  if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
-  if (predChartInst) { predChartInst.destroy(); predChartInst = null; }
+  if (destroyCharts) {
+    if (deviationChart) { deviationChart.destroy(); deviationChart = null; }
+    if (monthlyChartInst) { monthlyChartInst.destroy(); monthlyChartInst = null; }
+    if (predChartInst) { predChartInst.destroy(); predChartInst = null; }
+  }
   // 月次データもキャッシュ
   cache._monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
   cache._monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
   cache._monthlyAnsVisible = monthlyAnsVisible;
   // 参考書データもキャッシュ
   cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
+  // 確認テストデータもキャッシュ
+  cache._testData = (typeof testData !== 'undefined' && testData) ? JSON.parse(JSON.stringify(testData)) : {};
+  cache._testAnswerVisible = (typeof testAnswerVisible !== 'undefined') ? JSON.parse(JSON.stringify(testAnswerVisible)) : {};
+  cache._currentTestWeek = (typeof currentTestWeek !== 'undefined') ? currentTestWeek : null;
+  // 参考書フィルター状態もキャッシュ
+  cache._currentRoadmapFilter = window._currentRoadmapFilter || 'all';
+  // currentStudent のデータもキャッシュ（Supabase未保存の編集を保持）
+  cache._studentData = JSON.parse(JSON.stringify(currentStudent));
   _studentCache[cacheKey] = cache;
 
   // localStorageにも永続化（リロード耐性）
-  try {
-    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
-    localStorage.setItem('platon_lastStudent', cacheKey);
-  } catch(e) { console.warn('[CACHE] localStorage保存失敗:', e); }
+  _persistCacheToLocalStorage(cacheKey, cache);
 
   console.log('[CACHE] 保存:', cacheKey);
 }
+
+// localStorageへの保存（サイズ超過時はDOM HTMLを省いてデータのみ保存）
+function _persistCacheToLocalStorage(cacheKey, cache) {
+  try {
+    localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(cache));
+    localStorage.setItem('platon_lastStudent', cacheKey);
+  } catch(e) {
+    console.warn('[CACHE] localStorage保存失敗（フルHTML）、データのみで再試行:', e);
+    // サイズ超過の場合：DOM HTMLを除いてデータのみ保存
+    try {
+      var dataOnly = {};
+      Object.keys(cache).forEach(function(k) {
+        if (k.charAt(0) === '_') dataOnly[k] = cache[k]; // _で始まるキー（データ変数）のみ
+      });
+      localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(dataOnly));
+      localStorage.setItem('platon_lastStudent', cacheKey);
+      console.log('[CACHE] データのみ保存成功');
+    } catch(e2) {
+      console.error('[CACHE] localStorage保存完全失敗:', e2);
+      // 古いキャッシュを削除してリトライ
+      try {
+        _clearOldLocalStorageCache(cacheKey);
+        var retryData = {};
+        Object.keys(cache).forEach(function(k) {
+          if (k.charAt(0) === '_') retryData[k] = cache[k];
+        });
+        localStorage.setItem('platon_cache_' + cacheKey, JSON.stringify(retryData));
+        localStorage.setItem('platon_lastStudent', cacheKey);
+      } catch(e3) { console.error('[CACHE] リトライも失敗:', e3); }
+    }
+  }
+}
+
+// 現在の生徒以外の古いキャッシュを削除
+function _clearOldLocalStorageCache(keepKey) {
+  try {
+    var keysToRemove = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.startsWith('platon_cache_') && k !== 'platon_cache_' + keepKey) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+    console.log('[CACHE] 古いキャッシュ削除:', keysToRemove.length, '件');
+  } catch(e) {}
+}
+
+// 定期的にキャッシュを自動保存（30秒ごと）
+setInterval(function() {
+  if (currentStudent && document.visibilityState !== 'hidden') {
+    _cacheSaveCurrentStudent(false);
+  }
+}, 30000);
 
 // キャッシュからページを復元。成功したらtrue
 function _cacheRestoreStudent(s) {
@@ -3747,13 +3816,36 @@ function _cacheRestoreStudent(s) {
       restored = true;
     }
   });
-  if (!restored) return false;
+  // DOM HTMLが無くてもデータがあれば復元を試みる
+  if (!restored && !cache._studentData) return false;
   // 月次データを復元
   monthlyScores = cache._monthlyScores || {};
   monthlyTestData = cache._monthlyTestData || null;
   monthlyAnsVisible = cache._monthlyAnsVisible || false;
   // 参考書データを復元
   window._roadmapBooksAll = cache._roadmapBooksAll || null;
+  // 確認テストデータを復元
+  if (cache._testData) testData = cache._testData;
+  if (cache._testAnswerVisible) testAnswerVisible = cache._testAnswerVisible;
+  if (cache._currentTestWeek !== undefined) currentTestWeek = cache._currentTestWeek;
+  // 参考書フィルター状態を復元
+  if (cache._currentRoadmapFilter) window._currentRoadmapFilter = cache._currentRoadmapFilter;
+  // currentStudentのデータを復元（DB未保存の編集も含む）
+  if (cache._studentData) {
+    Object.assign(currentStudent, cache._studentData);
+    // _allStudentsの該当エントリも更新
+    var _idx = _allStudents.findIndex(function(x) {
+      return (x._id && currentStudent._id && x._id === currentStudent._id) || x.name === currentStudent.name;
+    });
+    if (_idx >= 0) Object.assign(_allStudents[_idx], cache._studentData);
+  }
+  // DOM HTMLが無い場合はフル再描画が必要
+  if (!restored) {
+    try { renderRoadmap(); } catch(e) { console.warn('roadmap rebuild error:', e); }
+    try { _initAllPagesForStudent(); } catch(e) { console.warn('pages rebuild error:', e); }
+    console.log('[CACHE] データのみ復元（フル再描画）:', cacheKey);
+    return true;
+  }
   // Chart.jsを再構築（canvasは復元済みだがインスタンスは未作成）
   try { renderGapChart(); } catch(e) { console.warn('gap chart rebuild error:', e); }
   try {
@@ -3761,11 +3853,18 @@ function _cacheRestoreStudent(s) {
     buildMonthlyChart(s, monthlyScores);
   } catch(e) { console.warn('monthly chart rebuild error:', e); }
   try { if (predChartInst) { predChartInst = null; } predBuildChart(); } catch(e) { console.warn('pred chart rebuild error:', e); }
+  // テストデータがある場合はテストリストも再描画
+  if (cache._testData && Object.keys(cache._testData).length > 0) {
+    try { renderTestList(); } catch(e) { console.warn('test list rebuild error:', e); }
+  }
   console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
 
 function showPage(name) {
+  // ページ遷移前にキャッシュ保存（グラフは破棄しない）
+  _cacheSaveCurrentStudent(false);
+
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   var pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
@@ -3799,7 +3898,7 @@ function _switchToStudent(s, forceRender) {
     if (sameStudent) return;
   }
   // 前の生徒のページを保存（DOM編集→データ同期も含む）
-  _cacheSaveCurrentStudent();
+  _cacheSaveCurrentStudent(true);
   currentStudent = s;
   // キャッシュから復元を試行
   if (!forceRender && _cacheRestoreStudent(s)) {
@@ -6422,7 +6521,7 @@ function togglePageEdit(pageId) {
 
     // DOM編集をデータに同期 → キャッシュ＆Supabaseへ保存
     _syncEditedFieldsToData();
-    _cacheSaveCurrentStudent(); // localStorage にも保存
+    _cacheSaveCurrentStudent(false); // localStorage にも保存
     if (currentStudent) {
       saveStudentToList(currentStudent).then(function() {
         showToast('編集内容を保存しました ✓');
@@ -7422,7 +7521,7 @@ function renderWpSubjectPlan(sub) {
 
 function wpSave() {
   _syncEditedFieldsToData();
-  _cacheSaveCurrentStudent(); // localStorage にも保存
+  _cacheSaveCurrentStudent(false); // localStorage にも保存
   if (currentStudent) {
     saveStudentToList(currentStudent).then(function() {
       showToast('学習プランを保存しました ✓');
