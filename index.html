@@ -3052,6 +3052,23 @@ const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 let _allStudents = [];
 
+// 起動時: 旧バージョンの巨大キャッシュ（DOM HTML含む）を削除してlocalStorage容量を確保
+(function _cleanupOldCache() {
+  try {
+    for (var i = localStorage.length - 1; i >= 0; i--) {
+      var k = localStorage.key(i);
+      if (k && k.startsWith('platon_cache_')) {
+        var raw = localStorage.getItem(k);
+        // 100KBを超えるキャッシュ（DOM HTML含む旧形式）は削除
+        if (raw && raw.length > 100000) {
+          localStorage.removeItem(k);
+          console.log('[CACHE] 旧形式の巨大キャッシュを削除:', k, (raw.length / 1024).toFixed(0) + 'KB');
+        }
+      }
+    }
+  } catch(e) {}
+})();
+
 // ===== ログイン =====
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -3261,10 +3278,23 @@ async function _loadStudentsFromSupabase() {
     if (uid) query += '&user_id=eq.' + uid;
     const data = await _sbRestGet('students', query);
     _allStudents = (data || []).map(_rowToStudent);
-    console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase (user_id:', uid, ')');
+    // currentStudentがある場合、新しい_allStudentsの該当エントリを同期
+    if (currentStudent) {
+      var _csIdx = _allStudents.findIndex(function(x) {
+        return (x._id && currentStudent._id && x._id === currentStudent._id) || x.name === currentStudent.name;
+      });
+      if (_csIdx >= 0) {
+        // DB側の_idを確実にcurrentStudentに反映
+        if (_allStudents[_csIdx]._id) currentStudent._id = _allStudents[_csIdx]._id;
+        // currentStudentのローカル編集を_allStudentsにマージ
+        Object.assign(_allStudents[_csIdx], currentStudent);
+      }
+    }
+    console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase');
   } catch(e) {
     console.warn('DB読込エラー:', e.message);
-    _allStudents = [];
+    // エラー時は既存の_allStudentsを保持（空配列にしない）
+    if (_allStudents.length === 0) _allStudents = [];
   }
   renderStudentList();
   renderWpStudentSelect();
@@ -4169,25 +4199,35 @@ async function generateRoadmap() {
   });
 
   var _newStudentObj = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
+    examMonth: examMonthInput || null,
     univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
 
   // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
   loading.classList.add('show');
-  setTimeout(() => {
+  setTimeout(async () => {
     loading.classList.remove('show');
     // _switchToStudent が旧生徒のキャッシュ保存→新生徒のフル描画を一括実行
     _switchToStudent(_newStudentObj, true);
     showPage('roadmap');
     updateStepIndicator();
+
+    // ② Supabaseへの保存（ロードマップ表示後に実行）
+    try {
+      await saveStudentToList(_newStudentObj);
+      // Supabase保存後に_idをcurrentStudentにも反映
+      var saved = _allStudents.find(function(x) { return x.name === _newStudentObj.name; });
+      if (saved && saved._id && currentStudent && currentStudent.name === _newStudentObj.name) {
+        currentStudent._id = saved._id;
+      }
+    } catch(e) {
+      console.error('保存エラー:', e);
+      showToast('DB保存エラー: ' + e.message);
+    }
+
     renderStudentList();
     showToast('ロードマップを生成しました ✓');
   }, 1800);
-
-  // ② Supabaseへの保存（バックグラウンドで実行、失敗してもロードマップには影響しない）
-  saveStudentToList(_newStudentObj).catch(function(e) {
-    console.error('保存エラー:', e);
-  });
 }
 
 function updateStepIndicator() {
