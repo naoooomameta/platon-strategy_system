@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -200,6 +201,69 @@ var _state = {
 };
 var _chartInst = null;
 
+// ===== データ永続化（localStorage）=====
+var _DT_STORAGE_KEY = 'platon_devtracker_state';
+
+function _dtSaveState() {
+  try {
+    localStorage.setItem(_DT_STORAGE_KEY, JSON.stringify(_state));
+  } catch(e) { console.warn('[DT] Save failed:', e); }
+}
+
+function _dtRestoreState() {
+  try {
+    var raw = localStorage.getItem(_DT_STORAGE_KEY);
+    if (!raw) return false;
+    var saved = JSON.parse(raw);
+    if (!saved || !saved.name || !saved.target) return false;
+    _state = saved;
+    // フォームに復元
+    var el;
+    el = document.getElementById('inp-name');    if (el) el.value = _state.name || '';
+    el = document.getElementById('inp-initial'); if (el) el.value = _state.initial || '';
+    el = document.getElementById('inp-current'); if (el) el.value = _state.current || '';
+    el = document.getElementById('inp-target');  if (el) el.value = _state.target || '';
+    el = document.getElementById('inp-univ');    if (el) el.value = _state.univ || '';
+    if (_state.examYear && _state.examMonth) {
+      el = document.getElementById('inp-exam-date');
+      if (el) el.value = _state.examYear + '-' + String(_state.examMonth).padStart(2, '0');
+    }
+    // 予測が生成済みならUIを復元
+    if (_state.labels && _state.labels.length > 0) {
+      document.getElementById('result-area').style.display = 'block';
+      _dtRenderKPI();
+      _dtRenderBanner();
+      renderMonthInputs();
+      buildChart();
+      renderAnalysis();
+    }
+    return true;
+  } catch(e) { console.warn('[DT] Load failed:', e); return false; }
+}
+
+function _dtRenderKPI() {
+  document.getElementById('kpi-initial').textContent = _state.initial;
+  document.getElementById('kpi-current').textContent = _state.current;
+  document.getElementById('kpi-target').textContent = _state.target;
+  var pred3 = _state.months >= 3
+    ? _state.forecast[Math.min(3, _state.forecast.length - 1)]
+    : _state.forecast[_state.forecast.length - 1];
+  document.getElementById('kpi-3month').textContent = pred3 || '—';
+}
+
+function _dtRenderBanner() {
+  document.getElementById('student-banner').innerHTML =
+    '<span>👤 <strong>' + _state.name + '</strong></span>'
+    + '<span>🏫 ' + (_state.univ || '—') + '</span>'
+    + '<span>🎯 目標偏差値 ' + _state.target + '</span>'
+    + '<span>📅 受験まで ' + _state.months + 'ヶ月</span>';
+}
+
+// ページ読込時に自動復元
+document.addEventListener('DOMContentLoaded', function() {
+  _dtRestoreState();
+});
+
 function generatePrediction() {
   var name = document.getElementById('inp-name').value.trim() || '生徒';
   var initial = parseInt(document.getElementById('inp-initial').value) || 50;
@@ -263,6 +327,9 @@ function generatePrediction() {
 
   // Scroll
   document.getElementById('result-area').scrollIntoView({behavior:'smooth'});
+
+  // 自動保存
+  _dtSaveState();
 }
 
 function renderMonthInputs() {
@@ -316,6 +383,9 @@ function updateActuals() {
   buildChart();
   renderAnalysis();
   renderMonthInputs(); // スタイル更新
+
+  // 自動保存
+  _dtSaveState();
 }
 
 function buildChart() {
@@ -461,6 +531,8 @@ function resetAll() {
   document.getElementById('inp-target').value = '';
   document.getElementById('inp-exam-date').value = '';
   document.getElementById('inp-univ').value = '';
+  // 保存データも削除
+  try { localStorage.removeItem(_DT_STORAGE_KEY); } catch(e) {}
 }
 
 // デフォルト受験日を来年2月に設定
