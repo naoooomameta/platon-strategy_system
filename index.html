@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -917,12 +918,24 @@
     <button class="nav-btn" onclick="showPage('monthly')">実力診断</button>
     <button class="nav-btn" onclick="showPage('prediction')">推移予測</button>
     <div style="display:flex;align-items:center;gap:6px;padding-right:12px;">
+    <span id="db-status-indicator" title="データベース接続状態" style="font-size:11px;margin-right:12px;cursor:help;">
+      <span id="db-status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#666;margin-right:4px;vertical-align:middle;"></span>
+      <span id="db-status-text" style="color:#999;vertical-align:middle;">DB確認中</span>
+    </span>
     <span style="font-size:11px;color:#999;">🔑 Gemini Key</span>
     <input type="password" id="platon-api-key-input" placeholder="AIza..."
       style="width:160px;padding:4px 8px;font-size:11px;border:1px solid #ddd;border-radius:6px;"
       oninput="localStorage.setItem('platon_api_key', this.value)" />
   </div>
 </header>
+<!-- Supabase接続エラーバナー -->
+<div id="supabase-error-banner" style="display:none;background:#c84b31;color:#fff;padding:12px 20px;font-size:13px;text-align:center;position:sticky;top:0;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);">
+  <strong>⚠ データベース接続エラー</strong>：Supabaseプロジェクトが停止中の可能性があります。
+  <a href="https://supabase.com/dashboard" target="_blank" style="color:#ffe082;text-decoration:underline;margin-left:8px;">Supabase Dashboardで確認→</a>
+  <button onclick="_retrySupabaseConnection()" style="margin-left:12px;background:#ffe082;color:#1a1a2e;border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;">🔄 再接続</button>
+  <span id="supabase-error-detail" style="display:block;font-size:11px;margin-top:4px;opacity:.85;"></span>
+  <button onclick="this.parentElement.style.display='none'" style="position:absolute;right:10px;top:8px;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+</div>
 <script>
 function updateSubCheckStyle(cb) {
   const label = cb.closest('label');
@@ -3215,29 +3228,70 @@ function _sbHeaders() {
 }
 async function _sbRestGet(table, params) {
   const query = params || 'select=*&order=created_at.asc';
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, {
-    headers: _sbHeaders()
-  });
-  if (!res.ok) throw new Error('REST GET error: ' + res.status);
-  return await res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000); // 15秒タイムアウト
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, {
+      headers: _sbHeaders(),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.status === 503 || res.status === 502) {
+      throw new Error('Supabaseプロジェクトが停止中です（HTTP ' + res.status + '）。Dashboardから「Restore」してください。');
+    }
+    if (!res.ok) throw new Error('REST GET error: ' + res.status);
+    return await res.json();
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') {
+      throw new Error('接続タイムアウト：Supabaseプロジェクトが停止中（Paused）の可能性があります');
+    }
+    throw e;
+  }
 }
 async function _sbRestPost(table, row) {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
-    method: 'POST',
-    headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
-    body: JSON.stringify(row)
-  });
-  if (!res.ok) throw new Error('REST POST error: ' + res.status + ' ' + await res.text());
-  return await res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+      method: 'POST',
+      headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
+      body: JSON.stringify(row),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.status === 503 || res.status === 502) {
+      throw new Error('Supabaseプロジェクト停止中（HTTP ' + res.status + '）');
+    }
+    if (!res.ok) throw new Error('REST POST error: ' + res.status + ' ' + await res.text());
+    return await res.json();
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('保存タイムアウト：Supabase停止中の可能性');
+    throw e;
+  }
 }
 async function _sbRestPatch(table, id, row) {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
-    method: 'PATCH',
-    headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
-    body: JSON.stringify(row)
-  });
-  if (!res.ok) throw new Error('REST PATCH error: ' + res.status);
-  return await res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+      method: 'PATCH',
+      headers: Object.assign(_sbHeaders(), { 'Prefer': 'return=representation' }),
+      body: JSON.stringify(row),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.status === 503 || res.status === 502) {
+      throw new Error('Supabaseプロジェクト停止中（HTTP ' + res.status + '）');
+    }
+    if (!res.ok) throw new Error('REST PATCH error: ' + res.status);
+    return await res.json();
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('更新タイムアウト：Supabase停止中の可能性');
+    throw e;
+  }
 }
 async function _sbRestDelete(table, id) {
   const h = _sbHeaders();
@@ -3249,6 +3303,65 @@ async function _sbRestDelete(table, id) {
   if (!res.ok) throw new Error('REST DELETE error: ' + res.status);
 }
 
+// ===== Supabase接続状態管理 =====
+var _supabaseConnected = false;
+
+function _showSupabaseError(msg) {
+  var banner = document.getElementById('supabase-error-banner');
+  var detail = document.getElementById('supabase-error-detail');
+  if (banner) { banner.style.display = 'block'; }
+  if (detail) { detail.textContent = msg || ''; }
+  _updateDbStatusIndicator(false);
+}
+function _hideSupabaseError() {
+  var banner = document.getElementById('supabase-error-banner');
+  if (banner) banner.style.display = 'none';
+  _updateDbStatusIndicator(true);
+}
+function _updateDbStatusIndicator(connected) {
+  var dot = document.getElementById('db-status-dot');
+  var text = document.getElementById('db-status-text');
+  if (dot) dot.style.background = connected ? '#2a7f6f' : '#c84b31';
+  if (text) {
+    text.textContent = connected ? 'DB接続中' : 'DB切断';
+    text.style.color = connected ? '#2a7f6f' : '#c84b31';
+  }
+}
+
+// 再接続ボタン用
+async function _retrySupabaseConnection() {
+  showToast('再接続中...');
+  try {
+    await _loadStudentsFromSupabase();
+    if (_supabaseConnected) {
+      showToast('再接続成功 ✓ ' + _allStudents.length + '件の生徒データを読み込みました');
+    }
+  } catch(e) {
+    showToast('再接続失敗: ' + e.message);
+  }
+}
+
+// ===== Supabaseキープアライブ（自動停止防止）=====
+// Free Tierは7日間アクセスがないとプロジェクトが停止するため、
+// 6時間ごとに軽量クエリを送信して停止を防ぐ
+function _sbKeepAlive() {
+  fetch(SUPABASE_URL + '/rest/v1/students?select=id&limit=1', {
+    headers: { 'apikey': SUPABASE_ANON_KEY }
+  }).then(function(res) {
+    console.log('[KEEPALIVE]', res.ok ? 'OK' : 'FAIL:' + res.status);
+    if (res.ok && !_supabaseConnected) {
+      _supabaseConnected = true;
+      _hideSupabaseError();
+    }
+  }).catch(function() {
+    console.log('[KEEPALIVE] Connection failed');
+  });
+}
+// 6時間ごとにキープアライブ
+setInterval(_sbKeepAlive, 6 * 60 * 60 * 1000);
+// 起動時に1回実行
+setTimeout(_sbKeepAlive, 5000);
+
 // ===== 生徒リスト管理（REST API版）=====
 async function _loadStudentsFromSupabase() {
   console.log('[DEBUG] _loadStudentsFromSupabase called');
@@ -3256,6 +3369,8 @@ async function _loadStudentsFromSupabase() {
     var query = 'select=*&order=created_at.asc';
     const data = await _sbRestGet('students', query);
     _allStudents = (data || []).map(_rowToStudent);
+    _supabaseConnected = true;
+    _hideSupabaseError();
     // currentStudentがある場合、新しい_allStudentsの該当エントリを同期
     if (currentStudent) {
       var _csIdx = _allStudents.findIndex(function(x) {
@@ -3271,6 +3386,8 @@ async function _loadStudentsFromSupabase() {
     console.log('[DEBUG] Loaded', _allStudents.length, 'students from Supabase');
   } catch(e) {
     console.warn('DB読込エラー:', e.message);
+    _supabaseConnected = false;
+    _showSupabaseError('エラー詳細: ' + e.message + '　— Supabaseプロジェクトが停止中（Paused）の場合は、Dashboardから「Restore project」で復元してください。データは消えていません。');
     // エラー時は既存の_allStudentsを保持（空配列にしない）
     if (_allStudents.length === 0) _allStudents = [];
   }
@@ -3283,14 +3400,11 @@ async function _loadStudentsFromSupabase() {
 // DBのスネークケース → JSのキャメルケースに変換
 function _rowToStudent(row) {
   // ★ Supabaseから返るJSON文字列をオブジェクト/配列にパース
-  var mainSub = row.main_subjects;
-  if (typeof mainSub === 'string') { try { mainSub = JSON.parse(mainSub); } catch(e) { mainSub = []; } }
-  var subDev = row.sub_devs;
-  if (typeof subDev === 'string') { try { subDev = JSON.parse(subDev); } catch(e) { subDev = {}; } }
-  var univInf = row.univ_info;
-  if (typeof univInf === 'string') { try { univInf = JSON.parse(univInf); } catch(e) { univInf = {}; } }
-  var devHist = row.dev_history;
-  if (typeof devHist === 'string') { try { devHist = JSON.parse(devHist); } catch(e) { devHist = {}; } }
+  function _parseJsonCol(val, fallback) {
+    if (val === null || val === undefined) return fallback;
+    if (typeof val === 'string') { try { return JSON.parse(val); } catch(e) { return fallback; } }
+    return val;
+  }
 
   return {
     _id: row.id,
@@ -3299,21 +3413,26 @@ function _rowToStudent(row) {
     stream: row.stream,
     univName: row.univ_name,
     dept1: row.dept1,
-    univInfo: univInf,
+    univInfo: _parseJsonCol(row.univ_info, {}),
     devVal: row.dev_val,
     months: row.months,
     enrolled: row.enrolled,
     goalYear: row.goal_year,
     goalMonth: row.goal_month,
     roadmapCount: row.roadmap_count || 0,
-    mainSubjects: mainSub,
-    subDevs: subDev,
+    mainSubjects: _parseJsonCol(row.main_subjects, []),
+    subDevs: _parseJsonCol(row.sub_devs, {}),
     levelVal: row.level_val,
     examMonth: row.exam_month,
-    devHistory: devHist,
-    adviceData: row.advice_data || null,
-    wpData: row.wp_data || null,
-    timelineData: row.timeline_data || null,
+    devHistory: _parseJsonCol(row.dev_history, {}),
+    adviceData: _parseJsonCol(row.advice_data, null),
+    wpData: _parseJsonCol(row.wp_data, null),
+    manualBooks: _parseJsonCol(row.manual_books, []),
+    testData: _parseJsonCol(row.test_data, {}),
+    monthlyScores: _parseJsonCol(row.monthly_scores, {}),
+    monthlyTestData: _parseJsonCol(row.monthly_test_data, null),
+    roadmapHtml: row.roadmap_html || null,
+    timelineData: row.timeline_data || null,  
   };
 }
 
@@ -3339,6 +3458,11 @@ function _studentToRow(s) {
     dev_history: s.devHistory || {},
     advice_data: s.adviceData || null,
     wp_data: s.wpData || null,
+    manual_books: s.manualBooks || [],
+    test_data: s.testData || {},
+    monthly_scores: s.monthlyScores || {},
+    monthly_test_data: s.monthlyTestData || null,
+    roadmap_html: s.roadmapHtml || null,
     timeline_data: s.timelineData || null,
     updated_at: new Date().toISOString(),
   };
@@ -3382,7 +3506,9 @@ async function saveStudentToList(s) {
     showToast(s.name + ' を保存しました ✓');
   } catch(e) {
     console.error('[DEBUG] saveStudentToList error:', e);
-    showToast('DB保存エラー: ' + e.message);
+    _supabaseConnected = false;
+    _showSupabaseError('保存エラー: ' + e.message + '　— データはブラウザ内にのみ保持されています。Supabaseの状態を確認してください。');
+    showToast('⚠ DB保存失敗：ブラウザを閉じるとデータが消える可能性があります');
   }
 }
 
@@ -3735,10 +3861,19 @@ function _cacheSaveCurrentStudent(destroyCharts) {
   cache._monthlyAnsVisible = monthlyAnsVisible;
   // 参考書データもキャッシュ
   cache._roadmapBooksAll = window._roadmapBooksAll ? JSON.parse(JSON.stringify(window._roadmapBooksAll)) : null;
+  // ★ 手動参考書をcurrentStudentにも同期（Supabase永続化のため）
+  if (currentStudent && window._roadmapBooksAll) {
+    var manuals = window._roadmapBooksAll.filter(function(b) { return b._manual === true; });
+    currentStudent.manualBooks = manuals;
+  }
   // 確認テストデータもキャッシュ
   cache._testData = (typeof testData !== 'undefined' && testData) ? JSON.parse(JSON.stringify(testData)) : {};
   cache._testAnswerVisible = (typeof testAnswerVisible !== 'undefined') ? JSON.parse(JSON.stringify(testAnswerVisible)) : {};
   cache._currentTestWeek = (typeof currentTestWeek !== 'undefined') ? currentTestWeek : null;
+  // ★ テストデータもcurrentStudentに同期（Supabase永続化のため）
+  if (currentStudent && typeof testData !== 'undefined' && testData) {
+    currentStudent.testData = JSON.parse(JSON.stringify(testData));
+  }
   // 参考書フィルター状態もキャッシュ
   cache._currentRoadmapFilter = window._currentRoadmapFilter || 'all';
   // 戦略アドバイスデータをキャッシュ（生徒ごとに保持）
@@ -3759,6 +3894,25 @@ function _cacheSaveCurrentStudent(destroyCharts) {
   if (_wpSubPlan && _wpSubPlan.innerHTML)   cache._wpSubPlanHtml  = _wpSubPlan.innerHTML;
   if (_wpSubTabs && _wpSubTabs.innerHTML)   cache._wpSubTabsHtml  = _wpSubTabs.innerHTML;
   cache._wpWeekIdx = wpWeekIdx;
+
+  // ★ 月次実力診断データをcurrentStudentに同期（Supabase永続化のため）
+  if (currentStudent) {
+    currentStudent.monthlyScores = JSON.parse(JSON.stringify(monthlyScores || {}));
+    if (monthlyTestData) {
+      currentStudent.monthlyTestData = JSON.parse(JSON.stringify(monthlyTestData));
+    }
+  }
+  // ★ ロードマップDOM HTMLをcurrentStudentに同期（Supabase永続化のため）
+  if (currentStudent) {
+    var _rmPage = document.getElementById('page-roadmap');
+    if (_rmPage) {
+      var _rmContainer = _rmPage.querySelector('.container');
+      if (_rmContainer && _rmContainer.innerHTML.length > 100) {
+        currentStudent.roadmapHtml = _rmContainer.innerHTML;
+      }
+    }
+  }
+
   // currentStudent のデータもキャッシュ（Supabase未保存の編集を保持）
   cache._studentData = JSON.parse(JSON.stringify(currentStudent));
   _studentCache[cacheKey] = cache;
@@ -3921,14 +4075,30 @@ function _cacheRestoreStudent(s) {
   });
   // DOM HTMLが無くてもデータがあれば復元を試みる
   if (!restored && !cache._studentData) return false;
-  // 月次データを復元
-  monthlyScores = cache._monthlyScores || {};
-  monthlyTestData = cache._monthlyTestData || null;
+  // 月次データを復元（キャッシュ優先 → Supabaseデータにフォールバック）
+  monthlyScores = cache._monthlyScores
+    || (currentStudent && currentStudent.monthlyScores)
+    || {};
+  monthlyTestData = cache._monthlyTestData
+    || (currentStudent && currentStudent.monthlyTestData)
+    || null;
   monthlyAnsVisible = cache._monthlyAnsVisible || false;
-  // 参考書データを復元
-  window._roadmapBooksAll = cache._roadmapBooksAll || null;
-  // 確認テストデータを復元
-  if (cache._testData) testData = cache._testData;
+  // 参考書データを復元（キャッシュ優先 → Supabaseデータにフォールバック）
+  if (cache._roadmapBooksAll) {
+    window._roadmapBooksAll = cache._roadmapBooksAll;
+  } else if (currentStudent && currentStudent.manualBooks && currentStudent.manualBooks.length > 0) {
+    window._roadmapBooksAll = currentStudent.manualBooks;
+    console.log('[CACHE] Supabaseから手動参考書を復元:', currentStudent.manualBooks.length, '冊');
+  } else {
+    window._roadmapBooksAll = null;
+  }
+  // 確認テストデータを復元（キャッシュ優先 → Supabaseデータにフォールバック）
+  if (cache._testData && Object.keys(cache._testData).length > 0) {
+    testData = cache._testData;
+  } else if (currentStudent && currentStudent.testData && Object.keys(currentStudent.testData).length > 0) {
+    testData = currentStudent.testData;
+    console.log('[CACHE] Supabaseから確認テストデータを復元');
+  }
   if (cache._testAnswerVisible) testAnswerVisible = cache._testAnswerVisible;
   if (cache._currentTestWeek !== undefined) currentTestWeek = cache._currentTestWeek;
   // 参考書フィルター状態を復元
@@ -3945,9 +4115,21 @@ function _cacheRestoreStudent(s) {
     });
     if (_idx >= 0) Object.assign(_allStudents[_idx], cache._studentData);
   }
-  // DOM HTMLが無い場合はフル再描画が必要
+  // DOM HTMLが無い場合はSupabaseのroadmapHtmlかフル再描画
   if (!restored) {
-    try { renderRoadmap(); } catch(e) { console.warn('roadmap rebuild error:', e); }
+    // ★ SupabaseのroadmapHtmlがあればDOMを直接復元
+    if (currentStudent && currentStudent.roadmapHtml) {
+      var _rmPage = document.getElementById('page-roadmap');
+      if (_rmPage) {
+        var _rmC = _rmPage.querySelector('.container');
+        if (_rmC) {
+          _rmC.innerHTML = currentStudent.roadmapHtml;
+          console.log('[CACHE] SupabaseからロードマップDOM復元:', cacheKey);
+        }
+      }
+    } else {
+      try { renderRoadmap(); } catch(e) { console.warn('roadmap rebuild error:', e); }
+    }
     try { _initAllPagesForStudent(); } catch(e) { console.warn('pages rebuild error:', e); }
     console.log('[CACHE] データのみ復元（フル再描画）:', cacheKey);
     return true;
@@ -4307,6 +4489,15 @@ async function generateRoadmap() {
 
     // ② Supabaseへの保存（ロードマップ表示後に実行）
     try {
+      // ★ ロードマップDOMをcurrentStudentに保存（永続化）
+      var _rmPage = document.getElementById('page-roadmap');
+      if (_rmPage && currentStudent) {
+        var _rmC = _rmPage.querySelector('.container');
+        if (_rmC && _rmC.innerHTML.length > 100) {
+          currentStudent.roadmapHtml = _rmC.innerHTML;
+          _newStudentObj.roadmapHtml = _rmC.innerHTML;
+        }
+      }
       await saveStudentToList(_newStudentObj);
       // Supabase保存後に_idをcurrentStudentにも反映
       var saved = _allStudents.find(function(x) { return x.name === _newStudentObj.name; });
@@ -4491,9 +4682,14 @@ function renderRoadmapBooks() {
   }
 
   // 手動追加された参考書を既存データから復元してマージ
+  // 優先順: メモリ(window._roadmapBooksAll) → Supabase(currentStudent.manualBooks)
   var manualBooks = [];
   if (window._roadmapBooksAll && window._roadmapBooksAll.length > 0) {
     manualBooks = window._roadmapBooksAll.filter(function(b) { return b._manual === true; });
+  } else if (currentStudent && currentStudent.manualBooks && currentStudent.manualBooks.length > 0) {
+    // Supabaseから復元した手動参考書を使用
+    manualBooks = currentStudent.manualBooks;
+    console.log('[BOOKS] Supabaseから手動参考書を復元:', manualBooks.length, '冊');
   }
   // 手動追加書のフィルターボタンも追加
   manualBooks.forEach(function(b) {
@@ -5494,7 +5690,7 @@ function saveAdvice() {
       showToast('戦略アドバイスを保存しました ✓');
     }).catch(function(e) {
       console.warn('アドバイス保存エラー:', e);
-      showToast('戦略アドバイスを保存しました（ローカル）');
+      showToast('⚠ アドバイスのDB保存に失敗しました。ブラウザを閉じるとデータが消える可能性があります');
     });
   } else {
     showToast('戦略アドバイスを保存しました');
@@ -7906,7 +8102,7 @@ function wpSave() {
       showToast('学習プランを保存しました ✓');
     }).catch(function(e) {
       console.warn('保存エラー:', e);
-      showToast('学習プランを保存しました（ローカル）');
+      showToast('⚠ 学習プランのDB保存に失敗しました。ブラウザを閉じるとデータが消える可能性があります');
     });
   } else {
     showToast('生徒を選択してください');
@@ -9273,6 +9469,16 @@ function calcMonthlyDev() {
   renderMonthlyBreakdown(estimated, total, max, s);
   buildMonthlyChart(s, monthlyScores);
   showToast('推定偏差値 ' + estimated + ' を算出しました ✓');
+
+  // ★ 月次採点結果をcurrentStudentに同期 → Supabaseに永続化
+  if (currentStudent) {
+    currentStudent.monthlyScores = JSON.parse(JSON.stringify(monthlyScores));
+    currentStudent.monthlyTestData = monthlyTestData ? JSON.parse(JSON.stringify(monthlyTestData)) : null;
+    _cacheSaveCurrentStudent(false);
+    saveStudentToList(currentStudent).catch(function(e) {
+      console.warn('月次データDB保存エラー:', e.message);
+    });
+  }
 }
 
 function renderMonthlyBreakdown(dev, score, max, s) {
@@ -9783,6 +9989,14 @@ function submitAddBook() {
   closeAddBookModal();
   // 手動追加直後にキャッシュ保存（リロードでも消えないように）
   _cacheSaveCurrentStudent(false);
+  // ★ 手動参考書をcurrentStudentに保存 → Supabaseに永続化
+  if (currentStudent) {
+    var manuals = (window._roadmapBooksAll || []).filter(function(b) { return b._manual === true; });
+    currentStudent.manualBooks = manuals;
+    saveStudentToList(currentStudent).catch(function(e) {
+      console.warn('参考書のDB保存エラー:', e.message);
+    });
+  }
   if(typeof showToast==='function') showToast('参考書を追加しました ✓');
   document.getElementById('ab-name').value='';
   document.getElementById('ab-subject').value='';
