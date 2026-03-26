@@ -1636,9 +1636,14 @@ function updateSubCheckStyle(cb) {
               <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.08em;">
                 🎯 今月の最優先タスク
               </div>
-              <button onclick="toggleEdit('advice-tasks')" id="edit-btn-tasks"
-                style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
-                background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">✏️ 編集</button>
+              <div style="display:flex;gap:6px;">
+                <button onclick="addAdviceTask()" id="add-btn-tasks"
+                  style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
+                  background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">＋ 追加</button>
+                <button onclick="toggleTasksEdit()" id="edit-btn-tasks"
+                  style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
+                  background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">✏️ 編集</button>
+              </div>
             </div>
             <div id="advice-tasks" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
@@ -5241,6 +5246,120 @@ function toggleEdit(id) {
   }
 }
 
+// ===== タスク個別編集・削除・追加 =====
+function toggleTasksEdit() {
+  var container = document.getElementById('advice-tasks');
+  var btn = document.getElementById('edit-btn-tasks');
+  if (!container || !btn) return;
+  var isEditing = btn.dataset.editing === '1';
+
+  if (isEditing) {
+    // 編集OFF
+    btn.dataset.editing = '0';
+    btn.textContent = '✏️ 編集';
+    btn.style.background = 'rgba(255,255,255,0.1)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'false';
+      el.style.background = '';
+      el.style.border = '';
+      el.style.outline = '';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'none';
+    });
+    // 自動保存
+    _saveAdviceTasksToStudent();
+    showToast('タスクを保存しました ✓');
+  } else {
+    // 編集ON
+    btn.dataset.editing = '1';
+    btn.textContent = '✅ 完了';
+    btn.style.background = 'rgba(224,244,240,0.3)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'true';
+      el.style.background = 'rgba(201,168,76,0.12)';
+      el.style.border = '1.5px dashed rgba(201,168,76,0.5)';
+      el.style.outline = 'none';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+    });
+  }
+}
+
+function deleteAdviceTask(btnEl) {
+  var item = btnEl.closest('.advice-task-item');
+  if (!item) return;
+  item.style.transition = 'opacity 0.2s, transform 0.2s';
+  item.style.opacity = '0';
+  item.style.transform = 'translateX(20px)';
+  setTimeout(function() {
+    item.remove();
+    _renumberAdviceTasks();
+    _saveAdviceTasksToStudent();
+  }, 200);
+}
+
+function addAdviceTask() {
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  var count = container.querySelectorAll('.advice-task-item').length;
+  var newIndex = count + 1;
+  var div = document.createElement('div');
+  div.className = 'advice-task-item';
+  div.style.cssText = 'display:flex;align-items:flex-start;gap:10px;position:relative;';
+  div.innerHTML = '<div class="advice-task-num" style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">' + newIndex + '</div>'
+    + '<div class="advice-task-text" contenteditable="true" style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;flex:1;cursor:text;border-radius:4px;padding:2px 4px;background:rgba(201,168,76,0.12);border:1.5px dashed rgba(201,168,76,0.5);outline:none;">新しいタスクを入力…</div>'
+    + '<button class="advice-task-del" onclick="deleteAdviceTask(this)" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(200,75,49,0.7);color:white;font-size:12px;cursor:pointer;margin-top:1px;line-height:1;" title="削除">×</button>';
+  container.appendChild(div);
+  // 編集モードを自動ONにする
+  var btn = document.getElementById('edit-btn-tasks');
+  if (btn && btn.dataset.editing !== '1') {
+    btn.dataset.editing = '1';
+    btn.textContent = '✅ 完了';
+    btn.style.background = 'rgba(224,244,240,0.3)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'true';
+      el.style.background = 'rgba(201,168,76,0.12)';
+      el.style.border = '1.5px dashed rgba(201,168,76,0.5)';
+      el.style.outline = 'none';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+    });
+  }
+  // フォーカス
+  var textEl = div.querySelector('.advice-task-text');
+  if (textEl) { textEl.focus(); textEl.textContent = ''; }
+}
+
+function _renumberAdviceTasks() {
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  container.querySelectorAll('.advice-task-item').forEach(function(item, i) {
+    var numEl = item.querySelector('.advice-task-num');
+    if (numEl) numEl.textContent = (i + 1);
+  });
+}
+
+function _saveAdviceTasksToStudent() {
+  if (!currentStudent) return;
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  // adviceDataを更新
+  if (!currentStudent.adviceData) currentStudent.adviceData = {};
+  currentStudent.adviceData.tasks = container.innerHTML;
+  // キャッシュ＆Supabaseへ保存
+  _cacheSaveCurrentStudent(false);
+  saveStudentToList(currentStudent).catch(function(e) {
+    console.warn('タスク保存エラー:', e);
+  });
+}
+
 function toggleSubjectEdit() {
   const container = document.getElementById('advice-subjects');
   const btn = document.getElementById('edit-btn-subjects');
@@ -5632,9 +5751,9 @@ function printRoadmapPDF() {
     var tHtml = '';
     if (taskEl) {
       var n = 0;
-      Array.from(taskEl.querySelectorAll('div')).forEach(function(el){
+      Array.from(taskEl.querySelectorAll('.advice-task-text')).forEach(function(el){
         var t = el.innerText ? el.innerText.trim() : '';
-        if (t && t.length > 5 && !el.children.length) {
+        if (t && t.length > 1) {
           n++;
           tHtml += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;">'
             + '<div style="width:22px;height:22px;border-radius:50%;background:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1a1a2e;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+n+'</div>'
@@ -5763,10 +5882,10 @@ function exportPDF() {
   const summaryEl = document.getElementById('advice-summary');
   const adviceSummary = summaryEl ? (summaryEl.innerText || '').trim() : '（戦略アドバイスを生成してください）';
 
-  const taskItems = document.querySelectorAll('#advice-tasks > div');
+  const taskItems = document.querySelectorAll('#advice-tasks .advice-task-text');
   let tasksHtml = '';
   taskItems.forEach((el, i) => {
-    const text = el.querySelector('div:last-child')?.innerText || '';
+    const text = (el.innerText || '').trim();
     if (text) tasksHtml += `<tr>
       <td style="padding:8px 12px;font-weight:700;color:#c9a84c;width:30px;font-size:14px;">${i+1}</td>
       <td style="padding:8px 12px;font-size:12px;line-height:1.7;color:rgba(255,255,255,0.9);">${text}</td></tr>`;
@@ -6607,7 +6726,7 @@ const PAGE_EDIT_STATE = {};
 
 // 編集可能にしたいセレクタ（ページ別）
 const PAGE_EDITABLE_SELECTORS = {
-  'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks > div div:last-child'],
+  'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks .advice-task-text'],
   'weekly-plan':  ['.wp-phase-title', '.wp-phase-desc', '.wp-month-label', '.wp-week-title', '.wp-week-desc', '.wp-task-text', '.wp-book-name'],
   'tests':        ['.test-q-text', '.test-answer-text', '.test-explain-text'],
   'monthly':      ['#monthly-scoring', '#monthly-deviation']
@@ -7183,12 +7302,13 @@ function renderAdvice(parsed, subjects) {
 
   let taskHtml = '';
   (parsed.tasks || []).forEach((task, i) => {
-    taskHtml += `<div style="display:flex;align-items:flex-start;gap:10px;">
-      <div style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);
+    taskHtml += `<div class="advice-task-item" style="display:flex;align-items:flex-start;gap:10px;position:relative;group">
+      <div class="advice-task-num" style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);
         display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">
         ${i + 1}
       </div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">${task}</div>
+      <div class="advice-task-text" style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;flex:1;cursor:text;border-radius:4px;padding:2px 4px;">${task}</div>
+      <button class="advice-task-del" onclick="deleteAdviceTask(this)" style="display:none;flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(200,75,49,0.7);color:white;font-size:12px;cursor:pointer;margin-top:1px;line-height:1;" title="削除">×</button>
     </div>`;
   });
   document.getElementById('advice-tasks').innerHTML = taskHtml;
