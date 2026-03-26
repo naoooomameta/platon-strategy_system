@@ -5199,10 +5199,12 @@ function _saveTimelineData() {
     blocks.forEach(function(bl) {
       var leftPct = parseFloat(bl.style.left) / 100;
       var widthPct = parseFloat(bl.style.width) / 100;
+      // textContentを優先（手動編集で変更された値を反映）
+      var blockLabel = bl.textContent.trim() || bl.title || '';
       rowData.blocks.push({
         start: leftPct * months,
         end: (leftPct + widthPct) * months,
-        label: bl.title || bl.textContent.trim()
+        label: blockLabel
       });
     });
     timelineData.push(rowData);
@@ -5223,6 +5225,51 @@ function _saveTimelineData() {
     console.error('[TL] Supabase保存失敗:', e);
     showToast('タイムライン保存エラー: ' + e.message);
   });
+}
+
+// 手動編集でタイムラインのテキストが変更された場合、title属性とtimelineDataを同期
+function _syncTimelineTextToData() {
+  if (!currentStudent) return;
+  var tracks = document.querySelectorAll('#timeline-content .timeline-track');
+  if (!tracks.length) return;
+  var changed = false;
+  var timelineData = currentStudent.timelineData;
+  if (!timelineData) timelineData = [];
+
+  tracks.forEach(function(track, ti) {
+    var rowIdx = parseInt(track.dataset.row);
+    var months = parseInt(track.dataset.months) || 12;
+    var blocks = track.querySelectorAll('.timeline-block[data-row="' + rowIdx + '"]');
+    if (!timelineData[ti]) timelineData[ti] = { blocks: [] };
+
+    blocks.forEach(function(bl, bi) {
+      var newText = bl.textContent.trim();
+      var oldText = bl.title || '';
+      // テキストが変更されていたらtitle属性も更新
+      if (newText && newText !== oldText) {
+        bl.title = newText;
+        changed = true;
+      }
+      // timelineDataのブロックを更新
+      if (!timelineData[ti].blocks[bi]) {
+        var leftPct = parseFloat(bl.style.left) / 100;
+        var widthPct = parseFloat(bl.style.width) / 100;
+        timelineData[ti].blocks[bi] = { start: leftPct * months, end: (leftPct + widthPct) * months, label: newText };
+      } else {
+        timelineData[ti].blocks[bi].label = newText;
+      }
+    });
+  });
+
+  currentStudent.timelineData = timelineData;
+  if (changed) {
+    // _allStudentsにも反映
+    var idx = _allStudents.findIndex(function(x) {
+      return (x._id && currentStudent._id && x._id === currentStudent._id) || x.name === currentStudent.name;
+    });
+    if (idx >= 0) _allStudents[idx].timelineData = timelineData;
+    console.log('[TL] テキスト編集を同期しました');
+  }
 }
 
 function makeBlocks(startOffset, total, relStart, relEnd, label) {
@@ -6997,7 +7044,7 @@ const PAGE_EDIT_STATE = {};
 
 // 編集可能にしたいセレクタ（ページ別）
 const PAGE_EDITABLE_SELECTORS = {
-  'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks .advice-task-text'],
+  'roadmap':      ['#timeline-content .timeline-block', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks .advice-task-text'],
   'weekly-plan':  ['.wp-phase-title', '.wp-phase-desc', '.wp-month-label', '.wp-week-title', '.wp-week-desc', '.wp-task-text', '.wp-book-name'],
   'tests':        ['.test-q-text', '.test-answer-text', '.test-explain-text'],
   'monthly':      ['#monthly-scoring', '#monthly-deviation']
@@ -7073,6 +7120,10 @@ function togglePageEdit(pageId) {
 
     // DOM編集をデータに同期 → キャッシュ＆Supabaseへ保存
     _syncEditedFieldsToData();
+    // ロードマップページの場合、タイムラインのテキスト編集も保存
+    if (pageId === 'roadmap') {
+      _syncTimelineTextToData();
+    }
     _cacheSaveCurrentStudent(false); // localStorage にも保存
     if (currentStudent) {
       saveStudentToList(currentStudent).then(function() {
