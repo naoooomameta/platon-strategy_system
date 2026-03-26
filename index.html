@@ -1649,9 +1649,14 @@ function updateSubCheckStyle(cb) {
               <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.08em;">
                 🎯 今月の最優先タスク
               </div>
-              <button onclick="toggleEdit('advice-tasks')" id="edit-btn-tasks"
-                style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
-                background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">✏️ 編集</button>
+              <div style="display:flex;gap:6px;">
+                <button onclick="addAdviceTask()" id="add-btn-tasks"
+                  style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
+                  background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">＋ 追加</button>
+                <button onclick="toggleTasksEdit()" id="edit-btn-tasks"
+                  style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
+                  background:rgba(255,255,255,0.1);cursor:pointer;color:rgba(255,255,255,0.7);font-family:inherit;">✏️ 編集</button>
+              </div>
             </div>
             <div id="advice-tasks" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
@@ -3427,6 +3432,7 @@ function _rowToStudent(row) {
     monthlyScores: _parseJsonCol(row.monthly_scores, {}),
     monthlyTestData: _parseJsonCol(row.monthly_test_data, null),
     roadmapHtml: row.roadmap_html || null,
+    timelineData: row.timeline_data || null,  
   };
 }
 
@@ -3457,6 +3463,7 @@ function _studentToRow(s) {
     monthly_scores: s.monthlyScores || {},
     monthly_test_data: s.monthlyTestData || null,
     roadmap_html: s.roadmapHtml || null,
+    timeline_data: s.timelineData || null,
     updated_at: new Date().toISOString(),
   };
   return row;
@@ -4143,6 +4150,14 @@ function _cacheRestoreStudent(s) {
   if (cache._testData && Object.keys(cache._testData).length > 0) {
     try { renderTestList(); } catch(e) { console.warn('test list rebuild error:', e); }
   }
+  // タイムラインのドラッグイベントを再設定＋保存データがあれば再描画
+  try {
+    if (currentStudent && currentStudent.timelineData) {
+      renderTimeline(); // 保存済みデータで正しく再描画
+    } else {
+      _setupTimelineDrag(); // ドラッグイベントだけ再設定
+    }
+  } catch(e) { console.warn('timeline rebuild error:', e); }
   console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
@@ -4454,9 +4469,13 @@ async function generateRoadmap() {
     if (!isNaN(v) && v > 0) subDevs[label] = v;
   });
 
+  // 既存生徒のタイムライン・アドバイスデータを引き継ぐ
+  var _existingStudent = _allStudents.find(function(x) { return x.name === name; });
   var _newStudentObj = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     examMonth: examMonthInput || null,
-    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
+    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects,
+    timelineData: _existingStudent ? _existingStudent.timelineData : null,
+    adviceData: _existingStudent ? _existingStudent.adviceData : null };
 
   // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
@@ -4970,16 +4989,26 @@ function renderTimeline() {
     : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
 
   const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
-  const subjects = registeredSubs.map(function(subName) {
+  // 保存済みタイムラインデータがあればそれを使う
+  var savedTL = s.timelineData;
+  console.log('[TL] renderTimeline: savedTL =', savedTL ? ('あり (' + savedTL.length + '行)') : 'なし');
+  const subjects = registeredSubs.map(function(subName, si) {
     const curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
     const gap = Math.max(0, tgtDev - curDev);
     const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
     const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
     const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
+    // 保存済みブロックデータがあればそれを復元
+    var blocks;
+    if (savedTL && savedTL[si] && savedTL[si].blocks && savedTL[si].blocks.length > 0) {
+      blocks = savedTL[si].blocks;
+    } else {
+      blocks = makeBlocks(0, months, relStart, relEnd, phases.join('→'));
+    }
     return {
       label: shortSubName(subName),
       cls: subClsMap[subName] || subClsMap[subName.replace(/\s/g,'')] || 'eng',
-      blocks: makeBlocks(0, months, relStart, relEnd, phases.join('→')),
+      blocks: blocks,
     };
   });
 
@@ -5048,6 +5077,15 @@ function renderTimeline() {
 
   // ドラッグイベントをセットアップ
   _setupTimelineDrag();
+
+  // 初回生成時にもブロック位置をcurrentStudentに保存（永続化の準備）
+  if (currentStudent && !currentStudent.timelineData) {
+    var initTL = [];
+    subjects.forEach(function(sub) {
+      initTL.push({ blocks: sub.blocks.map(function(b) { return { start: b.start, end: b.end, label: b.label }; }) });
+    });
+    currentStudent.timelineData = initTL;
+  }
 }
 
 // ===== タイムラインドラッグ =====
@@ -5143,6 +5181,48 @@ function _tlDragEnd(e) {
   document.removeEventListener('mouseup', _tlDragEnd);
   document.removeEventListener('touchmove', _tlDragMove);
   document.removeEventListener('touchend', _tlDragEnd);
+
+  // ドラッグ結果を永続保存
+  _saveTimelineData();
+}
+
+function _saveTimelineData() {
+  if (!currentStudent) return;
+  var tracks = document.querySelectorAll('#timeline-content .timeline-track');
+  if (!tracks.length) { console.warn('[TL] No tracks found'); return; }
+  var timelineData = [];
+  tracks.forEach(function(track) {
+    var months = parseInt(track.dataset.months) || 12;
+    var rowIdx = parseInt(track.dataset.row);
+    var blocks = track.querySelectorAll('.timeline-block[data-row="' + rowIdx + '"]');
+    var rowData = { blocks: [] };
+    blocks.forEach(function(bl) {
+      var leftPct = parseFloat(bl.style.left) / 100;
+      var widthPct = parseFloat(bl.style.width) / 100;
+      rowData.blocks.push({
+        start: leftPct * months,
+        end: (leftPct + widthPct) * months,
+        label: bl.title || bl.textContent.trim()
+      });
+    });
+    timelineData.push(rowData);
+  });
+  currentStudent.timelineData = timelineData;
+  console.log('[TL] 保存データ:', JSON.stringify(timelineData).substring(0, 200));
+  // _allStudentsの該当エントリにもtimelineDataを反映
+  var _tlIdx = _allStudents.findIndex(function(x) {
+    return (x._id && currentStudent._id && x._id === currentStudent._id) || x.name === currentStudent.name;
+  });
+  if (_tlIdx >= 0) _allStudents[_tlIdx].timelineData = timelineData;
+  // キャッシュ＆Supabaseへ保存
+  _cacheSaveCurrentStudent(false);
+  saveStudentToList(currentStudent).then(function() {
+    console.log('[TL] Supabase保存成功');
+    showToast('タイムラインを保存しました ✓');
+  }).catch(function(e) {
+    console.error('[TL] Supabase保存失敗:', e);
+    showToast('タイムライン保存エラー: ' + e.message);
+  });
 }
 
 function makeBlocks(startOffset, total, relStart, relEnd, label) {
@@ -5435,6 +5515,120 @@ function toggleEdit(id) {
     el.focus();
     if (btn) { btn.textContent = '✅ 完了'; btn.style.background = '#e0f4f0'; }
   }
+}
+
+// ===== タスク個別編集・削除・追加 =====
+function toggleTasksEdit() {
+  var container = document.getElementById('advice-tasks');
+  var btn = document.getElementById('edit-btn-tasks');
+  if (!container || !btn) return;
+  var isEditing = btn.dataset.editing === '1';
+
+  if (isEditing) {
+    // 編集OFF
+    btn.dataset.editing = '0';
+    btn.textContent = '✏️ 編集';
+    btn.style.background = 'rgba(255,255,255,0.1)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'false';
+      el.style.background = '';
+      el.style.border = '';
+      el.style.outline = '';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'none';
+    });
+    // 自動保存
+    _saveAdviceTasksToStudent();
+    showToast('タスクを保存しました ✓');
+  } else {
+    // 編集ON
+    btn.dataset.editing = '1';
+    btn.textContent = '✅ 完了';
+    btn.style.background = 'rgba(224,244,240,0.3)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'true';
+      el.style.background = 'rgba(201,168,76,0.12)';
+      el.style.border = '1.5px dashed rgba(201,168,76,0.5)';
+      el.style.outline = 'none';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+    });
+  }
+}
+
+function deleteAdviceTask(btnEl) {
+  var item = btnEl.closest('.advice-task-item');
+  if (!item) return;
+  item.style.transition = 'opacity 0.2s, transform 0.2s';
+  item.style.opacity = '0';
+  item.style.transform = 'translateX(20px)';
+  setTimeout(function() {
+    item.remove();
+    _renumberAdviceTasks();
+    _saveAdviceTasksToStudent();
+  }, 200);
+}
+
+function addAdviceTask() {
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  var count = container.querySelectorAll('.advice-task-item').length;
+  var newIndex = count + 1;
+  var div = document.createElement('div');
+  div.className = 'advice-task-item';
+  div.style.cssText = 'display:flex;align-items:flex-start;gap:10px;position:relative;';
+  div.innerHTML = '<div class="advice-task-num" style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">' + newIndex + '</div>'
+    + '<div class="advice-task-text" contenteditable="true" style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;flex:1;cursor:text;border-radius:4px;padding:2px 4px;background:rgba(201,168,76,0.12);border:1.5px dashed rgba(201,168,76,0.5);outline:none;">新しいタスクを入力…</div>'
+    + '<button class="advice-task-del" onclick="deleteAdviceTask(this)" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(200,75,49,0.7);color:white;font-size:12px;cursor:pointer;margin-top:1px;line-height:1;" title="削除">×</button>';
+  container.appendChild(div);
+  // 編集モードを自動ONにする
+  var btn = document.getElementById('edit-btn-tasks');
+  if (btn && btn.dataset.editing !== '1') {
+    btn.dataset.editing = '1';
+    btn.textContent = '✅ 完了';
+    btn.style.background = 'rgba(224,244,240,0.3)';
+    container.querySelectorAll('.advice-task-text').forEach(function(el) {
+      el.contentEditable = 'true';
+      el.style.background = 'rgba(201,168,76,0.12)';
+      el.style.border = '1.5px dashed rgba(201,168,76,0.5)';
+      el.style.outline = 'none';
+    });
+    container.querySelectorAll('.advice-task-del').forEach(function(el) {
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+    });
+  }
+  // フォーカス
+  var textEl = div.querySelector('.advice-task-text');
+  if (textEl) { textEl.focus(); textEl.textContent = ''; }
+}
+
+function _renumberAdviceTasks() {
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  container.querySelectorAll('.advice-task-item').forEach(function(item, i) {
+    var numEl = item.querySelector('.advice-task-num');
+    if (numEl) numEl.textContent = (i + 1);
+  });
+}
+
+function _saveAdviceTasksToStudent() {
+  if (!currentStudent) return;
+  var container = document.getElementById('advice-tasks');
+  if (!container) return;
+  // adviceDataを更新
+  if (!currentStudent.adviceData) currentStudent.adviceData = {};
+  currentStudent.adviceData.tasks = container.innerHTML;
+  // キャッシュ＆Supabaseへ保存
+  _cacheSaveCurrentStudent(false);
+  saveStudentToList(currentStudent).catch(function(e) {
+    console.warn('タスク保存エラー:', e);
+  });
 }
 
 function toggleSubjectEdit() {
@@ -5828,9 +6022,9 @@ function printRoadmapPDF() {
     var tHtml = '';
     if (taskEl) {
       var n = 0;
-      Array.from(taskEl.querySelectorAll('div')).forEach(function(el){
+      Array.from(taskEl.querySelectorAll('.advice-task-text')).forEach(function(el){
         var t = el.innerText ? el.innerText.trim() : '';
-        if (t && t.length > 5 && !el.children.length) {
+        if (t && t.length > 1) {
           n++;
           tHtml += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;">'
             + '<div style="width:22px;height:22px;border-radius:50%;background:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1a1a2e;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+n+'</div>'
@@ -5959,10 +6153,10 @@ function exportPDF() {
   const summaryEl = document.getElementById('advice-summary');
   const adviceSummary = summaryEl ? (summaryEl.innerText || '').trim() : '（戦略アドバイスを生成してください）';
 
-  const taskItems = document.querySelectorAll('#advice-tasks > div');
+  const taskItems = document.querySelectorAll('#advice-tasks .advice-task-text');
   let tasksHtml = '';
   taskItems.forEach((el, i) => {
-    const text = el.querySelector('div:last-child')?.innerText || '';
+    const text = (el.innerText || '').trim();
     if (text) tasksHtml += `<tr>
       <td style="padding:8px 12px;font-weight:700;color:#c9a84c;width:30px;font-size:14px;">${i+1}</td>
       <td style="padding:8px 12px;font-size:12px;line-height:1.7;color:rgba(255,255,255,0.9);">${text}</td></tr>`;
@@ -6803,7 +6997,7 @@ const PAGE_EDIT_STATE = {};
 
 // 編集可能にしたいセレクタ（ページ別）
 const PAGE_EDITABLE_SELECTORS = {
-  'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks > div div:last-child'],
+  'roadmap':      ['#timeline-content .tl-book', '#gap-stats-content', '#advice-summary', '[data-subject-advice]', '#advice-tasks .advice-task-text'],
   'weekly-plan':  ['.wp-phase-title', '.wp-phase-desc', '.wp-month-label', '.wp-week-title', '.wp-week-desc', '.wp-task-text', '.wp-book-name'],
   'tests':        ['.test-q-text', '.test-answer-text', '.test-explain-text'],
   'monthly':      ['#monthly-scoring', '#monthly-deviation']
@@ -7379,12 +7573,13 @@ function renderAdvice(parsed, subjects) {
 
   let taskHtml = '';
   (parsed.tasks || []).forEach((task, i) => {
-    taskHtml += `<div style="display:flex;align-items:flex-start;gap:10px;">
-      <div style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);
+    taskHtml += `<div class="advice-task-item" style="display:flex;align-items:flex-start;gap:10px;position:relative;group">
+      <div class="advice-task-num" style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--ink);
         display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">
         ${i + 1}
       </div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">${task}</div>
+      <div class="advice-task-text" style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;flex:1;cursor:text;border-radius:4px;padding:2px 4px;">${task}</div>
+      <button class="advice-task-del" onclick="deleteAdviceTask(this)" style="display:none;flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(200,75,49,0.7);color:white;font-size:12px;cursor:pointer;margin-top:1px;line-height:1;" title="削除">×</button>
     </div>`;
   });
   document.getElementById('advice-tasks').innerHTML = taskHtml;
