@@ -3313,6 +3313,7 @@ function _rowToStudent(row) {
     devHistory: devHist,
     adviceData: row.advice_data || null,
     wpData: row.wp_data || null,
+    timelineData: row.timeline_data || null,
   };
 }
 
@@ -3338,6 +3339,7 @@ function _studentToRow(s) {
     dev_history: s.devHistory || {},
     advice_data: s.adviceData || null,
     wp_data: s.wpData || null,
+    timeline_data: s.timelineData || null,
     updated_at: new Date().toISOString(),
   };
   return row;
@@ -4779,16 +4781,25 @@ function renderTimeline() {
     : (s.univInfo && s.univInfo.subjects ? s.univInfo.subjects : ['英語','国語','社会']);
 
   const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
-  const subjects = registeredSubs.map(function(subName) {
+  // 保存済みタイムラインデータがあればそれを使う
+  var savedTL = s.timelineData;
+  const subjects = registeredSubs.map(function(subName, si) {
     const curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
     const gap = Math.max(0, tgtDev - curDev);
     const relStart = gap >= 15 ? 0 : gap >= 8 ? 0.05 : 0.15;
     const relEnd   = gap >= 15 ? 1.0 : gap >= 8 ? 0.95 : 0.85;
     const phases   = (subPhasesMap[subName] || '基礎固め期→演習 強化期→実戦仕上げ').split('→');
+    // 保存済みブロックデータがあればそれを復元
+    var blocks;
+    if (savedTL && savedTL[si] && savedTL[si].blocks && savedTL[si].blocks.length > 0) {
+      blocks = savedTL[si].blocks;
+    } else {
+      blocks = makeBlocks(0, months, relStart, relEnd, phases.join('→'));
+    }
     return {
       label: shortSubName(subName),
       cls: subClsMap[subName] || subClsMap[subName.replace(/\s/g,'')] || 'eng',
-      blocks: makeBlocks(0, months, relStart, relEnd, phases.join('→')),
+      blocks: blocks,
     };
   });
 
@@ -4952,6 +4963,40 @@ function _tlDragEnd(e) {
   document.removeEventListener('mouseup', _tlDragEnd);
   document.removeEventListener('touchmove', _tlDragMove);
   document.removeEventListener('touchend', _tlDragEnd);
+
+  // ドラッグ結果を永続保存
+  _saveTimelineData();
+}
+
+function _saveTimelineData() {
+  if (!currentStudent) return;
+  var tracks = document.querySelectorAll('#timeline-content .timeline-track');
+  if (!tracks.length) return;
+  var timelineData = [];
+  tracks.forEach(function(track) {
+    var months = parseInt(track.dataset.months) || 12;
+    var rowIdx = parseInt(track.dataset.row);
+    var blocks = track.querySelectorAll('.timeline-block[data-row="' + rowIdx + '"]');
+    var rowData = { blocks: [] };
+    blocks.forEach(function(bl) {
+      var leftPct = parseFloat(bl.style.left) / 100;
+      var widthPct = parseFloat(bl.style.width) / 100;
+      rowData.blocks.push({
+        start: leftPct * months,
+        end: (leftPct + widthPct) * months,
+        label: bl.title || bl.textContent.trim()
+      });
+    });
+    timelineData.push(rowData);
+  });
+  currentStudent.timelineData = timelineData;
+  // キャッシュ＆Supabaseへ保存
+  _cacheSaveCurrentStudent(false);
+  saveStudentToList(currentStudent).then(function() {
+    showToast('タイムラインを保存しました ✓');
+  }).catch(function(e) {
+    console.warn('タイムライン保存エラー:', e);
+  });
 }
 
 function makeBlocks(startOffset, total, relStart, relEnd, label) {
