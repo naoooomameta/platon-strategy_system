@@ -3968,6 +3968,14 @@ function _cacheRestoreStudent(s) {
   if (cache._testData && Object.keys(cache._testData).length > 0) {
     try { renderTestList(); } catch(e) { console.warn('test list rebuild error:', e); }
   }
+  // タイムラインのドラッグイベントを再設定＋保存データがあれば再描画
+  try {
+    if (currentStudent && currentStudent.timelineData) {
+      renderTimeline(); // 保存済みデータで正しく再描画
+    } else {
+      _setupTimelineDrag(); // ドラッグイベントだけ再設定
+    }
+  } catch(e) { console.warn('timeline rebuild error:', e); }
   console.log('[CACHE] 復元:', cacheKey);
   return true;
 }
@@ -4279,9 +4287,13 @@ async function generateRoadmap() {
     if (!isNaN(v) && v > 0) subDevs[label] = v;
   });
 
+  // 既存生徒のタイムライン・アドバイスデータを引き継ぐ
+  var _existingStudent = _allStudents.find(function(x) { return x.name === name; });
   var _newStudentObj = { name, grade, stream, univName, univInfo, dept1, levelVal, devVal, enrolled, months, goalYear, goalMonth,
     examMonth: examMonthInput || null,
-    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects };
+    univName2, univInfo2, dept2, univName3, univInfo3, dept3, subDevs, mainSubjects,
+    timelineData: _existingStudent ? _existingStudent.timelineData : null,
+    adviceData: _existingStudent ? _existingStudent.adviceData : null };
 
   // ① ロードマップ生成・表示（必ず実行）
   const loading = document.getElementById('loading');
@@ -4783,6 +4795,7 @@ function renderTimeline() {
   const tgtDev = s.univInfo && s.univInfo.dev ? s.univInfo.dev : s.devVal + 5;
   // 保存済みタイムラインデータがあればそれを使う
   var savedTL = s.timelineData;
+  console.log('[TL] renderTimeline: savedTL =', savedTL ? ('あり (' + savedTL.length + '行)') : 'なし');
   const subjects = registeredSubs.map(function(subName, si) {
     const curDev = (s.subDevs && s.subDevs[subName]) || s.devVal || 50;
     const gap = Math.max(0, tgtDev - curDev);
@@ -4868,6 +4881,15 @@ function renderTimeline() {
 
   // ドラッグイベントをセットアップ
   _setupTimelineDrag();
+
+  // 初回生成時にもブロック位置をcurrentStudentに保存（永続化の準備）
+  if (currentStudent && !currentStudent.timelineData) {
+    var initTL = [];
+    subjects.forEach(function(sub) {
+      initTL.push({ blocks: sub.blocks.map(function(b) { return { start: b.start, end: b.end, label: b.label }; }) });
+    });
+    currentStudent.timelineData = initTL;
+  }
 }
 
 // ===== タイムラインドラッグ =====
@@ -4971,7 +4993,7 @@ function _tlDragEnd(e) {
 function _saveTimelineData() {
   if (!currentStudent) return;
   var tracks = document.querySelectorAll('#timeline-content .timeline-track');
-  if (!tracks.length) return;
+  if (!tracks.length) { console.warn('[TL] No tracks found'); return; }
   var timelineData = [];
   tracks.forEach(function(track) {
     var months = parseInt(track.dataset.months) || 12;
@@ -4990,12 +5012,20 @@ function _saveTimelineData() {
     timelineData.push(rowData);
   });
   currentStudent.timelineData = timelineData;
+  console.log('[TL] 保存データ:', JSON.stringify(timelineData).substring(0, 200));
+  // _allStudentsの該当エントリにもtimelineDataを反映
+  var _tlIdx = _allStudents.findIndex(function(x) {
+    return (x._id && currentStudent._id && x._id === currentStudent._id) || x.name === currentStudent.name;
+  });
+  if (_tlIdx >= 0) _allStudents[_tlIdx].timelineData = timelineData;
   // キャッシュ＆Supabaseへ保存
   _cacheSaveCurrentStudent(false);
   saveStudentToList(currentStudent).then(function() {
+    console.log('[TL] Supabase保存成功');
     showToast('タイムラインを保存しました ✓');
   }).catch(function(e) {
-    console.warn('タイムライン保存エラー:', e);
+    console.error('[TL] Supabase保存失敗:', e);
+    showToast('タイムライン保存エラー: ' + e.message);
   });
 }
 
