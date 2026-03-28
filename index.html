@@ -5553,7 +5553,8 @@ function toggleEdit(id) {
     el.style.border = '';
     el.style.padding = '2px';
     if (btn) { btn.textContent = '✏️ 編集'; btn.style.background = 'white'; }
-    showToast('編集内容を保存しました');
+    // Supabaseに永続保存
+    _saveAdviceToStudent();
   } else {
     el.contentEditable = 'true';
     el.style.background = 'rgba(201,168,76,0.08)';
@@ -5694,7 +5695,8 @@ function toggleSubjectEdit() {
       el.style.border = '';
       el.style.outline = '';
     });
-    showToast('編集内容を保存しました');
+    // Supabaseに永続保存
+    _saveAdviceToStudent();
   } else {
     btn.dataset.editing = '1';
     btn.textContent = '✅ 完了';
@@ -5708,6 +5710,25 @@ function toggleSubjectEdit() {
     });
     if (cards[0]) cards[0].focus();
   }
+}
+
+// 総合コメント・科目別アドバイスの編集内容をSupabaseに永続保存
+function _saveAdviceToStudent() {
+  if (!currentStudent) { showToast('編集内容を保存しました'); return; }
+  var summaryEl  = document.getElementById('advice-summary');
+  var subjectsEl = document.getElementById('advice-subjects');
+  var tasksEl    = document.getElementById('advice-tasks');
+  if (!currentStudent.adviceData) currentStudent.adviceData = {};
+  if (summaryEl)  currentStudent.adviceData.summary  = summaryEl.innerHTML;
+  if (subjectsEl) currentStudent.adviceData.subjects = subjectsEl.innerHTML;
+  if (tasksEl)    currentStudent.adviceData.tasks     = tasksEl.innerHTML;
+  _cacheSaveCurrentStudent(false);
+  saveStudentToList(currentStudent).then(function() {
+    showToast('編集内容を保存しました ✓');
+  }).catch(function(e) {
+    console.warn('アドバイス保存エラー:', e);
+    showToast('編集内容を保存しました（ローカル）');
+  });
 }
 
 function saveAdvice() {
