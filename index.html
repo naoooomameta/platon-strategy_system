@@ -2868,170 +2868,274 @@ function showDeptAll(idx) {}
 // sub: カラークラス / category: フィルタ用 / level: 1=入門 2=基礎 3=標準 4=応用 5=発展
 const ALL_TEXTBOOKS = [
   // ── 英語：単語 ──
-  { name: 'ワードボックス英単語・熟語【エッセンシャル】', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学〜高校基礎' , price: 1100 },
-  { name: 'CD付 夢をかなえる英単語 新ユメタン0', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 6, stream: 'both', note: '中学修了〜高校基礎' , price: 1320 },
-  { name: '英単語ターゲット1200 改訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト基礎レベル' , price: 990 },
-  { name: 'システム英単語Basic〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '共通テスト〜私大基礎' , price: 1100 },
-  { name: 'システム英単語〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' , price: 1210 },
-  { name: '英単語ターゲット1900 6訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '私大標準〜国公立' , price: 1100 },
-  { name: '必携 英単語 LEAP Basic', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '共通テスト〜私大' , price: 1210 },
-  { name: '改訂版 必携 英単語 LEAP', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '国公立〜難関私大' , price: 1320 },
-  { name: 'Z会 速読英単語 必修編', sub: 'eng', subLabel: '英語', category: '英単語', level: 3, dur: 10, stream: 'both', note: '長文読解と並行' , price: 1430 },
-  { name: '速読英単語 上級編 改訂第5版', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 8, stream: 'both', note: '難関国公立・早慶' , price: 1430 },
-  { name: '改訂版 鉄緑会東大英単語熟語 鉄壁', sub: 'eng', subLabel: '英語', category: '英単語', level: 5, dur: 12, stream: 'both', note: '東大・最難関向け' , price: 2310 },
-
+  { name: '中学版 システム英単語', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 8, stream: 'both', note: '中学英語からやり直す最初の1冊', price: 0 },
+  { name: '中学英語をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 8, stream: 'both', note: '中学文法の総復習', price: 0 },
+  { name: 'システム英単語〈5訂版〉', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '最定番単語帳。2000語収録', price: 0 },
+  { name: '英単語ターゲット1900', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '日大レベルの必須単語', price: 0 },
+  { name: '必携英単語LEAP', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '文脈型単語帳', price: 0 },
+  { name: '速読英単語2 上級編', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 6, stream: 'both', note: '早慶以上の難語彙', price: 0 },
+  { name: '英検準1級 でる順パス単 5訂版', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 6, stream: 'both', note: '上位語彙の補強', price: 0 },
+  { name: '大学入試英単語SPARTA3', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 6, stream: 'both', note: '最難関語彙', price: 0 },
+  { name: '出る順で最短合格！英検準1級単熟語EX', sub: 'eng', subLabel: '英語', category: '英単語', level: 4, dur: 6, stream: 'both', note: '旧帝・難関国公立向け', price: 0 },
+  // ── 英語：熟語 ──
+  { name: '英熟語ターゲット1000', sub: 'eng', subLabel: '英語', category: '英単語', level: 1, dur: 8, stream: 'both', note: '基礎熟語を網羅', price: 0 },
+  { name: '速読英熟語', sub: 'eng', subLabel: '英語', category: '英単語', level: 2, dur: 8, stream: 'both', note: '長文と併用で熟語定着', price: 0 },
   // ── 英語：文法 ──
-  { name: '中学英語をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '中学文法の復習' , price: 1320 },
-  { name: '高校英文法をもう一度ひとつひとつわかりやすく。', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 6, stream: 'both', note: '高校文法の基礎固め' , price: 1320 },
-  { name: '英文法レベル別問題集1', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 4, stream: 'both', note: '超基礎レベル' , price: 990 },
-  { name: '英文法レベル別問題集2', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 4, stream: 'both', note: '基礎〜共通テスト' , price: 990 },
-  { name: '英文法レベル別問題集3 標準編【3訂版】', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 6, stream: 'both', note: '私大標準レベル' , price: 990 },
-  { name: '英文法・語法 Vintage 4th Edition', sub: 'eng', subLabel: '英語', category: '英文法', level: 3, dur: 8, stream: 'both', note: '私大〜国公立対応' , price: 1540 },
-
-  // ── 英語：解釈 ──
-  { name: '大学受験スーパーゼミ 入門英文解釈の技術70', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 2, dur: 6, stream: 'both', note: '入門〜基礎レベル' , price: 1320 },
-  { name: '大学受験スーパーゼミ 基礎英文解釈の技術100', sub: 'eng', subLabel: '英語', category: '英文解釈', level: 3, dur: 8, stream: 'both', note: '共通テスト〜私大' , price: 1430 },
-
-  // ── 英語：長文 ──
-  { name: '関正生のThe Rules 英語長文問題集1', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 6, stream: 'both', note: '共通テスト基礎' , price: 1320 },
-  { name: '関正生のThe Rules 英語長文問題集2', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 6, stream: 'both', note: '私大標準' , price: 1320 },
-  { name: '関正生のThe Rules 英語長文問題集3', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 6, stream: 'both', note: '難関私大・国公立' , price: 1320 },
-  { name: '関正生のThe Rules 英語長文問題集4', sub: 'eng', subLabel: '英語', category: '英語長文', level: 5, dur: 6, stream: 'both', note: '最難関大学' , price: 1320 },
-
-  // ── 英語：リスニング ──
-  { name: '究極の英語リスニング Vol.1', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 1, dur: 6, stream: 'both', note: '入門〜基礎' , price: 1650 },
-  { name: '究極の英語リスニング Vol.2', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 6, stream: 'both', note: '共通テストレベル' , price: 1650 },
-  { name: '究極の英語リスニング Vol.3', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 3, dur: 6, stream: 'both', note: '難関大学レベル' , price: 1650 },
-
+  { name: '大岩のいちばんはじめの英文法 超基礎文法編', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 6, stream: 'both', note: '英文法の入門。品詞から丁寧に解説', price: 0 },
+  { name: '高校基礎 英文法パターンドリル', sub: 'eng', subLabel: '英語', category: '英文法', level: 1, dur: 6, stream: 'both', note: '基礎文法のパターン演習', price: 0 },
+  { name: '関正生の英文法 POLARIS 1', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 6, stream: 'both', note: '入試頻出文法を網羅', price: 0 },
+  { name: 'Vintage 英文法・語法', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 6, stream: 'both', note: '文法・語法の辞書的問題集', price: 0 },
+  { name: '動画で分かる英文法 読解入門編', sub: 'eng', subLabel: '英語', category: '英文法', level: 2, dur: 6, stream: 'both', note: '文法→読解への橋渡し', price: 0 },
+  // ── 英語：読解・長文 ──
+  { name: '高校英文読解をひとつひとつわかりやすく', sub: 'eng', subLabel: '英語', category: '英語長文', level: 1, dur: 4, stream: 'both', note: '英文読解の超入門', price: 0 },
+  { name: 'こわくない英語 長文問題', sub: 'eng', subLabel: '英語', category: '英語長文', level: 1, dur: 4, stream: 'both', note: 'やさしい長文で慣れる', price: 0 },
+  { name: '英語長文レベル別問題集 3 標準編', sub: 'eng', subLabel: '英語', category: '英語長文', level: 1, dur: 4, stream: 'both', note: '基礎〜日大の橋渡し', price: 0 },
+  { name: '入門英文問題精講SR', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 4, stream: 'both', note: '英文解釈の基礎', price: 0 },
+  { name: '関正生のThe Rules 英語長文問題集1 入試基礎', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 4, stream: 'both', note: 'ルールベースの長文解法', price: 0 },
+  { name: '関正生のThe Rules 英語長文問題集2 入試標準', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 4, stream: 'both', note: '日大〜MARCH入口', price: 0 },
+  { name: '関正生の英語長文ポラリス 1 標準レベル', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 4, stream: 'both', note: '日大レベルの定番長文', price: 0 },
+  { name: '関正生の英文解釈ポラリス 1', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 4, stream: 'both', note: '英文解釈の強化', price: 0 },
+  { name: '関正生のThe Rules 英語長文問題集3 入試難関', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 4, stream: 'both', note: 'MARCH〜難関私大', price: 0 },
+  { name: '関正生の英語長文ポラリス 2 応用レベル', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 4, stream: 'both', note: 'MARCH〜早慶入口', price: 0 },
+  { name: '英語長文プラス 速読トレーニング問題集', sub: 'eng', subLabel: '英語', category: '英語長文', level: 3, dur: 4, stream: 'both', note: '速読力強化', price: 0 },
+  { name: '関正生のThe Rules 英語長文問題集4 入試最難関', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '最難関私大対応', price: 0 },
+  { name: '関正生の英語長文ポラリス 3 発展レベル', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '早慶最終仕上げ', price: 0 },
+  { name: '世界一わかりやすい早稲田の英語合格講座', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '早稲田英語の傾向対策', price: 0 },
+  { name: '世界一わかりやすい慶應の英語合格講座', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '慶應英語の傾向対策', price: 0 },
+  { name: '国公立標準問題集CanPass 英語', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '記述式長文演習', price: 0 },
+  { name: '英語長文プラス 記述式トレーニング問題集', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '国公立二次の記述対策', price: 0 },
+  { name: 'ポレポレ英文読解プロセス50', sub: 'eng', subLabel: '英語', category: '英語長文', level: 4, dur: 4, stream: 'both', note: '難関英文解釈の定番', price: 0 },
+  { name: '厳選30題で学ぶ！英文要旨要約トレーニング', sub: 'eng', subLabel: '英語', category: '英語長文', level: 5, dur: 4, stream: 'both', note: '東大要約問題対策', price: 0 },
+  { name: '東大の英語25カ年', sub: 'eng', subLabel: '英語', category: '英語長文', level: 5, dur: 4, stream: 'both', note: '東大英語過去問演習', price: 0 },
   // ── 英語：英作文 ──
-  { name: '改訂版 竹岡広信の 英作文が面白いほど書ける本', sub: 'eng', subLabel: '英語', category: '英作文', level: 2, dur: 8, stream: 'both', note: '基礎〜標準' , price: 1320 },
-  { name: '改訂版 大学入試 関正生の英作文 プラチナルール', sub: 'eng', subLabel: '英語', category: '英作文', level: 3, dur: 8, stream: 'both', note: '標準〜難関' , price: 1320 },
-
-  // ── 英語：英検 ──
-  { name: '2025年度版 英検3級 過去6回全問題集', sub: 'eng', subLabel: '英語', category: '英検', level: 1, dur: 6, stream: 'both', note: '英検3級' , price: 1320 },
-  { name: '【音声アプリ対応】英検準2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' , price: 1320 },
-  { name: '出る順で最短合格! 英検準2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 2, dur: 6, stream: 'both', note: '英検準2級' , price: 1320 },
-  { name: '【音声アプリ対応】英検2級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' , price: 1320 },
-  { name: '出る順で最短合格! 英検2級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 3, dur: 6, stream: 'both', note: '英検2級' , price: 1320 },
-  { name: '【音声アプリ対応】英検準1級 でる順パス単', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' , price: 1320 },
-  { name: '出る順で最短合格!英検準1級単熟語EX', sub: 'eng', subLabel: '英語', category: '英検', level: 4, dur: 8, stream: 'both', note: '英検準1級' , price: 1320 },
-
-  // ── 英語：TEAP ──
-  { name: 'TEAP技能別問題集 リーディング・リスニング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' , price: 1650 },
-  { name: 'TEAP技能別問題集 ライティング・スピーキング', sub: 'eng', subLabel: '英語', category: 'TEAP', level: 3, dur: 6, stream: 'both', note: '上智・青学向け' , price: 1320 },
-
-  // ── 数学 ──
-  { name: 'やさしい数学1A', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
-  { name: 'やさしい高校数学(数学2・B)', sub: 'math', subLabel: '数学', category: '数学2B', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
-  { name: 'やさしい高校数学(数学III・C)', sub: 'math', subLabel: '数学', category: '数学3C', level: 1, dur: 6, stream: 'rikei', note: '超基礎・入門' , price: 1320 },
-  { name: '新課程 チャート式 基礎と演習 数学Ⅰ＋Ａ（白チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' , price: 2860 },
-  { name: '新課程 チャート式 基礎と演習 数学Ⅱ＋Ｂ（白チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 2, dur: 12, stream: 'both', note: '共通テスト基礎' , price: 2860 },
-  { name: '新課程 チャート式 基礎と演習 数学C', sub: 'math', subLabel: '数学', category: '数学3C', level: 2, dur: 10, stream: 'rikei', note: '共通テスト基礎' , price: 1320 },
-  { name: '基礎からの数学I+A（青チャート）', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' , price: 2860 },
-  { name: '特装版 チャート式 基礎からの数学Ⅱ+B（青チャート）', sub: 'math', subLabel: '数学', category: '数学2B', level: 3, dur: 16, stream: 'both', note: '私大〜国公立標準' , price: 2860 },
-  { name: '特装版 チャート式 基礎からの数学III+C（青チャート）', sub: 'math', subLabel: '数学', category: '数学3C', level: 3, dur: 16, stream: 'rikei', note: '国公立標準〜難関' , price: 2860 },
-  { name: '1対1対応の演習/数学1', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' , price: 1430 },
-  { name: '1対1対応の演習/数学A', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 10, stream: 'both', note: '難関大学向け' , price: 1430 },
-  { name: '共通テスト必勝マニュアル 数学1A', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' , price: 1320 },
-  { name: '共通テスト必勝マニュアル 数学2BC', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 3, dur: 6, stream: 'both', note: '共通テスト対策' , price: 1320 },
-
-  // ── 国語：現代文 ──
-  { name: '大学入試 全レベル問題集 現代文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '現代文入門' , price: 880 },
-  { name: '大学入試 全レベル問題集 現代文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: '共通テスト対策' , price: 880 },
-  { name: '大学入試 全レベル問題集 現代文3 私大標準レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 6, stream: 'bunkei', note: '私大標準' , price: 880 },
-  { name: '大学入試 全レベル問題集 現代文6 国公立大レベル', sub: 'jpn', subLabel: '国語', category: '現代文', level: 5, dur: 8, stream: 'both', note: '国公立最難関' , price: 880 },
-
-  // ── 国語：古文 ──
-  { name: '古典文法ドリル', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '古文文法の基礎' , price: 1100 },
-  { name: '望月光 古典文法講義の実況中継(1)', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 6, stream: 'bunkei', note: '古文文法基礎' , price: 1320 },
-  { name: '望月光 古典文法講義の実況中継(2)', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文文法応用' , price: 1320 },
-  { name: '読んで見て聞いて覚える 重要古文単語315', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'bunkei', note: '古文単語' , price: 1320 },
-  { name: '古文レベル別問題集1 文法編', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'bunkei', note: '文法確認' , price: 880 },
-  { name: '古文レベル別問題集2 初級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'bunkei', note: '初級演習' , price: 880 },
-  { name: '古文レベル別問題集3 標準編', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'bunkei', note: '標準演習' , price: 880 },
-  { name: '古文レベル別問題集4', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'bunkei', note: '応用演習' , price: 880 },
-  { name: '古文レベル別問題集5 上級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 5, dur: 4, stream: 'bunkei', note: '難関大学向け' , price: 880 },
-
-  // ── 国語：漢文 ──
-  { name: '寺師の漢文をはじめから丁寧に', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '漢文入門' , price: 1210 },
-  { name: '大学入試 全レベル問題集 漢文1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'bunkei', note: '基礎演習' , price: 880 },
-  { name: '大学入試 全レベル問題集 漢文2 共通テストレベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' , price: 880 },
-  { name: '大学入試 全レベル問題集 漢文3 私大・国公立大レベル', sub: 'jpn', subLabel: '国語', category: '漢文', level: 3, dur: 6, stream: 'bunkei', note: '上位私大・国公立' , price: 880 },
-
-  // ── 国語：小論文 ──
-  { name: '小論文（カテゴリ内のテキスト参照）', sub: 'jpn', subLabel: '国語', category: '小論文', level: 3, dur: 8, stream: 'both', note: '慶應・国公立向け' , price: 1320 },
-
-  // ── 理科：物理 ──
-  { name: '橋元の物理基礎をはじめからていねいに', sub: 'sci', subLabel: '理科', category: '物理', level: 1, dur: 6, stream: 'both', note: '物理基礎入門' , price: 1320 },
-  { name: 'チャート式シリーズ 新物理基礎', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'both', note: '物理基礎の体系学習' , price: 1320 },
-  { name: '大学入試 全レベル問題集 物理1 基礎レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 6, stream: 'both', note: '共通テスト基礎' , price: 880 },
-  { name: '大学入試 全レベル問題集 物理2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
-  { name: '大学入試 全レベル問題集 物理3 私大標準・国公立大レベル', sub: 'sci', subLabel: '理科', category: '物理', level: 4, dur: 8, stream: 'rikei', note: '難関大向け' , price: 880 },
-  { name: '改訂版 漆原晃の物理基礎・物理[力学・熱力学]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '力学・熱力学' , price: 1320 },
-  { name: '改訂版 漆原晃の物理基礎・物理[波動・原子]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 2, dur: 8, stream: 'rikei', note: '波動・原子' , price: 1320 },
-  { name: '改訂版 漆原晃の物理基礎・物理[電磁気]が面白いほどわかる本', sub: 'sci', subLabel: '理科', category: '物理', level: 3, dur: 8, stream: 'rikei', note: '電磁気' , price: 1320 },
-
-  // ── 理科：化学 ──
-  { name: 'チャート式問題集 共通テスト対策 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'both', note: '共通テスト化学基礎' , price: 1320 },
-  { name: '決める！共通テスト 化学基礎', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
-  { name: '特装版 チャート式シリーズ 新化学 化学基礎・化学', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 16, stream: 'rikei', note: '化学の体系学習' , price: 1320 },
-  { name: '改訂版 フォトサイエンス化学図録', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 4, stream: 'rikei', note: '視覚的理解の補助' , price: 1320 },
-  { name: '大学受験Do 鎌田の理論化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '理論化学' , price: 1320 },
-  { name: '大学受験Do 鎌田の有機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 8, stream: 'rikei', note: '有機化学' , price: 1320 },
-  { name: '大学受験Do 福間の無機化学の講義', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '無機化学' , price: 1320 },
-  { name: '大学入試 全レベル問題集 化学1 基礎レベル', sub: 'sci', subLabel: '理科', category: '化学', level: 2, dur: 6, stream: 'both', note: '基礎演習' , price: 880 },
-  { name: '大学入試 全レベル問題集 化学2 共通テストレベル', sub: 'sci', subLabel: '理科', category: '化学', level: 3, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 880 },
-
-  // ── 理科：生物 ──
-  { name: 'チャート式シリーズ 新生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 8, stream: 'both', note: '生物基礎の体系学習' , price: 1320 },
-  { name: 'チャート式問題集 共通テスト対策 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'both', note: '共通テスト生物基礎' , price: 1320 },
-  { name: '決める！共通テスト 生物基礎', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '共通テスト対策' , price: 1320 },
-  { name: '生物基礎一問一答【完全版】', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'rikei', note: '用語確認' , price: 1320 },
-  { name: 'よくわかる高校生物基礎 問題集', sub: 'sci', subLabel: '理科', category: '生物', level: 2, dur: 6, stream: 'both', note: '基礎演習' , price: 1320 },
-
-  // ── 社会：日本史 ──
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 原始・古代史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門①' , price: 1430 },
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 中世・近世史', sub: 'soc', subLabel: '社会', category: '日本史', level: 1, dur: 4, stream: 'bunkei', note: '通史入門②' , price: 1430 },
-  { name: '金谷の日本史「なぜ」と「流れ」がわかる本 文化史', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 4, stream: 'bunkei', note: '文化史' , price: 1430 },
-  { name: '改訂版 共通テスト 歴史総合、日本史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
-  { name: '大学入試 全レベル問題集 日本史1 基礎レベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 6, stream: 'bunkei', note: '基礎演習' , price: 880 },
-  { name: '大学入試 全レベル問題集 日本史2 共通テストレベル', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '共通テスト対策' , price: 880 },
-  { name: '日本史探究授業の実況中継(1) 原始~古代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' , price: 1320 },
-  { name: '日本史探究授業の実況中継(2) 中世~近世', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' , price: 1320 },
-  { name: '日本史探究授業の実況中継(3) 近世~近代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' , price: 1320 },
-  { name: '日本史探究授業の実況中継(4) 近現代', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' , price: 1320 },
-  { name: '日本史基礎問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 8, stream: 'bunkei', note: '基礎〜標準演習' , price: 1430 },
-  { name: '日本史標準問題精講', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 8, stream: 'bunkei', note: '難関大学向け' , price: 1980 },
-
-  // ── 社会：世界史 ──
-  { name: 'ものがたり世界史 古代~近代へ', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門①' , price: 1430 },
-  { name: 'ものがたり世界史 近代~現代', sub: 'soc', subLabel: '社会', category: '世界史', level: 1, dur: 6, stream: 'bunkei', note: '世界史入門②' , price: 1430 },
-  { name: '時代と流れで覚える世界史', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '通史の整理' , price: 1320 },
-  { name: '改訂版 共通テスト 歴史総合、世界史探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
-  { name: 'よくわかる高校歴史総合問題集', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 6, stream: 'bunkei', note: '歴史総合対策' , price: 1320 },
-  { name: '世界史探究授業の実況中継(1)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け①' , price: 1320 },
-  { name: '世界史探究授業の実況中継(2)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け②' , price: 1320 },
-  { name: '世界史探究授業の実況中継(3)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け③' , price: 1320 },
-  { name: '世界史探究授業の実況中継(4)', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 6, stream: 'bunkei', note: '私大・国公立向け④' , price: 1320 },
-  { name: '世界史 一問一答【完全版】4th edition', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 8, stream: 'bunkei', note: '用語確認・暗記' , price: 1320 },
-  { name: '一橋大の世界史20カ年', sub: 'soc', subLabel: '社会', category: '世界史', level: 5, dur: 8, stream: 'bunkei', note: '一橋大学専用' , price: 1320 },
-
-  // ── 社会：地理 ──
-  { name: '改訂第2版 共通テスト 地理総合、地理探究の点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 8, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
-  { name: '共通テスト 地理 集中講義 改訂版', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
-
-  // ── 社会：公共・政治経済 ──
-  { name: 'よくわかる高校公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 1, dur: 4, stream: 'bunkei', note: '公共の基礎' , price: 1210 },
-  { name: 'よくわかる高校公共問題集', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '公共の演習' , price: 1210 },
-  { name: '蔭山の共通テスト公共', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '共通テスト対策' , price: 1320 },
-  { name: '蔭山の共通テスト政治・経済', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 6, stream: 'bunkei', note: '政治経済対策' , price: 1320 },
-  { name: '完全MASTER 倫理+公共 問題集 共通テスト新訂版', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 6, stream: 'bunkei', note: '倫理・公共上級' , price: 1320 },
-  { name: '公共 一問一答【完全版】清水雅博', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'bunkei', note: '用語確認' , price: 1320 },
-
-  // ── 情報 ──
-  { name: 'ゼロから始める情報I', sub: 'etc', subLabel: 'その他', category: '情報', level: 1, dur: 4, stream: 'both', note: '情報I入門' , price: 1320 },
-  { name: 'ライバルに差をつける 情報I 鉄板の100題', sub: 'etc', subLabel: 'その他', category: '情報', level: 2, dur: 4, stream: 'both', note: '共通テスト対策' , price: 1320 },
-  { name: '情報I 共通テスト プログラミング問題対策', sub: 'etc', subLabel: 'その他', category: '情報', level: 3, dur: 4, stream: 'both', note: 'プログラミング演習' , price: 1320 },
+  { name: '英作文基本300選（駿台受験シリーズ）', sub: 'eng', subLabel: '英語', category: '英作文', level: 4, dur: 4, stream: 'both', note: '300例文で英作文の基礎固め', price: 0 },
+  { name: '大学入試英作文ハイパートレーニング 和文英訳編', sub: 'eng', subLabel: '英語', category: '英作文', level: 4, dur: 4, stream: 'both', note: '和文英訳の定番', price: 0 },
+  { name: '英作文ハイパートレーニング 自由英作文編', sub: 'eng', subLabel: '英語', category: '英作文', level: 4, dur: 4, stream: 'both', note: '自由英作文の演習', price: 0 },
+  { name: '最難関大への英作文ハイパートレーニング', sub: 'eng', subLabel: '英語', category: '英作文', level: 5, dur: 4, stream: 'both', note: '東大・京大レベルの英作文', price: 0 },
+  { name: '関正生の英作文ポラリス 2 自由英作文編', sub: 'eng', subLabel: '英語', category: '英作文', level: 4, dur: 4, stream: 'both', note: '自由英作文の体系的学習', price: 0 },
+  // ── 英語：リスニング ──
+  { name: '大学入試はじめのリスニングドリル', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 4, stream: 'both', note: 'リスニング入門', price: 0 },
+  { name: 'きめる！共通テスト英語リスニング', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 4, stream: 'both', note: '共通テストリスニング対策', price: 0 },
+  { name: '1ヶ月で攻略！大学入学共通テスト英語リスニング', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 4, stream: 'both', note: '短期集中リスニング', price: 0 },
+  { name: '大学入学共通テスト スパート模試 英語リスニング', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 2, dur: 4, stream: 'both', note: '直前期の模試演習', price: 0 },
+  { name: '新キムタツの東大英語リスニング', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 5, dur: 4, stream: 'both', note: '東大リスニング特化', price: 0 },
+  { name: '鉄緑会 東大英語リスニング', sub: 'eng', subLabel: '英語', category: 'リスニング', level: 5, dur: 4, stream: 'both', note: '鉄緑生御用達の東大対策', price: 0 },
+  // ── 英語：共通テスト ──
+  { name: 'きめる！共通テスト英語リーディング', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 3, stream: 'both', note: '共通テストR形式対策', price: 0 },
+  { name: '大学入学共通テスト スパート模試 英語リーディング', sub: 'eng', subLabel: '英語', category: '英語長文', level: 2, dur: 3, stream: 'both', note: '直前模試演習', price: 0 },
+  // ── 数学：基礎 ──
+  { name: 'やさしい中学数学', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'both', note: '中学数学を3週間で総復習', price: 0 },
+  { name: 'やさしい高校数学（Ⅰ・A、Ⅱ・B）', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'both', note: '会話形式で高校数学を学ぶ', price: 0 },
+  { name: '高校これでわかる問題集', sub: 'math', subLabel: '数学', category: '数学1A', level: 1, dur: 6, stream: 'both', note: '教科書例題レベルの演習', price: 0 },
+  // ── 数学：演習 ──
+  { name: '入門問題精講（Ⅰ・A、Ⅱ・B）', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 6, stream: 'both', note: '単元の本質を捉える問題集', price: 0 },
+  { name: '基礎問題精講（Ⅰ・A、Ⅱ・B）', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 6, stream: 'both', note: 'コンパクトで解説詳しい定番', price: 0 },
+  { name: '坂田アキラのベクトルが面白いほどわかる本', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 6, stream: 'both', note: 'ベクトル苦手な人向け', price: 0 },
+  { name: 'ドラゴン桜式数学力ドリル', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 6, stream: 'both', note: '計算力・演習量の補強', price: 0 },
+  { name: '大学入試数学 落とせない必須101題', sub: 'math', subLabel: '数学', category: '数学1A', level: 2, dur: 6, stream: 'both', note: '日大レベルのアウトプット確認', price: 0 },
+  { name: '文系の数学 重要事項完全習得編', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 4, stream: 'bunkei', note: '典型問題150題・考え方重視', price: 0 },
+  { name: '文系の数学 実践力向上編', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 4, stream: 'bunkei', note: 'MARCH・地方国公立対応', price: 0 },
+  { name: '国公立標準問題集CanPass 数学Ⅰ・A・Ⅱ・B・C', sub: 'math', subLabel: '数学', category: '数学1A', level: 3, dur: 4, stream: 'both', note: '国公立二次の演習', price: 0 },
+  { name: '大学入試問題集ゴールデンルート 数学Ⅰ・A・Ⅱ・B 応用編', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 4, stream: 'both', note: 'プラチカ前の橋渡し', price: 0 },
+  { name: '文系数学の良問プラチカ 数学Ⅰ・A・Ⅱ・B・C', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 4, stream: 'bunkei', note: '早慶・旧帝の最高難度演習', price: 0 },
+  { name: 'マスターキー 数学Ⅰ・A・Ⅱ・B＋ベクトル（Gakken）', sub: 'math', subLabel: '数学', category: '数学1A', level: 5, dur: 4, stream: 'both', note: '2025年7月刊。解法選択力を養う', price: 0 },
+  { name: 'Focus Gold', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 4, stream: 'both', note: '網羅系。偏差値65未満の人向け', price: 0 },
+  { name: '青チャート（チャート式 基礎からの数学）', sub: 'math', subLabel: '数学', category: '数学1A', level: 4, dur: 4, stream: 'both', note: '最定番網羅系参考書', price: 0 },
+  // ── 数学：共通テスト ──
+  { name: '短期攻略 大学入学共通テスト数学Ⅰ・A 基礎編（駿台）', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 2, dur: 3, stream: 'both', note: '基礎問題の反復演習', price: 0 },
+  { name: '大学入学共通テスト 数学Ⅰ・A予想問題集', sub: 'math', subLabel: '数学', category: '共通テスト数学', level: 2, dur: 3, stream: 'both', note: '応用力・思考力を鍛える', price: 0 },
+  // ── 現代文：語彙・漢字 ──
+  { name: '中学国語力を伸ばす語彙1700', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 6, stream: 'both', note: '語彙力の基礎固め', price: 0 },
+  // ── 現代文：読解 ──
+  { name: 'できた！中3国語 読解', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '指示語・読解のルールを基礎から', price: 0 },
+  { name: 'こわくない国語 文章の読解', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '中学〜高校入試レベルの読解練習', price: 0 },
+  { name: 'ゼロから覚醒 はじめよう現代文', sub: 'jpn', subLabel: '国語', category: '現代文', level: 1, dur: 4, stream: 'both', note: '現代文の入門書', price: 0 },
+  // ── 現代文：語彙・漢字 ──
+  { name: '現代文キーワード読解', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: 'テーマ別頻出キーワードを整理', price: 0 },
+  { name: '入試 漢字マスター1800＋', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: '漢字と語彙の定番', price: 0 },
+  { name: 'ことばはちからダ', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 6, stream: 'both', note: '現代文の語彙・概念語', price: 0 },
+  // ── 現代文：読解 ──
+  { name: '田村のやさしく語る現代文', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: '助詞・接続詞など細部の読解', price: 0 },
+  { name: '船口のゼロから読み解く最強の現代文', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: 'マクロ視点の読解法', price: 0 },
+  // ── 現代文：演習 ──
+  { name: '入試現代文へのアクセス 基本編', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: '日大〜共通テストの演習', price: 0 },
+  { name: 'きめる！共通テスト現代文', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: '共通テスト形式に慣れる', price: 0 },
+  { name: '新・現代文レベル別問題集1 超基礎編', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: '脳内活動の解説が特徴', price: 0 },
+  { name: '新・現代文レベル別問題集2 初級編', sub: 'jpn', subLabel: '国語', category: '現代文', level: 2, dur: 4, stream: 'both', note: '産近甲龍レベル対応', price: 0 },
+  { name: '現代文読解力の開発講座', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 4, stream: 'both', note: '読み方に重点・要約問題付き', price: 0 },
+  { name: '入試現代文へのアクセス 発展編', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 4, stream: 'both', note: '筆者の主張を正確に読む', price: 0 },
+  { name: 'GMARCH・関関同立の現代文', sub: 'jpn', subLabel: '国語', category: '現代文', level: 3, dur: 4, stream: 'both', note: '大学別の出題傾向に対応', price: 0 },
+  { name: '現代文と格闘する', sub: 'jpn', subLabel: '国語', category: '現代文', level: 4, dur: 4, stream: 'both', note: '緻密な読解力が身につく', price: 0 },
+  // ── 古文：単語 ──
+  { name: '読んで見て覚える 重要古文単語315（桐原書店）', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'both', note: '背景知識とセットで暗記できる', price: 0 },
+  { name: '新・ゴロゴ古文単語', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'both', note: '語呂合わせで暗記', price: 0 },
+  { name: 'Key＆Point 古文単語330（いいずな書店）', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 6, stream: 'both', note: 'イメージで捉える', price: 0 },
+  { name: 'GROUPで覚える古文単語600（語学春秋社）', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 6, stream: 'both', note: '早慶・上智は500〜600語が必要', price: 0 },
+  // ── 古文：文法 ──
+  { name: '中学基礎がため100% できた！中3国語', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'both', note: '歴史的仮名遣いから復習', price: 0 },
+  { name: '富井の古典文法をはじめからていねいに', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'both', note: '古文文法の定番講義書', price: 0 },
+  { name: 'やさしくわかりやすい古典文法（文英堂）', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'both', note: '演習でアウトプット。確認テスト付き', price: 0 },
+  { name: 'ステップアップノート30 古典文法基礎ドリル', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'both', note: '文法演習の定番', price: 0 },
+  { name: '岡本梨奈の1冊読むだけで古典文法の基本＆考え方が面白いほど身につく本', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: '実力養成ルートの文法書', price: 0 },
+  // ── 古文：読解 ──
+  { name: '富井の古文読解をはじめからていねいに', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'both', note: '省略補完・主語把握の方法論', price: 0 },
+  { name: 'とってもやさしい古文', sub: 'jpn', subLabel: '国語', category: '古文', level: 1, dur: 4, stream: 'both', note: 'ヒント付きで省略を補う練習', price: 0 },
+  // ── 古文：演習 ──
+  { name: '大学入試問題集 岡本梨奈の古文ポラリス1 基礎レベル', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'both', note: '日東駒専レベルの演習', price: 0 },
+  { name: '古文上達 基礎編 読解と演習45（Z会）', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 4, stream: 'both', note: '基礎読解の定番', price: 0 },
+  { name: '岡本梨奈の古文ポラリス2 標準レベル', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: 'MARCH〜早慶入口', price: 0 },
+  { name: '古文上達 読解と演習56（Z会）', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: 'MARCHから早慶をカバー', price: 0 },
+  { name: 'GMARCH＆関関同立の古文', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: '大学別傾向対策', price: 0 },
+  { name: '全レベル問題集 古文③ 私大標準レベル', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: 'MARCH過去問中心の演習', price: 0 },
+  { name: '古文レベル別問題集5 上級編', sub: 'jpn', subLabel: '国語', category: '古文', level: 3, dur: 4, stream: 'both', note: '難関私大対応', price: 0 },
+  { name: '岡本梨奈の古文ポラリス3 発展レベル', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'both', note: '早慶〜難関国公立レベル', price: 0 },
+  { name: '有名私大古文演習（河合出版）', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'both', note: '早稲田志望の直前演習', price: 0 },
+  { name: '首都圏「難関」私大古文演習（河合出版）', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'both', note: '早稲田レベル以上の高難度演習', price: 0 },
+  { name: '国公立標準問題集 CanPass 古典（駿台）', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'both', note: '記述対策に最適。採点基準付き', price: 0 },
+  { name: '入試精選問題集 古文（河合出版）', sub: 'jpn', subLabel: '国語', category: '古文', level: 4, dur: 4, stream: 'both', note: '難関国公立の記述演習', price: 0 },
+  { name: '鉄緑会 東大古典問題集（KADOKAWA）', sub: 'jpn', subLabel: '国語', category: '古文', level: 5, dur: 4, stream: 'both', note: '採点基準・解答例付き。最高峰の解説', price: 0 },
+  // ── 古文：共通テスト ──
+  { name: 'マーク式基礎問題集 古文（河合出版）', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 3, stream: 'both', note: '選択式の演習', price: 0 },
+  { name: '最短10時間で9割とれる共通テスト古文のスゴ技', sub: 'jpn', subLabel: '国語', category: '古文', level: 2, dur: 3, stream: 'both', note: '直前期の高得点対策', price: 0 },
+  // ── 漢文：句法・文法 ──
+  { name: '漢文早覚え速答法（学研）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'both', note: '句法を絞り込んだ入門定番', price: 0 },
+  { name: 'ヤマのヤマ 漢文（学研）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 1, dur: 4, stream: 'both', note: '句法の入門定番', price: 0 },
+  { name: 'ステップアップノート10 漢文句形ドリルと演習', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 4, stream: 'both', note: '句法のドリル演習', price: 0 },
+  // ── 漢文：演習 ──
+  { name: '漢文道場 入門から実践まで（Z会）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 4, stream: 'both', note: '全60題・共通テスト〜難関私大まで', price: 0 },
+  { name: 'マーク式基礎問題集 漢文（河合出版）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 3, dur: 4, stream: 'both', note: '選択式の演習', price: 0 },
+  { name: '国公立標準問題集 CanPass 古典 漢文部分（駿台）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 4, dur: 4, stream: 'both', note: '記述8題・採点基準付き', price: 0 },
+  { name: '得点奪取 漢文 改訂版（河合出版）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 4, dur: 4, stream: 'both', note: '記述対策の最高峰', price: 0 },
+  { name: '入試精選問題集 漢文（河合出版）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 4, dur: 4, stream: 'both', note: '難関私大記述演習', price: 0 },
+  { name: '鉄緑会 東大古典問題集 漢文（KADOKAWA）', sub: 'jpn', subLabel: '国語', category: '漢文', level: 5, dur: 4, stream: 'both', note: '採点基準・鉄緑生解答例付き', price: 0 },
+  // ── 漢文：共通テスト ──
+  { name: '最短10時間で9割とれる共通テスト漢文のスゴ技', sub: 'jpn', subLabel: '国語', category: '漢文', level: 2, dur: 3, stream: 'both', note: '直前期の高得点対策', price: 0 },
+  // ── 日本史：講義（通史） ──
+  { name: '金谷の日本史「なぜ」と「流れ」がわかる本（全4冊）', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 8, stream: 'both', note: '原始・古代/中世・近世/近現代/文化史', price: 0 },
+  { name: 'きめる！共通テスト 歴史総合＋日本史探究', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 8, stream: 'both', note: '共通テスト〜国公立向け講義書', price: 0 },
+  // ── 日本史：用語 ──
+  { name: '時代と流れで覚える！日本史用語', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 4, stream: 'both', note: '用語を流れで整理', price: 0 },
+  // ── 日本史：講義（通史） ──
+  { name: '日本史B 講義の実況中継（全5冊）', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 8, stream: 'both', note: '細かい知識まで網羅', price: 0 },
+  // ── 日本史：教科書 ──
+  { name: '詳説 日本史B・山川出版（教科書）', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 4, stream: 'both', note: '入試問題の原典。論述対策にも必須', price: 0 },
+  // ── 日本史：一問一答 ──
+  { name: '日本史B 一問一答【完全版】（東進）', sub: 'soc', subLabel: '社会', category: '日本史', level: 3, dur: 4, stream: 'both', note: '★マークで難易度別学習', price: 0 },
+  // ── 日本史：史料 ──
+  { name: '日本史史料一問一答【完全版】（東進）', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 4, stream: 'both', note: '史料問題対策', price: 0 },
+  // ── 日本史：演習 ──
+  { name: '実力をつける日本史100題（Z会）', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 4, stream: 'both', note: '時代別・テーマ別75題＋論述', price: 0 },
+  { name: '日本史問題集 完全版', sub: 'soc', subLabel: '社会', category: '日本史', level: 4, dur: 4, stream: 'both', note: '難易度3段階131問', price: 0 },
+  // ── 日本史：共通テスト ──
+  { name: '共通テスト新課程攻略問題集 歴史総合・日本史探究', sub: 'soc', subLabel: '社会', category: '日本史', level: 2, dur: 3, stream: 'both', note: '新課程対応', price: 0 },
+  // ── 世界史：講義（通史） ──
+  { name: '高校世界史をひとつひとつわかりやすく〈古代〜近代へ〉', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 8, stream: 'both', note: '初学者向け入門講義', price: 0 },
+  { name: '高校世界史をひとつひとつわかりやすく〈近現代〉', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 8, stream: 'both', note: '近現代史の入門', price: 0 },
+  // ── 世界史：一問一答 ──
+  { name: '斎藤の世界史B一問一答 完全網羅版', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 4, stream: 'both', note: '通史理解後の用語確認', price: 0 },
+  // ── 世界史：用語 ──
+  { name: '時代と流れで覚える！世界史B用語', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 4, stream: 'both', note: '用語を流れで学ぶ', price: 0 },
+  // ── 世界史：演習 ──
+  { name: '共通テスト過去問研究 世界史B', sub: 'soc', subLabel: '社会', category: '世界史', level: 2, dur: 4, stream: 'both', note: '共通テスト形式の演習', price: 0 },
+  // ── 世界史：講義（通史） ──
+  { name: '青木裕司 世界史B講義の実況中継（全4冊）', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 8, stream: 'both', note: '通史を深く理解する定番書', price: 0 },
+  { name: 'ナビゲーター世界史B（全4冊）（山川出版）', sub: 'soc', subLabel: '社会', category: '世界史', level: 3, dur: 8, stream: 'both', note: '教科書準拠の詳細講義', price: 0 },
+  // ── 世界史：演習 ──
+  { name: '実力をつける世界史100題（Z会）', sub: 'soc', subLabel: '社会', category: '世界史', level: 4, dur: 4, stream: 'both', note: '難関私大・国公立の演習', price: 0 },
+  { name: '段階式 世界史論述のトレーニング（Z会）', sub: 'soc', subLabel: '社会', category: '世界史', level: 4, dur: 4, stream: 'both', note: '論述力の強化', price: 0 },
+  // ── 政治経済：講義 ──
+  { name: '蔭山の共通テスト政治・経済（改訂版）（学研）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 1, dur: 6, stream: 'both', note: 'ストーリー形式で基礎から', price: 0 },
+  { name: '畠山のスパッとわかる政治・経済爽快講義', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 6, stream: 'both', note: 'ゼロから早慶基礎まで1冊で対応', price: 0 },
+  { name: '蔭山の政治経済が面白いほどわかる本（KADOKAWA）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 6, stream: 'both', note: '条文・経済原理まで詳細', price: 0 },
+  // ── 政治経済：演習 ──
+  { name: '共通テスト公共、政治・経済集中講義（旺文社）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 1, dur: 4, stream: 'both', note: '新課程対応・短期完成', price: 0 },
+  { name: '必修整理ノート 政治・経済（文英堂）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 4, stream: 'both', note: '空欄補充で用語定着', price: 0 },
+  { name: '山川 政治・経済問題集（山川出版）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 4, stream: 'both', note: '私大過去問中心・39テーマ', price: 0 },
+  { name: '政治経済 一問一答【完全版】（東進）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 3, dur: 4, stream: 'both', note: '難易度別★マーク付き', price: 0 },
+  { name: '完全MASTER 政経＋公共問題集（清水書院）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 4, dur: 4, stream: 'both', note: '早慶・難関私大の最終仕上げ', price: 0 },
+  { name: '政治・経済 計算＆論述 特訓問題集', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 4, dur: 4, stream: 'both', note: '早稲田・一橋の計算問題対応', price: 0 },
+  // ── 政治経済：共通テスト ──
+  { name: '蔭山の共通テスト政治・経済 改訂版（学研）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 3, stream: 'both', note: '共通テスト〜MARCHの易しい学部', price: 0 },
+  { name: '共通テスト集中講義 政治・経済', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 3, stream: 'both', note: '新課程対応', price: 0 },
+  { name: 'マーク式基礎問題集 政治・経済（河合出版）', sub: 'soc', subLabel: '社会', category: '公共・政治経済', level: 2, dur: 3, stream: 'both', note: '共通テスト形式の演習', price: 0 },
+  // ── 地理：講義（系統地理） ──
+  { name: '村瀬のゼロから分かる地理B 系統地理編', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'both', note: '因果関係・メカニズム重視の詳細講義', price: 0 },
+  // ── 地理：講義（地誌） ──
+  { name: '村瀬のゼロから分かる地理B 地誌編', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'both', note: '各国・地域を丁寧に解説', price: 0 },
+  // ── 地理：講義（系統地理） ──
+  { name: '村瀬の地理Bをはじめからていねいに（系統地理編）', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 6, stream: 'both', note: '400ページ・共通テスト系統地理を網羅', price: 0 },
+  // ── 地理：共通テスト ──
+  { name: '瀬川聡の共通テスト地理 点数が面白いほどとれる本', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '瀬川版。共通テスト特化', price: 0 },
+  { name: '瀬川聡の共通テスト地理 系統地理編 超重要問題の解き方', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '系統地理の問題演習', price: 0 },
+  { name: '瀬川聡の共通テスト地理 地誌編 超重要問題の解き方', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '地誌の問題演習', price: 0 },
+  { name: '蔭山の共通テスト 地理', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '共通テスト地理の基礎', price: 0 },
+  { name: '地理B 集中講義（旺文社）', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '新課程対応・短期完成', price: 0 },
+  { name: '地図・統計の問題考察71', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 3, stream: 'both', note: '統計・地図読解の演習', price: 0 },
+  // ── 地理：演習 ──
+  { name: 'はじめる地理 40テーマ（Z会）', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 4, stream: 'both', note: 'テーマ別演習の入口', price: 0 },
+  { name: '地理B 一問一答【完全版】（東進）', sub: 'soc', subLabel: '社会', category: '地理', level: 2, dur: 4, stream: 'both', note: '重要度別★マーク付き', price: 0 },
+  { name: '実力をつける地理100題（Z会）', sub: 'soc', subLabel: '社会', category: '地理', level: 3, dur: 4, stream: 'both', note: '選択・記述・論述を全網羅。MARCH〜旧帝', price: 0 },
+  { name: 'マーク式基礎問題集 地理B（河合出版）', sub: 'soc', subLabel: '社会', category: '地理', level: 3, dur: 4, stream: 'both', note: '共通テスト形式の演習', price: 0 },
+  // ── 物理基礎：講義 ──
+  { name: 'きめる！共通テスト物理基礎（学研）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 4, stream: 'both', note: '図解とていねいな解説で基礎から学ぶ', price: 0 },
+  { name: '高校やさしくわかりやすい物理基礎（文英堂）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 4, stream: 'both', note: '会話形式で物理の概念をやさしく解説', price: 0 },
+  // ── 物理基礎：演習 ──
+  { name: '短期攻略 大学入学共通テスト 物理基礎（駿台）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 3, stream: 'both', note: '共通テスト形式に特化した問題演習', price: 0 },
+  { name: '大学入学共通テスト 物理基礎の点数が面白いほどとれる本（KADOKAWA）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 3, stream: 'both', note: '得点を伸ばすための思考プロセスを解説', price: 0 },
+  // ── 物理基礎：過去問 ──
+  { name: '共通テスト過去問研究 物理基礎（教学社・赤本）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 3, stream: 'both', note: '2021〜2025年度の本試験を全収録', price: 0 },
+  // ── 物理基礎：演習 ──
+  { name: '共通テスト実践模試 物理基礎（河合出版）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 3, stream: 'both', note: '河合塾模試ベースの実践問題集', price: 0 },
+  // ── 化学基礎：講義 ──
+  { name: 'きめる！共通テスト化学基礎（学研）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 4, stream: 'both', note: '図解豊富。化学の概念を基礎から整理', price: 0 },
+  { name: '大学入学共通テスト 化学基礎の点数が面白いほどとれる本（KADOKAWA）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 4, stream: 'both', note: '化学基礎の全範囲を網羅した定番書', price: 0 },
+  // ── 化学基礎：演習 ──
+  { name: '短期攻略 大学入学共通テスト 化学基礎（駿台）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 3, stream: 'both', note: '短期完成型・共通テスト形式の演習', price: 0 },
+  // ── 化学基礎：過去問 ──
+  { name: '共通テスト過去問研究 化学基礎（教学社・赤本）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 3, stream: 'both', note: '出題傾向の分析と過去問演習', price: 0 },
+  // ── 化学基礎：演習 ──
+  { name: '共通テスト実践模試 化学基礎（河合出版）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 3, stream: 'both', note: '河合塾模試ベースの実践問題集', price: 0 },
+  { name: 'リードLightノート化学基礎（数研出版）', sub: 'sci', subLabel: '理科', category: '化学基礎', level: 2, dur: 3, stream: 'both', note: '学校配布型の定番問題集・傍用問題集', price: 0 },
+  // ── 生物基礎：講義 ──
+  { name: '田部の生物基礎をはじめからていねいに 改訂版（東進ブックス）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 4, stream: 'both', note: '図が大きくイラスト豊富。生物基礎の定番講義書', price: 0 },
+  { name: 'きめる！共通テスト生物基礎（学研）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 4, stream: 'both', note: '共通テスト対策に特化した講義形式', price: 0 },
+  { name: '大学入学共通テスト 生物基礎の点数が面白いほどとれる本（KADOKAWA）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 4, stream: 'both', note: '生物基礎の全範囲を体系的に整理', price: 0 },
+  // ── 生物基礎：演習 ──
+  { name: '短期攻略 大学入学共通テスト 生物基礎（駿台）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 3, stream: 'both', note: '短期完成型・共通テスト形式の演習', price: 0 },
+  { name: '共通テスト 生物基礎 満点のコツ（Gakken）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 3, stream: 'both', note: '考察問題対策に強い直前期の得点UP本', price: 0 },
+  // ── 生物基礎：過去問 ──
+  { name: '共通テスト過去問研究 生物基礎（教学社・赤本）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 3, stream: 'both', note: '2021〜2025年度の本試験を全収録', price: 0 },
+  // ── 生物基礎：演習 ──
+  { name: '共通テスト実践模試 生物基礎（河合出版）', sub: 'sci', subLabel: '理科', category: '生物基礎', level: 2, dur: 3, stream: 'both', note: '河合塾模試ベースの実践問題集', price: 0 },
+  // ── 地学基礎：講義 ──
+  { name: 'きめる！共通テスト地学基礎（学研）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 4, stream: 'both', note: '地学基礎の頻出テーマを図解でわかりやすく解説', price: 0 },
+  { name: '大学入学共通テスト 地学基礎の点数が面白いほどとれる本（KADOKAWA）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 4, stream: 'both', note: '地学基礎の全範囲を体系的に網羅', price: 0 },
+  // ── 地学基礎：演習 ──
+  { name: '短期攻略 大学入学共通テスト 地学基礎（駿台）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 3, stream: 'both', note: '共通テスト形式の問題集。短期完成向け', price: 0 },
+  { name: 'リードLightノート地学基礎 新課程版（数研出版）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 3, stream: 'both', note: '学校配布型の傍用問題集', price: 0 },
+  { name: 'セミナー地学基礎（第一学習社）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 3, stream: 'both', note: '定番の学校配布型問題集', price: 0 },
+  // ── 地学基礎：過去問 ──
+  { name: '共通テスト過去問研究 地学基礎（教学社・赤本）', sub: 'sci', subLabel: '理科', category: '地学基礎', level: 2, dur: 3, stream: 'both', note: '2021〜2025年度の本試験を全収録', price: 0 },
+  // ── 物理基礎：過去問（4科目合冊） ──
+  { name: '共通テスト過去問研究 物理基礎/化学基礎/生物基礎/地学基礎（教学社・赤本）', sub: 'sci', subLabel: '理科', category: '物理基礎', level: 2, dur: 3, stream: 'both', note: '4科目を1冊で対策。文系必携の合冊版', price: 0 },
+  // ── 情報Ⅰ：講義 ──
+  { name: 'きめる！共通テスト情報Ⅰ（学研・藤原進之介）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 4, stream: 'both', note: '武田塾推奨。図表を活用した視覚的な解説', price: 0 },
+  { name: '情報Ⅰ 大学入学共通テスト対策 会話型テキストと動画でよくわかる（インプレス）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 4, stream: 'both', note: '全内容を動画で学べる。プログラミングも丁寧に解説', price: 0 },
+  { name: '藤原のたった9時間で情報Ⅰ（学研）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 4, stream: 'both', note: '短期集中で基礎から共通テスト対策まで', price: 0 },
+  { name: '高校情報Ⅰをひとつひとつわかりやすく。（学研・岡嶋裕史）', sub: 'etc', subLabel: '情報', category: '情報', level: 1, dur: 4, stream: 'both', note: '全くの初学者向け。会話形式で情報の基礎から', price: 0 },
+  { name: '藤原進之介の ゼロから始める情報Ⅰ（学研）', sub: 'etc', subLabel: '情報', category: '情報', level: 1, dur: 4, stream: 'both', note: '学校で習っていなくても読める。東進講師による', price: 0 },
+  // ── 情報Ⅰ：演習 ──
+  { name: '高校の情報Ⅰが1冊でしっかりわかる問題集（Gakken）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '用語暗記だけでなく仕組みを理解できる演習書', price: 0 },
+  { name: '共通テスト新課程攻略問題集 情報Ⅰ（Gakken）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '実践的な共通テスト形式の問題演習', price: 0 },
+  { name: '共通テスト 7日で完成 情報Ⅰ（学研）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '直前期の短期集中対策', price: 0 },
+  { name: '大学入学共通テスト プログラミング問題対策（武田塾推奨）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '配点の高いプログラミング分野に特化', price: 0 },
+  { name: '2025 実戦攻略 情報Ⅰ 大学入学共通テスト問題集（実教出版）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: 'オリジナル問題で8〜9割以上を狙う演習書', price: 0 },
+  // ── 情報Ⅰ：一問一答 ──
+  { name: '情報Ⅰ 一問一答（Gakken・斎藤昴）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '重要用語を効率よく暗記', price: 0 },
+  // ── 情報Ⅰ：過去問 ──
+  { name: '2026大学入学共通テスト過去問レビュー 情報Ⅰ（武田塾推奨）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 2, stream: 'both', note: '2025年度の本試験（初年度）を徹底分析', price: 0 },
+  // ── 情報Ⅰ：演習 ──
+  { name: '2026 共通テスト総合問題集 情報Ⅰ（河合塾SERIES）', sub: 'etc', subLabel: '情報', category: '情報', level: 2, dur: 3, stream: 'both', note: '全統模試の問題を収録。共通テスト本番形式で演習', price: 0 },
 ];
 
 // 文理・レベルでフィルタしてロードマップ用に返す
@@ -4574,8 +4678,8 @@ function renderRoadmapBooks() {
     '小論文':'jpn','情報':'etc'
   };
   const SUBJECT_MAP = {
-    '英語R':         { sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],  label:'英語R',   color:'#2a7f6f' },
-    '英語リーディング':{ sub:'eng', cats:['英単語','英文法','英文解釈','英語長文'],label:'英語R',   color:'#2a7f6f' },
+    '英語R':         { sub:'eng', cats:['英単語','英文法','英文解釈','英語長文','英作文'],  label:'英語R',   color:'#2a7f6f' },
+    '英語リーディング':{ sub:'eng', cats:['英単語','英文法','英文解釈','英語長文','英作文'],label:'英語R',   color:'#2a7f6f' },
     '英語L':         { sub:'eng', cats:['リスニング'],                            label:'英語L',   color:'#2a7f6f' },
     '英語リスニング': { sub:'eng', cats:['リスニング'],                            label:'英語L',   color:'#2a7f6f' },
     '数学1A':   { sub:'math', cats:['数学1A','共通テスト数学'],                   label:'数学1A',  color:'#c84b31' },
