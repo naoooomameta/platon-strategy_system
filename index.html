@@ -4706,44 +4706,163 @@ function renderRoadmapBooks() {
   const startMonth = now.getFullYear() * 12 + now.getMonth();
   const examMonth  = (s.goalYear || now.getFullYear() + 1) * 12 + (s.goalMonth != null ? s.goalMonth : 1);
   const totalWeeks = Math.max(4, Math.round((examMonth - startMonth) * 4.33)) || 48;
+  const totalMonths = Math.max(1, Math.round(totalWeeks / 4.33));
   const JAmonths   = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
-  const minLv = 1;  // 全レベルを対象
-  var _levelVal = (typeof s.levelVal === 'number' && !isNaN(s.levelVal)) ? s.levelVal : 2;
-  const maxLv = Math.min(5, _levelVal + 2);
+  // ── 偏差値→レベル変換（講師目線の判定基準） ──
+  function devToLevel(dev) {
+    if (dev == null || isNaN(dev) || dev <= 0) return 2; // デフォルト
+    if (dev < 45) return 1;  // 基礎徹底
+    if (dev < 55) return 2;  // 日大レベル
+    if (dev < 62) return 3;  // MARCHレベル
+    if (dev < 68) return 4;  // 早慶レベル
+    return 5;                // 旧帝〜東大レベル
+  }
+
+  // 志望校偏差値（目標レベル）
+  const targetDev = (s.univInfo && s.univInfo.dev) || 55;
+  const globalTargetLv = devToLevel(targetDev);
+  // 全体の現在偏差値（フォールバック用）
+  const globalCurDev = s.devVal || 50;
+  const globalStartLv = devToLevel(globalCurDev);
+
+  // 科目名→科目別偏差値のマッピング
+  function getSubjectDev(subjectName) {
+    if (s.subDevs && s.subDevs[subjectName] && s.subDevs[subjectName] > 0) {
+      return s.subDevs[subjectName];
+    }
+    return globalCurDev;
+  }
+
+  // ── 時間圧迫度に応じた期間倍率 ──
+  // 残り12ヶ月以上 → 1.0（標準）
+  // 残り6-12ヶ月  → 0.75（やや圧縮）
+  // 残り3-6ヶ月   → 0.6（大幅圧縮）
+  // 残り3ヶ月未満  → 0.45（超圧縮・厳選モード）
+  var timePressure;
+  if (totalMonths >= 12) timePressure = 1.0;
+  else if (totalMonths >= 6) timePressure = 0.75;
+  else if (totalMonths >= 3) timePressure = 0.6;
+  else timePressure = 0.45;
+
+  // カテゴリごとの優先順位（1冊目＝最優先、同カテゴリ内で時間不足なら後方を削る）
+  const CATEGORY_PRIORITY = {
+    '英単語':1, '英文法':2, '英語長文':3, '英作文':5, 'リスニング':4,
+    '数学1A':1, '共通テスト数学':3, '数学2B':2, '数学3C':2,
+    '現代文':1, '古文':1, '漢文':1,
+    '日本史':1, '世界史':1, '地理':1, '公共・政治経済':1,
+    '物理基礎':1, '化学基礎':1, '生物基礎':1, '地学基礎':1,
+    '情報':1,
+  };
 
   const scheduledBooks = [];
   const filterEntries  = [];
   const seen = {};
 
-  // 科目ごとに候補を取得。条件を段階的に緩めて必ず1冊以上返す
+  // ── 科目ごとにプロ目線で参考書を選定 ──
   function getBooksForSubject(subjectName, m) {
-    // フィルター段階：① 完全条件 → ② catsなし → ③ stream無視 → ④ sub一致のみ
-    const filters = [
-      function(b) { return b.sub===m.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=(m.maxLevel||maxLv) && (!m.cats||m.cats.includes(b.category)); },
-      function(b) { return b.sub===m.sub && (b.stream==='both'||b.stream===s.stream) && b.level<=(m.maxLevel||maxLv); },
-      function(b) { return b.sub===m.sub && b.level<=(m.maxLevel||maxLv); },
-      function(b) { return b.sub===m.sub; },
-    ];
-    for (var fi = 0; fi < filters.length; fi++) {
-      var result = ALL_TEXTBOOKS.filter(filters[fi]).sort(function(a,b2){ return a.level-b2.level; });
-      if (result.length > 0) return result;
+    var curDev = getSubjectDev(subjectName);
+    var startLv = devToLevel(curDev);
+    var tgtLv = m.maxLevel || globalTargetLv;
+
+    // 科目別偏差値がなく、理科基礎等の場合はmaxLevel制限を尊重
+    if (m.maxLevel && tgtLv > m.maxLevel) tgtLv = m.maxLevel;
+    // 開始レベルが目標を超えている場合、目標レベルの本だけ表示
+    if (startLv > tgtLv) startLv = tgtLv;
+
+    // ① カテゴリ＋レベル＋文理で候補取得
+    var pool = ALL_TEXTBOOKS.filter(function(b) {
+      return b.sub === m.sub &&
+             (b.stream === 'both' || b.stream === s.stream) &&
+             b.level >= startLv && b.level <= tgtLv &&
+             (!m.cats || m.cats.includes(b.category));
+    }).sort(function(a, b2) { return a.level - b2.level; });
+
+    // ② 候補が0冊ならカテゴリ制限を外す
+    if (pool.length === 0) {
+      pool = ALL_TEXTBOOKS.filter(function(b) {
+        return b.sub === m.sub &&
+               (b.stream === 'both' || b.stream === s.stream) &&
+               b.level >= startLv && b.level <= tgtLv;
+      }).sort(function(a, b2) { return a.level - b2.level; });
     }
-    // 最終フォールバック：英語の基礎書を返す
-    return ALL_TEXTBOOKS.filter(function(b){ return b.sub==='eng' && b.level<=2; }).sort(function(a,b2){ return a.level-b2.level; });
+    // ③ 文理制限も外す
+    if (pool.length === 0) {
+      pool = ALL_TEXTBOOKS.filter(function(b) {
+        return b.sub === m.sub && b.level >= startLv && b.level <= tgtLv;
+      }).sort(function(a, b2) { return a.level - b2.level; });
+    }
+    // ④ レベル制限も外して最低1冊
+    if (pool.length === 0) {
+      pool = ALL_TEXTBOOKS.filter(function(b) {
+        return b.sub === m.sub;
+      }).sort(function(a, b2) { return a.level - b2.level; });
+    }
+
+    // ── カテゴリ別に厳選（時間圧迫度に応じて冊数制限） ──
+    var byCat = {};
+    pool.forEach(function(b) {
+      if (!byCat[b.category]) byCat[b.category] = [];
+      byCat[b.category].push(b);
+    });
+
+    // 各カテゴリ内で、レベル順にソートし、時間に応じて冊数を制限
+    var selected = [];
+    Object.keys(byCat).forEach(function(cat) {
+      var catBooks = byCat[cat].sort(function(a, b2) { return a.level - b2.level; });
+      var levelsNeeded = tgtLv - startLv + 1;
+
+      // 各レベルから最大何冊取るか（時間圧迫度で調整）
+      var maxPerLevel;
+      if (timePressure >= 1.0) maxPerLevel = 2;       // 余裕あり：各レベル2冊
+      else if (timePressure >= 0.75) maxPerLevel = 1;  // やや圧迫：各レベル1冊
+      else maxPerLevel = 1;                            // 圧迫：各レベル1冊（さらに後工程で削る）
+
+      // レベル別にグループ化して厳選
+      var byLv = {};
+      catBooks.forEach(function(b) {
+        if (!byLv[b.level]) byLv[b.level] = [];
+        byLv[b.level].push(b);
+      });
+      for (var lv = startLv; lv <= tgtLv; lv++) {
+        if (byLv[lv]) {
+          var picks = byLv[lv].slice(0, maxPerLevel);
+          selected = selected.concat(picks);
+        }
+      }
+    });
+
+    // 最終ソート：レベル昇順 → カテゴリ優先度
+    selected.sort(function(a, b2) {
+      if (a.level !== b2.level) return a.level - b2.level;
+      var pa = CATEGORY_PRIORITY[a.category] || 99;
+      var pb = CATEGORY_PRIORITY[b2.category] || 99;
+      return pa - pb;
+    });
+
+    return selected.length > 0 ? selected : pool.slice(0, 1);
   }
 
-  function scheduleBooks(candidates, fKey, label, color) {
-    // totalWeeks内に収まる冊数で配置。超える場合はtotalWeeksを無視して先頭3冊を強制表示
+  // ── 参考書をスケジュールに配置（期間を圧縮調整） ──
+  function scheduleBooks(candidates, fKey, label, color, subjectName) {
     var cum = 0;
     var added = 0;
+    // 科目に割ける週数（科目数で均等分配、ただし最低8週）
+    var subjectCount = (s.mainSubjects && s.mainSubjects.length) || 5;
+    var weeksForSubject = Math.max(8, Math.floor(totalWeeks * 0.9)); // 科目横断で全期間使う
+
     candidates.forEach(function(b) {
-      const endW = cum + b.dur;
-      // totalWeeksを超えても最低1冊は表示する
+      // 期間を圧縮（時間圧迫度に応じて）
+      var adjDur = Math.max(2, Math.round(b.dur * timePressure));
+      var endW = cum + adjDur;
+
+      // totalWeeksを超えても最低1冊は表示
       if (endW > totalWeeks && added > 0) return;
-      const sA = startMonth + Math.floor(cum / 4.33);
-      const eA = startMonth + Math.floor((Math.min(endW, totalWeeks) - 1) / 4.33);
+
+      var sA = startMonth + Math.floor(cum / 4.33);
+      var eA = startMonth + Math.floor((Math.min(endW, totalWeeks) - 1) / 4.33);
       scheduledBooks.push(Object.assign({}, b, {
+        dur: adjDur, // 調整後の期間を保存
         _filterKey: fKey, _displayLabel: label, _color: color,
         startY: Math.floor(sA/12), startM: sA%12,
         endY:   Math.floor(eA/12), endM:   eA%12,
@@ -4766,7 +4885,7 @@ function renderRoadmapBooks() {
       const fKey = m.label;
       if (!seen[fKey]) { seen[fKey] = true; filterEntries.push({ key: fKey, label: m.label, color: m.color }); }
       const candidates = getBooksForSubject(subjectName, m);
-      scheduleBooks(candidates, fKey, m.label, m.color);
+      scheduleBooks(candidates, fKey, m.label, m.color, subjectName);
     });
   } else {
     // ── フォールバック：志望校科目ベース ──
@@ -4778,10 +4897,13 @@ function renderRoadmapBooks() {
       const fKey = sub;
       if (!seen[fKey]) { seen[fKey]=true; filterEntries.push({ key:fKey, label:subLabelMap[sub], color:subColorMap[sub] }); }
       var candidates = ALL_TEXTBOOKS.filter(function(b){
-        return b.sub===sub && (b.stream==='both'||b.stream===s.stream);
+        var startLv = devToLevel(globalCurDev);
+        var tgtLv = globalTargetLv;
+        return b.sub===sub && (b.stream==='both'||b.stream===s.stream)
+               && b.level >= startLv && b.level <= tgtLv;
       }).sort(function(a,b2){ return a.level-b2.level; });
       if (!candidates.length) candidates = ALL_TEXTBOOKS.filter(function(b){ return b.sub===sub; }).sort(function(a,b2){ return a.level-b2.level; });
-      scheduleBooks(candidates, fKey, subLabelMap[sub], subColorMap[sub]);
+      scheduleBooks(candidates, fKey, subLabelMap[sub], subColorMap[sub], fKey);
     });
   }
 
