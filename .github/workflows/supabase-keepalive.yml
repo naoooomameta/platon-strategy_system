@@ -1,0 +1,34 @@
+name: Supabase Keep-Alive
+
+# Supabase無料プランの自動一時停止（約7日間APIアクセスなしで発動）を防ぐため、
+# 毎日1回REST APIにpingを送る。
+# 注意: GitHubはリポジトリに60日間コミットがないと定期実行を自動停止する。
+#       停止された場合はActionsタブから再有効化するか、何かコミットすれば再開する。
+
+on:
+  schedule:
+    # 毎日 21:00 UTC（日本時間 朝6:00）
+    - cron: '0 21 * * *'
+  workflow_dispatch: # Actionsタブから手動実行も可能
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://liutdhrkrgummlferlnw.supabase.co
+      # index.htmlにも記載されている公開用のanonキー（秘密情報ではない）
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdXRkaHJrcmd1bW1sZmVybG53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDg4NTksImV4cCI6MjA4ODI4NDg1OX0.y83oMJqV0IrDdvp2uQaodeH4MiLPMIGb11roGObT290
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          # アプリ内のキープアライブと同じエンドポイントにアクセスして活動実績を作る
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/students?select=id&limit=1")
+          echo "HTTP status: ${status}"
+          # 200番台/400番台ならAPIは生きている（RLSによる拒否でも活動としてカウントされる）
+          # 5xxや接続不能はプロジェクト停止の可能性 → ジョブを失敗させて通知させる
+          if [ "${status}" -ge 500 ] || [ "${status}" -eq 000 ]; then
+            echo "::error::Supabaseプロジェクトが停止中の可能性があります。https://supabase.com/dashboard から確認してください。"
+            exit 1
+          fi

@@ -926,6 +926,8 @@
     <input type="password" id="platon-api-key-input" placeholder="AIza..."
       style="width:160px;padding:4px 8px;font-size:11px;border:1px solid #ddd;border-radius:6px;"
       oninput="localStorage.setItem('platon_api_key', this.value)" />
+    <button onclick="doLogout()" title="セッションを破棄してログイン画面に戻ります"
+      style="padding:4px 12px;font-size:11px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer;font-family:inherit;white-space:nowrap;">ログアウト</button>
   </div>
 </header>
 <!-- Supabase接続エラーバナー -->
@@ -3174,6 +3176,17 @@ const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 let _allStudents = [];
 
+// 起動直後: localStorageに保存済みセッションがあればログイン画面を先に隠す（自動ログイン時のフラッシュ防止）
+// セッションが期限切れで復元できなかった場合は onAuthStateChange(session=NULL) が改めて表示する
+(function _hideLoginIfSessionSaved() {
+  try {
+    if (localStorage.getItem('platon-auth')) {
+      var ls = document.getElementById('login-screen');
+      if (ls) ls.style.display = 'none';
+    }
+  } catch(e) {}
+})();
+
 // 起動時: 旧バージョンの巨大キャッシュ（DOM HTML含む）を削除してlocalStorage容量を確保
 (function _cleanupOldCache() {
   try {
@@ -3208,6 +3221,20 @@ async function doLogin() {
     btn.style.display = 'block';
     loading.style.display = 'none';
   }
+}
+
+// ===== ログアウト =====
+async function doLogout() {
+  if (!confirm('ログアウトしますか？')) return;
+  try { _cacheSaveCurrentStudent(true); } catch(e) {}
+  // scope:'local' でこの端末のセッションのみ破棄（他端末のログインは維持）
+  try { await _sb.auth.signOut({ scope: 'local' }); } catch(e) { console.warn('[AUTH] signOut error:', e); }
+  // signOutが失敗してもローカルのセッションを確実に破棄する
+  try { localStorage.removeItem('platon-auth'); } catch(e) {}
+  currentStudent = null;
+  _allStudents = [];
+  // リロードで画面状態を完全リセット → セッションが無いためログイン画面が表示される
+  location.reload();
 }
 
 // Enterキーでログイン
@@ -3262,6 +3289,8 @@ _sb.auth.onAuthStateChange(async function(event, session) {
       try { await _loadStudentsFromSupabase(); } catch(e) {}
     }
   } else {
+    // セッションなし（未ログイン・ログアウト・トークン失効）→ ログイン画面へ
+    _appInitialized = false;
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appBody) appBody.style.display = 'none';
   }
@@ -3837,21 +3866,10 @@ function _renderProgressSummary(students) {
   }).join('');
 }
 
-document.addEventListener('DOMContentLoaded', async function(){
-  const loginScreen = document.getElementById('login-screen');
-  const appBody = document.getElementById('app-body');
-
-  // 既存セッション確認（localStorageから直接）
-  const token = _getAccessToken();
-  if (token) {
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) appBody.style.display = '';
-    await _loadStudentsFromSupabase();
-  } else {
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (appBody) appBody.style.display = 'none';
-  }
-
+document.addEventListener('DOMContentLoaded', function(){
+  // 認証・画面切替・データ読込は onAuthStateChange（INITIAL_SESSION）に一本化。
+  // ここでlocalStorageのトークンを直接見ると、期限切れトークンでのAPI失敗や
+  // onAuthStateChangeとの二重初期化が起きるため行わない。
   var el = document.getElementById('platon-api-key-input');
   var k = localStorage.getItem('platon_api_key');
   if (el && k) el.value = k;
